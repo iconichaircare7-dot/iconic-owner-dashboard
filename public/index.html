@@ -1,8 +1,9 @@
 <!--
-Iconic AI CMO — Page 1 Standalone Prototype
-Version: v14.3.2-FINAL-STATIC-POLISH-CHANNEL-LOGOS
+Iconic AI CMO — Page 1 Standalone Dynamic Local Prototype
+Version: v14.3.3-DYNAMIC-LOCAL-PROTOTYPE
 Scope:
-- Standalone HTML/CSS only
+- Standalone HTML/CSS/JS only
+- Local dashboardData object only
 - No API
 - No Google Sheets
 - No Render backend
@@ -34,10 +35,6 @@ Scope:
       --danger:#F97066;
       --info:#60A5FA;
       --inactive:#667085;
-      --meta:#60A5FA;
-      --google:#FDB022;
-      --snap:#FDE047;
-      --tiktok:#67E8F9;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     }
 
@@ -263,6 +260,8 @@ Scope:
     .kpi-card.success .accent-line { background:var(--success); }
     .kpi-card.info .accent-line { background:var(--info); }
     .kpi-card.low .accent-line { background:var(--success); }
+    .kpi-card.medium .accent-line { background:var(--warning); }
+    .kpi-card.high .accent-line { background:var(--danger); }
 
     .decision {
       padding:25px 26px 24px;
@@ -336,6 +335,16 @@ Scope:
       background:rgba(50,213,131,.078);
     }
 
+    .alert.warning {
+      border-color:rgba(253,176,34,.38);
+      background:rgba(253,176,34,.078);
+    }
+
+    .alert.danger {
+      border-color:rgba(249,112,102,.42);
+      background:rgba(249,112,102,.085);
+    }
+
     .dot {
       width:11px;
       height:11px;
@@ -343,6 +352,16 @@ Scope:
       border-radius:50%;
       background:var(--success);
       box-shadow:0 0 16px rgba(50,213,131,.50);
+    }
+
+    .alert.warning .dot {
+      background:var(--warning);
+      box-shadow:0 0 16px rgba(253,176,34,.50);
+    }
+
+    .alert.danger .dot {
+      background:var(--danger);
+      box-shadow:0 0 16px rgba(249,112,102,.50);
     }
 
     .alert strong {
@@ -413,21 +432,12 @@ Scope:
       box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 16px rgba(0,0,0,.20);
     }
 
-    .platform-logo.meta {
-      background:linear-gradient(135deg,#2563EB,#60A5FA);
-    }
-
+    .platform-logo.meta { background:linear-gradient(135deg,#2563EB,#60A5FA); }
     .platform-logo.google {
       background:conic-gradient(from 45deg,#4285F4 0 25%,#34A853 0 50%,#FBBC05 0 75%,#EA4335 0 100%);
       color:#fff;
     }
-
-    .platform-logo.snap {
-      background:#FDE047;
-      color:#111827;
-      text-shadow:0 1px 0 rgba(255,255,255,.28);
-    }
-
+    .platform-logo.snap { background:#FDE047; color:#111827; text-shadow:0 1px 0 rgba(255,255,255,.28); }
     .platform-logo.tiktok {
       background:linear-gradient(135deg,#111827 0%,#111827 42%,#67E8F9 43%,#67E8F9 58%,#FB7185 59%,#FB7185 100%);
       color:#fff;
@@ -450,6 +460,7 @@ Scope:
     .badge.pending { background:rgba(253,176,34,.14); color:var(--warning); }
     .badge.testing { background:rgba(96,165,250,.14); color:var(--info); }
     .badge.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
+    .badge.risk { background:rgba(249,112,102,.14); color:var(--danger); }
 
     .intel-card p {
       margin:0;
@@ -573,35 +584,35 @@ Scope:
           </div>
 
           <div class="date-box">
-            <span>Week 22</span>
-            <strong>May 26 - Jun 1, 2026</strong>
-            <small>Last Updated: Jun 3, 2026 - 4:30 PM</small>
+            <span id="weekLabel">Week</span>
+            <strong id="dateRange">Date range</strong>
+            <small>Last Updated: <span id="generatedAt">Checking...</span></small>
           </div>
         </header>
 
         <section class="kpi-grid" aria-label="Executive KPI cards">
           <article class="card kpi-card">
             <div><span class="label">Total Spend</span></div>
-            <strong>AED 461.01</strong>
-            <div><div class="accent-line"></div><small>All active channels this week</small></div>
+            <strong id="totalSpend">AED 0.00</strong>
+            <div><div class="accent-line"></div><small id="totalSpendDetail">All active channels this week</small></div>
           </article>
 
           <article class="card kpi-card success">
             <div><span class="label">Total Results</span></div>
-            <strong>287</strong>
-            <div><div class="accent-line"></div><small>Primary results from active channels</small></div>
+            <strong id="totalResults">0</strong>
+            <div><div class="accent-line"></div><small id="totalResultsDetail">Primary results from active channels</small></div>
           </article>
 
           <article class="card kpi-card info">
             <div><span class="label">Best Channel</span></div>
-            <strong>Meta</strong>
-            <div><div class="accent-line"></div><small>Strong performance at AED 1.61/result</small></div>
+            <strong id="bestChannel">Meta</strong>
+            <div><div class="accent-line"></div><small id="bestChannelDetail">Strong performance</small></div>
           </article>
 
-          <article class="card kpi-card low">
+          <article class="card kpi-card low" id="riskCard">
             <div><span class="label">Main Risk</span></div>
-            <strong>Low</strong>
-            <div><div class="accent-line"></div><small>No critical risk detected</small></div>
+            <strong id="mainRisk">Low</strong>
+            <div><div class="accent-line"></div><small id="mainRiskDetail">No critical risk detected</small></div>
           </article>
         </section>
 
@@ -611,20 +622,15 @@ Scope:
             <b>Recommended owner move</b>
           </div>
 
-          <h2>Keep Meta active. No budget increase this week.</h2>
-
-          <ul>
-            <li>Dubai and Abu Dhabi remain stable, with Meta leading performance.</li>
-            <li>Monitor Abu Dhabi VIP before scaling budget.</li>
-            <li>Do not increase spend until cost/result stays stable for the next refresh.</li>
-          </ul>
+          <h2 id="decisionTitle">Loading decision...</h2>
+          <ul id="decisionLines"></ul>
         </section>
 
-        <section class="alert" aria-label="Risk alert status">
+        <section class="alert" id="alertBar" aria-label="Risk alert status">
           <div class="dot" aria-hidden="true"></div>
           <div>
-            <strong>No Critical Risk Detected</strong>
-            <p>Performance is stable. No urgent action required.</p>
+            <strong id="alertStatus">No Critical Risk Detected</strong>
+            <p id="alertText">Performance is stable. No urgent action required.</p>
           </div>
         </section>
 
@@ -634,68 +640,359 @@ Scope:
               <span class="label">Channel Health</span>
               <b>Live summary</b>
             </div>
-
-            <div class="channel-list">
-              <div class="channel-row">
-                <span class="channel-name">
-                  <span class="platform-logo meta" aria-hidden="true">M</span>
-                  <span>Meta</span>
-                </span>
-                <span class="badge strong">Strong</span>
-              </div>
-
-              <div class="channel-row">
-                <span class="channel-name">
-                  <span class="platform-logo google" aria-hidden="true">G</span>
-                  <span>Google</span>
-                </span>
-                <span class="badge pending">Pending</span>
-              </div>
-
-              <div class="channel-row">
-                <span class="channel-name">
-                  <span class="platform-logo snap" aria-hidden="true">S</span>
-                  <span>Snapchat</span>
-                </span>
-                <span class="badge testing">Testing</span>
-              </div>
-
-              <div class="channel-row">
-                <span class="channel-name">
-                  <span class="platform-logo tiktok" aria-hidden="true">T</span>
-                  <span>TikTok</span>
-                </span>
-                <span class="badge inactive">Not Active</span>
-              </div>
-            </div>
+            <div class="channel-list" id="channelHealthList"></div>
           </article>
 
           <article class="card intel-card">
             <div class="section-top">
-              <span class="label">Customer Signal</span>
+              <span class="label" id="customerSignalTitle">Customer Signal</span>
               <b>Owned conversations</b>
             </div>
-            <p>Most customer questions this week are about price, consultation, and booking availability.</p>
+            <p id="customerSignalText">No customer signal available.</p>
           </article>
 
           <article class="card intel-card">
             <div class="section-top">
-              <span class="label">Competitor Signal</span>
+              <span class="label" id="competitorSignalTitle">Competitor Signal</span>
               <b>Market monitor</b>
             </div>
-            <p>Competitor activity is stable. No aggressive offer detected this week.</p>
+            <p id="competitorSignalText">No competitor signal available.</p>
           </article>
         </section>
 
         <section class="card next-action" aria-label="Next action recommendation">
           <div>
             <span class="recommended">Recommended</span>
-            <h3>Next Action</h3>
+            <h3 id="nextActionTitle">Next Action</h3>
           </div>
-          <p>Keep Dubai and Abu Dhabi active. Do not increase budget until Abu Dhabi VIP gets stable cost/result.</p>
+          <p id="nextActionText">Keep monitoring the active campaigns.</p>
         </section>
       </div>
     </section>
   </main>
+
+  <script>
+    /*
+      LOCAL DATA ONLY.
+      To test another scenario, change ACTIVE_SCENARIO to:
+      "normal", "warning", or "danger"
+    */
+    const ACTIVE_SCENARIO = "normal";
+
+    const scenarios = {
+      normal: {
+        reportContext: {
+          weekLabel: "Week 22",
+          dateRange: "May 26 - Jun 1, 2026",
+          generatedAt: "Jun 3, 2026 - 4:30 PM"
+        },
+        executiveSnapshot: {
+          totalSpendLabel: "AED 461.01",
+          totalSpendDetail: "All active channels this week",
+          totalResultsLabel: "287",
+          totalResultsDetail: "Primary results from active channels",
+          bestChannel: {
+            name: "Meta",
+            detail: "Strong performance at AED 1.61/result"
+          },
+          mainRisk: {
+            level: "Low",
+            detail: "No critical risk detected"
+          }
+        },
+        executiveDecision: {
+          title: "Keep Meta active. No budget increase this week.",
+          lines: [
+            "Dubai and Abu Dhabi remain stable, with Meta leading performance.",
+            "Monitor Abu Dhabi VIP before scaling budget.",
+            "Do not increase spend until cost/result stays stable for the next refresh."
+          ]
+        },
+        alert: {
+          level: "normal",
+          status: "No Critical Risk Detected",
+          text: "Performance is stable. No urgent action required."
+        },
+        channelsSummary: [
+          { key: "meta", name: "Meta", status: "Strong" },
+          { key: "google", name: "Google", status: "Pending" },
+          { key: "snapchat", name: "Snapchat", status: "Testing" },
+          { key: "tiktok", name: "TikTok", status: "Not Active" }
+        ],
+        customerIntelligence: {
+          summaryTitle: "Customer Signal",
+          summary: "Most customer questions this week are about price, consultation, and booking availability."
+        },
+        competitorIntelligence: {
+          summaryTitle: "Competitor Signal",
+          summary: "Competitor activity is stable. No aggressive offer detected this week."
+        },
+        nextAction: {
+          title: "Next Action",
+          text: "Keep Dubai and Abu Dhabi active. Do not increase budget until Abu Dhabi VIP gets stable cost/result."
+        }
+      },
+
+      warning: {
+        reportContext: {
+          weekLabel: "Week 23",
+          dateRange: "Jun 2 - Jun 8, 2026",
+          generatedAt: "Jun 8, 2026 - 6:30 PM"
+        },
+        executiveSnapshot: {
+          totalSpendLabel: "AED 720.50",
+          totalSpendDetail: "Spend increased versus prior week",
+          totalResultsLabel: "312",
+          totalResultsDetail: "Results improving but cost needs monitoring",
+          bestChannel: {
+            name: "Snapchat",
+            detail: "Testing phase with early positive signal"
+          },
+          mainRisk: {
+            level: "Medium",
+            detail: "Abu Dhabi cost/result needs monitoring"
+          }
+        },
+        executiveDecision: {
+          title: "Keep campaigns active, but monitor Abu Dhabi cost closely.",
+          lines: [
+            "Snapchat is showing early signal, but Meta remains the safer base.",
+            "Do not scale Abu Dhabi until cost/result stabilizes for 3 days.",
+            "Review creative fatigue before increasing spend."
+          ]
+        },
+        alert: {
+          level: "warning",
+          status: "Cost Monitoring Required",
+          text: "Abu Dhabi cost/result is rising and needs review before scaling."
+        },
+        channelsSummary: [
+          { key: "meta", name: "Meta", status: "Strong" },
+          { key: "google", name: "Google", status: "Pending" },
+          { key: "snapchat", name: "Snapchat", status: "Testing" },
+          { key: "tiktok", name: "TikTok", status: "Not Active" }
+        ],
+        customerIntelligence: {
+          summaryTitle: "Customer Signal",
+          summary: "Customers are asking more about consultation timing, price range, and natural result quality."
+        },
+        competitorIntelligence: {
+          summaryTitle: "Competitor Signal",
+          summary: "Competitors are active, but no major aggressive discount was detected this week."
+        },
+        nextAction: {
+          title: "Next Action",
+          text: "Keep the current budget stable and review Abu Dhabi VIP again after the next refresh."
+        }
+      },
+
+      danger: {
+        reportContext: {
+          weekLabel: "Week 24",
+          dateRange: "Jun 9 - Jun 15, 2026",
+          generatedAt: "Jun 15, 2026 - 6:30 PM"
+        },
+        executiveSnapshot: {
+          totalSpendLabel: "AED 1,240.75",
+          totalSpendDetail: "High spend detected this week",
+          totalResultsLabel: "198",
+          totalResultsDetail: "Results dropped while spend increased",
+          bestChannel: {
+            name: "Meta",
+            detail: "Still leading, but efficiency declined"
+          },
+          mainRisk: {
+            level: "High",
+            detail: "Cost/result increased above safe level"
+          }
+        },
+        executiveDecision: {
+          title: "Pause scaling. Protect budget until cost/result recovers.",
+          lines: [
+            "High spend risk detected across active campaigns.",
+            "Reduce weak ad sets and keep only stable performers active.",
+            "Review creatives and audience overlap before adding new budget."
+          ]
+        },
+        alert: {
+          level: "danger",
+          status: "High Spend Risk Detected",
+          text: "Cost/result increased above the safe level. Immediate review is required."
+        },
+        channelsSummary: [
+          { key: "meta", name: "Meta", status: "Risk" },
+          { key: "google", name: "Google", status: "Pending" },
+          { key: "snapchat", name: "Snapchat", status: "Testing" },
+          { key: "tiktok", name: "TikTok", status: "Not Active" }
+        ],
+        customerIntelligence: {
+          summaryTitle: "Customer Signal",
+          summary: "Customer questions are increasing, but conversion quality is not matching the higher spend."
+        },
+        competitorIntelligence: {
+          summaryTitle: "Competitor Signal",
+          summary: "Competitor activity appears stronger this week, especially around fast consultation messaging."
+        },
+        nextAction: {
+          title: "Next Action",
+          text: "Stop scaling now. Review weak ad sets, refresh creatives, and protect the weekly budget."
+        }
+      }
+    };
+
+    const dashboardData = scenarios[ACTIVE_SCENARIO];
+
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function setText(id, value, fallback = "-") {
+      const el = byId(id);
+      if (!el) return;
+      el.textContent = safe(value, fallback);
+    }
+
+    function safe(value, fallback = "-") {
+      return value === undefined || value === null || value === "" ? fallback : value;
+    }
+
+    function limitText(value, max = 140) {
+      const text = String(safe(value, "")).trim();
+      if (text.length <= max) return text;
+      return text.slice(0, max - 1).trim() + "…";
+    }
+
+    function normalizeLevel(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function normalizeStatus(value) {
+      const s = String(value || "").trim().toLowerCase();
+      if (s === "strong") return "strong";
+      if (s === "pending") return "pending";
+      if (s === "testing") return "testing";
+      if (s === "not active") return "inactive";
+      if (s === "inactive") return "inactive";
+      if (s === "risk") return "risk";
+      return "inactive";
+    }
+
+    function logoText(channelKey, channelName) {
+      const key = String(channelKey || channelName || "").toLowerCase();
+      if (key.includes("meta")) return "M";
+      if (key.includes("google")) return "G";
+      if (key.includes("snap")) return "S";
+      if (key.includes("tiktok")) return "T";
+      return String(channelName || "?").slice(0, 1).toUpperCase();
+    }
+
+    function logoClass(channelKey, channelName) {
+      const key = String(channelKey || channelName || "").toLowerCase();
+      if (key.includes("meta")) return "meta";
+      if (key.includes("google")) return "google";
+      if (key.includes("snap")) return "snap";
+      if (key.includes("tiktok")) return "tiktok";
+      return "meta";
+    }
+
+    function renderDashboard(data) {
+      const ctx = data.reportContext || {};
+      const snap = data.executiveSnapshot || {};
+      const decision = data.executiveDecision || {};
+      const alert = data.alert || {};
+      const customer = data.customerIntelligence || {};
+      const competitor = data.competitorIntelligence || {};
+      const next = data.nextAction || {};
+
+      setText("weekLabel", ctx.weekLabel, "Week");
+      setText("dateRange", ctx.dateRange, "Date range");
+      setText("generatedAt", ctx.generatedAt, "Checking...");
+
+      setText("totalSpend", snap.totalSpendLabel, "AED 0.00");
+      setText("totalSpendDetail", limitText(snap.totalSpendDetail || "All active channels this week", 62));
+
+      setText("totalResults", snap.totalResultsLabel, "0");
+      setText("totalResultsDetail", limitText(snap.totalResultsDetail || "Primary results from active channels", 62));
+
+      setText("bestChannel", snap.bestChannel?.name, "Meta");
+      setText("bestChannelDetail", limitText(snap.bestChannel?.detail || "Strong performance", 64));
+
+      setText("mainRisk", snap.mainRisk?.level, "Low");
+      setText("mainRiskDetail", limitText(snap.mainRisk?.detail || "No critical risk detected", 64));
+
+      const riskCard = byId("riskCard");
+      if (riskCard) {
+        riskCard.classList.remove("low", "medium", "high");
+        const level = normalizeLevel(snap.mainRisk?.level);
+        riskCard.classList.add(level === "high" ? "high" : level === "medium" ? "medium" : "low");
+      }
+
+      setText("decisionTitle", limitText(decision.title || "Keep performance stable this week.", 92));
+      const linesEl = byId("decisionLines");
+      if (linesEl) {
+        const lines = Array.isArray(decision.lines) ? decision.lines.slice(0, 3) : [];
+        linesEl.innerHTML = "";
+        (lines.length ? lines : ["Review performance after the next refresh."]).forEach(line => {
+          const li = document.createElement("li");
+          li.textContent = limitText(line, 98);
+          linesEl.appendChild(li);
+        });
+      }
+
+      const alertBar = byId("alertBar");
+      if (alertBar) {
+        alertBar.classList.remove("warning", "danger");
+        const level = normalizeLevel(alert.level);
+        if (level === "warning") alertBar.classList.add("warning");
+        if (level === "danger") alertBar.classList.add("danger");
+      }
+
+      setText("alertStatus", limitText(alert.status || "No Critical Risk Detected", 72));
+      setText("alertText", limitText(alert.text || "Performance is stable. No urgent action required.", 110));
+
+      const channelList = byId("channelHealthList");
+      if (channelList) {
+        const channels = Array.isArray(data.channelsSummary) ? data.channelsSummary.slice(0, 4) : [];
+        channelList.innerHTML = "";
+        channels.forEach(channel => {
+          const row = document.createElement("div");
+          row.className = "channel-row";
+
+          const nameWrap = document.createElement("span");
+          nameWrap.className = "channel-name";
+
+          const logo = document.createElement("span");
+          logo.className = "platform-logo " + logoClass(channel.key, channel.name);
+          logo.setAttribute("aria-hidden", "true");
+          logo.textContent = logoText(channel.key, channel.name);
+
+          const name = document.createElement("span");
+          name.textContent = safe(channel.name, "Channel");
+
+          const badge = document.createElement("span");
+          const statusClass = normalizeStatus(channel.status);
+          badge.className = "badge " + statusClass;
+          badge.textContent = safe(channel.status, "Inactive");
+
+          nameWrap.appendChild(logo);
+          nameWrap.appendChild(name);
+          row.appendChild(nameWrap);
+          row.appendChild(badge);
+          channelList.appendChild(row);
+        });
+      }
+
+      setText("customerSignalTitle", customer.summaryTitle || "Customer Signal");
+      setText("customerSignalText", limitText(customer.summary || "No customer signal available.", 145));
+
+      setText("competitorSignalTitle", competitor.summaryTitle || "Competitor Signal");
+      setText("competitorSignalText", limitText(competitor.summary || "No competitor signal available.", 145));
+
+      setText("nextActionTitle", next.title || "Next Action");
+      setText("nextActionText", limitText(next.text || "Keep monitoring the active campaigns.", 135));
+    }
+
+    renderDashboard(dashboardData);
+  </script>
 </body>
 </html>
