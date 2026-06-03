@@ -4,47 +4,53 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Iconic AI CMO Owner Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=14.2.0"/>
+  <link rel="stylesheet" href="/style.css?v=14.2.1"/>
 </head>
 <body>
   <main class="stage">
-    <section class="reportPage pageOne" aria-label="Iconic AI CMO Executive Command Center">
-      <div class="orb orbTop"></div>
-      <div class="orb orbRight"></div>
+    <section class="reportPage pageOne" aria-label="Iconic AI CMO Executive Command Center Page 1">
+      <div class="glow glowTop" aria-hidden="true"></div>
+      <div class="glow glowRight" aria-hidden="true"></div>
+      <div class="gridOverlay" aria-hidden="true"></div>
 
       <header class="pageHeader">
-        <div class="brandBlock">
-          <div class="brandMark" aria-hidden="true">♕</div>
-          <div class="brandText">
-            <strong>ICONIC</strong>
-            <span>BE ICONIC</span>
+        <div class="brandZone">
+          <div class="brandMain">
+            <div class="brandCrown" aria-hidden="true">♕</div>
+            <div class="brandText">
+              <strong>ICONIC</strong>
+              <span>BE ICONIC</span>
+            </div>
           </div>
-          <small>AI CMO COMMAND CENTER</small>
+          <div class="commandLabel">AI CMO COMMAND CENTER</div>
         </div>
 
-        <div class="titleBlock">
+        <div class="titleZone">
           <h1>ICONIC AI <em>MARKETING</em> REPORT</h1>
           <h2>التقرير التسويقي الذكي</h2>
         </div>
 
-        <div class="timeBlock">
-          <div class="timePill" id="reportWeek">Week</div>
-          <div class="timePill wide" id="dateRange">Date range</div>
+        <div class="dateZone">
+          <div class="datePill weekPill" id="reportWeek">Week</div>
+          <div class="datePill rangePill">
+            <span id="dateRange">Date range</span>
+            <i aria-hidden="true">▣</i>
+          </div>
         </div>
       </header>
 
-      <section class="kpiStrip" aria-label="Executive snapshot KPIs">
-        <article class="kpiCard spendCard">
+      <section class="kpiStrip" aria-label="Executive KPI cards">
+        <article class="kpiCard">
           <span>TOTAL SPEND</span>
           <small>إجمالي الإنفاق</small>
           <strong id="totalSpend">AED 0.00</strong>
           <div class="kpiFooter"><b>vs Last Week</b><em id="totalSpendChange">+0.0%</em></div>
         </article>
 
-        <article class="kpiCard resultsCard">
+        <article class="kpiCard">
           <span>TOTAL RESULTS</span>
           <small>إجمالي النتائج</small>
-          <div class="miniIcon" aria-hidden="true">♧</div>
+          <div class="miniKpiIcon" aria-hidden="true">♧</div>
           <strong id="totalResults">0</strong>
           <div class="kpiFooter"><b>vs Last Week</b><em id="totalResultsChange">+0.0%</em></div>
         </article>
@@ -52,8 +58,8 @@
         <article class="kpiCard bestCard">
           <span>BEST CHANNEL</span>
           <small>أفضل قناة</small>
-          <strong id="bestChannel">-</strong>
-          <div class="channelLine"><i class="waIcon">☎</i><b id="bestChannelDetail">-</b></div>
+          <strong id="bestChannel">Meta</strong>
+          <div class="bestLine"><i aria-hidden="true">☎</i><b id="bestChannelDetail">WhatsApp Conversations</b></div>
         </article>
 
         <article class="kpiCard driverCard">
@@ -66,14 +72,16 @@
         <article class="kpiCard riskCard">
           <span>MAIN RISK</span>
           <small>المخاطر الرئيسية</small>
-          <strong id="mainRisk">-</strong>
-          <div class="googleWord" id="mainRiskDetail">-</div>
+          <strong id="mainRisk">No major risk detected</strong>
+          <b id="mainRiskDetail">Stable</b>
         </article>
       </section>
 
-      <section class="decisionGrid" aria-label="Executive decision and report status">
+      <section class="decisionRow" aria-label="Executive decision and report status">
         <article class="targetPanel">
-          <div class="targetIcon" aria-hidden="true">⌖</div>
+          <div class="targetGlyph" aria-hidden="true">
+            <span class="targetArrow"></span>
+          </div>
         </article>
 
         <article class="decisionPanel">
@@ -87,24 +95,24 @@
         <article class="statusPanel">
           <span>REPORT STATUS</span>
           <small>حالة التقرير</small>
-          <h3><i>✓</i><b id="reportStatus">Loading</b></h3>
+          <h3><i aria-hidden="true">✓</i><b id="reportStatus">Loading</b></h3>
           <hr/>
           <p>Data Updated</p>
           <strong id="generatedAt">Checking systems...</strong>
         </article>
       </section>
 
-      <section class="healthBar" aria-label="Automation health">
+      <section class="healthBar" aria-label="Report health status">
         <div class="pageNumber">1</div>
-        <div class="healthItem"><i>＋</i><span id="healthData">Data Sources Connected</span></div>
-        <div class="healthItem"><i>⚙</i><span id="healthAI">AI Analysis Completed</span></div>
-        <div class="healthItem"><i>⇧</i><span id="healthGenerated">Report Generated</span></div>
-        <div class="healthItem ready"><i>✓</i><span id="healthReady">Ready for Decision</span></div>
+        <div class="healthItem"><i aria-hidden="true">＋</i><span id="healthData">Data Sources Connected</span></div>
+        <div class="healthItem"><i aria-hidden="true">⚙</i><span id="healthAI">AI Analysis Completed</span></div>
+        <div class="healthItem"><i aria-hidden="true">⇧</i><span id="healthGenerated">Report Generated</span></div>
+        <div class="healthItem ready"><i aria-hidden="true">✓</i><span id="healthReady">Ready for Decision</span></div>
       </section>
     </section>
   </main>
 
   <div id="errorBox" class="error hidden"></div>
-  <script src="/app.js?v=14.2.0" defer></script>
+  <script src="/app.js?v=14.2.1" defer></script>
 </body>
 </html>
