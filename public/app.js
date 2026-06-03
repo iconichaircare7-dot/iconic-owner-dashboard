@@ -1,18 +1,287 @@
-const money=new Intl.NumberFormat('en-AE',{style:'currency',currency:'AED',minimumFractionDigits:2});
-const number=new Intl.NumberFormat('en-AE');
-const m={meta:{icon:'∞',accent:'#22c55e'},google:{icon:'G',accent:'#fb923c'},snapchat:{icon:'👻',accent:'#facc15'},tiktok:{icon:'♪',accent:'#a78bfa'}};
-function $(id){return document.getElementById(id)}
-function safe(v,f='-'){return v===undefined||v===null||v===''?f:v}
-function fm(v){return money.format(Number(v||0)).replace('AED','AED ')}
-function fp(v){return Number(v||0).toFixed(2)+'%'}
-async function loadDashboard(){try{const r=await fetch('/api/dashboard-data',{headers:{Accept:'application/json'}});const d=await r.json();if(!r.ok||d.ok===false)throw new Error(d.error||'Dashboard API failed');render(d)}catch(e){$('errorBox').textContent=e.message||String(e);$('errorBox').classList.remove('hidden')}}
-function render(d){hero(d);exec(d.executive||{});channels(d.channels||{});customers(d.customerIntelligence||{});competitors(d.competitorIntelligence||{});recs(d.recommendations||{},d.report||{})}
-function hero(d){const r=d.report||{},e=d.executive||{},h=d.health||{};$('reportWeek').textContent=safe(r.week);$('dateRange').textContent=safe(r.dateRange);$('generatedAt').textContent=safe(d.generatedAt);$('executiveDecision').textContent=safe(e.decisionTitle,'Decision loading...');$('reportStatus').textContent=safe(e.status,'All Systems Active');$('healthData').textContent=h.dataSourcesConnected?'✓ Data Sources Connected':'Data Sources Pending';$('healthAI').textContent=h.aiAnalysisCompleted?'✓ AI Analysis Completed':'AI Pending';$('healthReady').textContent=h.readyForDecision?'✓ Ready for Decision':'Not Ready'}
-function exec(e){$('totalSpend').textContent=fm(e.totalSpend);$('totalSpendChange').textContent=safe(e.totalSpendChange,'+0.0%');$('totalResults').textContent=number.format(Number(e.totalResults||0));$('totalResultsChange').textContent=safe(e.totalResultsChange,'+0.0%');$('bestChannel').textContent=safe(e.bestChannel);$('bestChannelDetail').textContent=safe(e.bestChannelDetail);$('mainRisk').textContent=safe(e.mainRisk);$('mainRiskDetail').textContent=safe(e.mainRiskDetail);$('decisionTitle').textContent=safe(e.decisionTitle,'Keep performance under review.');$('decisionLine1').textContent=safe(e.decisionLine1,'');$('decisionLine2').textContent=safe(e.decisionLine2,'')}
-function channels(c){const g=$('channelsGrid');g.innerHTML='';['meta','google','snapchat','tiktok'].forEach(k=>{const ch=c[k]||{},mm=m[k];const el=document.createElement('article');el.className='channel';el.style.setProperty('--accent',mm.accent);el.innerHTML=`<div class="channelTop"><div><div class="channelName">${safe(ch.name,k)}</div><div class="channelType">${safe(ch.resultType)}</div></div><div class="channelIcon">${mm.icon}</div></div><div><div class="metric"><span>Spend</span><b>${fm(ch.spend)}</b></div><div class="metric"><span>Results</span><b>${number.format(Number(ch.results||0))}</b></div><div class="metric"><span>Cost / Result</span><b>${fm(ch.costPerResult)}</b></div><div class="metric"><span>CTR</span><b>${fp(ch.ctr)}</b></div></div><div class="statusPill">${safe(ch.status,'WATCH')}</div>`;g.appendChild(el)})}
-function customers(c){bars('questionsList',c.topQuestions||[],'label','ar');const s=c.sentiment||{},p=Number(s.positive||s.mainPercent||0),n=Number(s.neutral||0),ng=Math.max(0,Number(s.negative||(100-p-n)));$('sentimentDonut').style.background=`conic-gradient(var(--green) 0 ${p}%,#cbd5e1 ${p}% ${p+n}%,var(--red) ${p+n}% 100%)`;$('sentimentPercent').textContent=Math.round(Number(s.mainPercent||p||0))+'%';$('sentimentLabel').textContent=safe(s.mainLabel,'Positive');$('sentimentLegend').innerHTML=`<div style="color:#16a34a">● Positive ${Math.round(p)}%</div><div style="color:#64748b">● Neutral ${Math.round(n)}%</div><div style="color:#dc2626">● Negative ${Math.round(ng)}%</div>`;$('customerRecommendation').textContent=safe(c.recommendation,'No recommendation yet.');chips('customerInsights',c.insights||[],'✓ ')}
-function competitors(c){const list=$('competitorsList');list.innerHTML='';(c.competitors||[]).forEach(i=>{const row=document.createElement('div');row.className='row';row.innerHTML=`<b>${safe(i.name)}</b><span>${safe(i.status,'Watch')}</span>`;list.appendChild(row)});bars('promoThemes',c.promoThemes||[],'label','ar');const market=c.marketPosition||{};$('marketRank').textContent=safe(market.rank,'#1');$('shareOfVoice').textContent=Math.round(Number(market.shareOfVoice||0))+'% Share of Voice';$('marketNote').textContent=safe(market.note,'Market position is being monitored.');chips('competitorInsights',c.insights||[],'◉ ')}
-function recs(r,rep){$('nextReportDate').textContent=safe(rep.nextReportDate,'-');const a=$('recommendationsList');a.innerHTML='';(r.topRecommendations||[]).forEach((i,idx)=>{const row=document.createElement('div');row.className='numrow';row.innerHTML=`<div class="num">${idx+1}</div><div><b>${safe(i.title)}</b><div class="ar">${safe(i.ar,'')}</div></div>`;a.appendChild(row)});const b=$('nextStepsList');b.innerHTML='';(r.nextSteps||[]).forEach(i=>{const row=document.createElement('div');row.className='numrow';row.innerHTML=`<div class="num">✓</div><div><b>${safe(i.title)}</b><div class="ar">${safe(i.ar,'')}</div></div><div class="date">${safe(i.date,'')}</div>`;b.appendChild(row)})}
-function bars(id,items,label,sub){const t=$(id);t.innerHTML='';(items||[]).forEach(i=>{const p=Math.max(0,Math.min(100,Number(i.percent||0)));const row=document.createElement('div');row.className='barRow';row.innerHTML=`<div class="barMeta"><div><div>${safe(i[label])}</div><div class="barSub">${safe(i[sub],'')}</div></div><b>${Math.round(p)}%</b></div><div class="barTrack"><div class="barFill" style="width:${p}%"></div></div>`;t.appendChild(row)})}
-function chips(id,items,prefix){const t=$(id);t.innerHTML='';(items||[]).forEach(i=>{const chip=document.createElement('div');chip.className='chip';chip.textContent=prefix+i;t.appendChild(chip)})}
+// v14.1.2 FINAL VISUAL REBUILD — Premium Owner Web Dashboard
+
+const money = new Intl.NumberFormat('en-AE', {
+  style: 'currency',
+  currency: 'AED',
+  minimumFractionDigits: 2
+});
+
+const number = new Intl.NumberFormat('en-AE');
+
+const CHANNEL_META = {
+  meta: { icon: '∞', accent: '#22c55e', label: 'Meta' },
+  google: { icon: 'G', accent: '#fb923c', label: 'Google' },
+  snapchat: { icon: '👻', accent: '#facc15', label: 'Snapchat' },
+  tiktok: { icon: '♪', accent: '#a78bfa', label: 'TikTok' }
+};
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function safe(value, fallback = '-') {
+  return value === undefined || value === null || value === '' ? fallback : value;
+}
+
+function html(value, fallback = '-') {
+  return String(safe(value, fallback))
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function fm(value) {
+  return money.format(Number(value || 0)).replace('AED', 'AED ');
+}
+
+function fp(value) {
+  return Number(value || 0).toFixed(2) + '%';
+}
+
+function setText(id, value, fallback = '-') {
+  const el = $(id);
+  if (el) el.textContent = safe(value, fallback);
+}
+
+async function loadDashboard() {
+  try {
+    const response = await fetch('/api/dashboard-data', {
+      headers: { Accept: 'application/json' }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || 'Dashboard API failed');
+    }
+
+    render(data);
+    document.body.classList.add('is-loaded');
+  } catch (error) {
+    setText('errorBox', error.message || String(error));
+    $('errorBox')?.classList.remove('hidden');
+  }
+}
+
+function render(data) {
+  hero(data);
+  exec(data.executive || {});
+  channels(data.channels || {});
+  customers(data.customerIntelligence || {});
+  competitors(data.competitorIntelligence || {});
+  recs(data.recommendations || {}, data.report || {});
+}
+
+function hero(data) {
+  const report = data.report || {};
+  const executive = data.executive || {};
+  const health = data.health || {};
+
+  setText('reportWeek', report.week, 'Week');
+  setText('dateRange', report.dateRange, 'Date range');
+  setText('generatedAt', data.generatedAt, 'Checking systems...');
+  setText('executiveDecision', executive.decisionTitle, 'Decision loading...');
+  setText('reportStatus', executive.status, 'All Systems Active');
+
+  setText('healthData', health.dataSourcesConnected ? '✓ Data Sources Connected' : 'Data Sources Pending');
+  setText('healthAI', health.aiAnalysisCompleted ? '✓ AI Analysis Completed' : 'AI Pending');
+  setText('healthReady', health.readyForDecision ? '✓ Ready for Decision' : 'Not Ready');
+}
+
+function exec(executive) {
+  setText('totalSpend', fm(executive.totalSpend));
+  setText('totalSpendChange', executive.totalSpendChange, '+0.0%');
+
+  setText('totalResults', number.format(Number(executive.totalResults || 0)));
+  setText('totalResultsChange', executive.totalResultsChange, '+0.0%');
+
+  setText('bestChannel', executive.bestChannel);
+  setText('bestChannelDetail', executive.bestChannelDetail);
+
+  setText('mainRisk', executive.mainRisk);
+  setText('mainRiskDetail', executive.mainRiskDetail);
+
+  setText('decisionTitle', executive.decisionTitle, 'Keep performance under review.');
+  setText('decisionLine1', executive.decisionLine1, '');
+  setText('decisionLine2', executive.decisionLine2, '');
+}
+
+function channels(channelsData) {
+  const grid = $('channelsGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  ['meta', 'google', 'snapchat', 'tiktok'].forEach((key) => {
+    const channel = channelsData[key] || {};
+    const meta = CHANNEL_META[key];
+
+    const card = document.createElement('article');
+    card.className = `channel channel-${key}`;
+    card.dataset.channel = key;
+    card.style.setProperty('--accent', meta.accent);
+
+    card.innerHTML = `
+      <div class="channel-head channelTop">
+        <div>
+          <div class="channel-name channelName">${html(channel.name, meta.label)}</div>
+          <div class="channel-type channelType">${html(channel.resultType, 'Performance')}</div>
+        </div>
+        <div class="channel-icon channelIcon">${meta.icon}</div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric"><span>Spend</span><b>${html(fm(channel.spend))}</b></div>
+        <div class="metric"><span>Results</span><b>${html(number.format(Number(channel.results || 0)))}</b></div>
+        <div class="metric"><span>Cost / Result</span><b>${html(fm(channel.costPerResult))}</b></div>
+        <div class="metric"><span>CTR</span><b>${html(fp(channel.ctr))}</b></div>
+      </div>
+
+      <div class="status-pill statusPill">${html(channel.status, 'WATCH')}</div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+function customers(customerData) {
+  bars('questionsList', customerData.topQuestions || [], 'label', 'ar');
+
+  const sentiment = customerData.sentiment || {};
+  const positive = Number(sentiment.positive || sentiment.mainPercent || 0);
+  const neutral = Number(sentiment.neutral || 0);
+  const negative = Math.max(0, Number(sentiment.negative || (100 - positive - neutral)));
+
+  const donut = $('sentimentDonut');
+  if (donut) {
+    donut.style.background = `conic-gradient(var(--green) 0 ${positive}%, #cbd5e1 ${positive}% ${positive + neutral}%, var(--red) ${positive + neutral}% 100%)`;
+  }
+
+  setText('sentimentPercent', Math.round(Number(sentiment.mainPercent || positive || 0)) + '%');
+  setText('sentimentLabel', sentiment.mainLabel, 'Positive');
+
+  const legend = $('sentimentLegend');
+  if (legend) {
+    legend.innerHTML = `
+      <div class="legendItem" style="color:#16a34a">● Positive ${Math.round(positive)}%</div>
+      <div class="legendItem" style="color:#64748b">● Neutral ${Math.round(neutral)}%</div>
+      <div class="legendItem" style="color:#dc2626">● Negative ${Math.round(negative)}%</div>
+    `;
+  }
+
+  setText('customerRecommendation', customerData.recommendation, 'No recommendation yet.');
+  chips('customerInsights', customerData.insights || [], '✓ ');
+}
+
+function competitors(competitorData) {
+  const list = $('competitorsList');
+  if (list) {
+    list.innerHTML = '';
+
+    (competitorData.competitors || []).forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'competitor-row row';
+      row.innerHTML = `
+        <b>${html(item.name)}</b>
+        <span>${html(item.status, 'Watch')}</span>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  bars('promoThemes', competitorData.promoThemes || [], 'label', 'ar');
+
+  const market = competitorData.marketPosition || {};
+  setText('marketRank', market.rank, '#1');
+  setText('shareOfVoice', Math.round(Number(market.shareOfVoice || 0)) + '% Share of Voice');
+  setText('marketNote', market.note, 'Market position is being monitored.');
+
+  chips('competitorInsights', competitorData.insights || [], '◉ ');
+}
+
+function recs(recommendations, report) {
+  setText('nextReportDate', report.nextReportDate, '-');
+
+  const topRecommendations = $('recommendationsList');
+  if (topRecommendations) {
+    topRecommendations.innerHTML = '';
+
+    (recommendations.topRecommendations || []).forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'next-row numrow';
+      row.innerHTML = `
+        <div class="num">${index + 1}</div>
+        <div>
+          <b>${html(item.title)}</b>
+          <div class="ar">${html(item.ar, '')}</div>
+        </div>
+      `;
+      topRecommendations.appendChild(row);
+    });
+  }
+
+  const nextSteps = $('nextStepsList');
+  if (nextSteps) {
+    nextSteps.innerHTML = '';
+
+    (recommendations.nextSteps || []).forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'next-row numrow';
+      row.innerHTML = `
+        <div class="num">✓</div>
+        <div>
+          <b>${html(item.title)}</b>
+          <div class="ar">${html(item.ar, '')}</div>
+        </div>
+        <div class="date">${html(item.date, '')}</div>
+      `;
+      nextSteps.appendChild(row);
+    });
+  }
+}
+
+function bars(id, items, labelKey, subKey) {
+  const target = $(id);
+  if (!target) return;
+
+  target.innerHTML = '';
+
+  (items || []).forEach((item) => {
+    const percent = Math.max(0, Math.min(100, Number(item.percent || 0)));
+    const row = document.createElement('div');
+
+    row.className = 'barRow';
+    row.innerHTML = `
+      <div class="barMeta">
+        <div>
+          <div>${html(item[labelKey])}</div>
+          <div class="barSub">${html(item[subKey], '')}</div>
+        </div>
+        <b>${Math.round(percent)}%</b>
+      </div>
+      <div class="barTrack">
+        <div class="barFill" style="width:${percent}%"></div>
+      </div>
+    `;
+
+    target.appendChild(row);
+  });
+}
+
+function chips(id, items, prefix) {
+  const target = $(id);
+  if (!target) return;
+
+  target.innerHTML = '';
+
+  (items || []).forEach((item) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = prefix + item;
+    target.appendChild(chip);
+  });
+}
+
 loadDashboard();
