@@ -4,71 +4,231 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Iconic AI CMO Owner Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=14.1.1"/>
+  <link rel="stylesheet" href="/style.css?v=14.1.2"/>
 </head>
+
 <body>
   <main class="wrap">
-    <header class="hero">
-      <div class="brand"><div class="crown">♕</div><div><b>ICONIC</b><span>AI CMO COMMAND CENTER</span></div></div>
-      <section class="heroBody">
-        <div>
+
+    <!-- PAGE 1 / HERO: EXECUTIVE COMMAND CENTER -->
+    <header class="hero heroExecutive">
+      <div class="heroTop">
+        <div class="brand">
+          <div class="crown">♕</div>
+          <div>
+            <b>ICONIC</b>
+            <span>AI CMO COMMAND CENTER</span>
+          </div>
+        </div>
+
+        <aside class="status statusPremium">
+          <small>REPORT STATUS</small>
+          <strong id="reportStatus">Loading</strong>
+          <span id="generatedAt">Checking systems...</span>
+        </aside>
+      </div>
+
+      <section class="heroBody heroBodyPremium">
+        <div class="heroCopy">
           <small>AI MARKETING INTELLIGENCE</small>
           <h1>ICONIC AI <em>MARKETING</em> REPORT</h1>
           <h2>التقرير التسويقي الذكي</h2>
           <p id="executiveDecision">Loading weekly executive decision...</p>
         </div>
-        <aside class="status"><small>REPORT STATUS</small><strong id="reportStatus">Loading</strong><span id="generatedAt">Checking systems...</span></aside>
+
+        <div class="heroCommandCard">
+          <span>OWNER VIEW</span>
+          <strong>Executive Command Center</strong>
+          <p>Weekly marketing intelligence, channel performance, customer signals, competitor movement, and next actions.</p>
+        </div>
       </section>
-      <div class="pills"><span id="reportWeek">Week</span><span id="dateRange">Date range</span><span id="healthData">Data Sources</span><span id="healthAI">AI Analysis</span><span id="healthReady">Ready</span></div>
+
+      <div class="pills pillsPremium">
+        <span id="reportWeek">Week</span>
+        <span id="dateRange">Date range</span>
+        <span id="healthData">Data Sources</span>
+        <span id="healthAI">AI Analysis</span>
+        <span id="healthReady">Ready</span>
+      </div>
     </header>
 
-    <section class="section">
-      <div class="head"><div><small>EXECUTIVE SNAPSHOT</small><h2>Owner Command Center</h2></div><b>1</b></div>
-      <div class="kpis">
-        <article><span>TOTAL SPEND</span><i>إجمالي الإنفاق</i><strong id="totalSpend">AED 0.00</strong><em id="totalSpendChange">+0.0%</em></article>
-        <article><span>TOTAL RESULTS</span><i>إجمالي النتائج</i><strong id="totalResults">0</strong><em id="totalResultsChange">+0.0%</em></article>
-        <article><span>BEST CHANNEL</span><i>أفضل قناة</i><strong id="bestChannel">-</strong><em id="bestChannelDetail">-</em></article>
-        <article><span>MAIN RISK</span><i>المخاطر الرئيسية</i><strong id="mainRisk">-</strong><em id="mainRiskDetail">-</em></article>
+    <!-- PAGE 1: EXECUTIVE SNAPSHOT -->
+    <section class="section sectionExecutive">
+      <div class="head">
+        <div>
+          <small>EXECUTIVE SNAPSHOT</small>
+          <h2>Owner Command Center</h2>
+        </div>
+        <b>1</b>
       </div>
-      <div class="decision"><div class="target">◎</div><article><span>EXECUTIVE DECISION</span><i>القرار التنفيذي</i><h3 id="decisionTitle">Loading...</h3><p id="decisionLine1"></p><p id="decisionLine2"></p></article></div>
+
+      <div class="kpis">
+        <article>
+          <span>TOTAL SPEND</span>
+          <i>إجمالي الإنفاق</i>
+          <strong id="totalSpend">AED 0.00</strong>
+          <em id="totalSpendChange">+0.0%</em>
+        </article>
+
+        <article>
+          <span>TOTAL RESULTS</span>
+          <i>إجمالي النتائج</i>
+          <strong id="totalResults">0</strong>
+          <em id="totalResultsChange">+0.0%</em>
+        </article>
+
+        <article>
+          <span>BEST CHANNEL</span>
+          <i>أفضل قناة</i>
+          <strong id="bestChannel">-</strong>
+          <em id="bestChannelDetail">-</em>
+        </article>
+
+        <article>
+          <span>MAIN RISK</span>
+          <i>المخاطر الرئيسية</i>
+          <strong id="mainRisk">-</strong>
+          <em id="mainRiskDetail">-</em>
+        </article>
+      </div>
+
+      <div class="decision decisionPremium">
+        <div class="target">◎</div>
+        <article>
+          <span>EXECUTIVE DECISION</span>
+          <i>القرار التنفيذي</i>
+          <h3 id="decisionTitle">Loading...</h3>
+          <p id="decisionLine1"></p>
+          <p id="decisionLine2"></p>
+        </article>
+      </div>
     </section>
 
-    <section class="section">
-      <div class="head"><div><small>ALL CHANNELS PERFORMANCE SUMMARY</small><h2>ملخص أداء جميع القنوات</h2></div><b>2</b></div>
-      <div class="rule">Meta = WhatsApp Conversations • Google = Search Conversions • Snapchat/TikTok = Traffic Clicks</div>
+    <!-- PAGE 2: CHANNELS PERFORMANCE -->
+    <section class="section sectionChannels">
+      <div class="head">
+        <div>
+          <small>ALL CHANNELS PERFORMANCE SUMMARY</small>
+          <h2>ملخص أداء جميع القنوات</h2>
+        </div>
+        <b>2</b>
+      </div>
+
+      <div class="rule">
+        Meta = WhatsApp Conversations • Google = Search Conversions • Snapchat/TikTok = Traffic Clicks
+      </div>
+
       <div class="channels" id="channelsGrid"></div>
     </section>
 
-    <section class="section">
-      <div class="head"><div><small>CUSTOMER INTELLIGENCE</small><h2>ذكاء العملاء واتساب</h2></div><b>3</b></div>
+    <!-- PAGE 3: CUSTOMER INTELLIGENCE -->
+    <section class="section sectionCustomer">
+      <div class="head">
+        <div>
+          <small>CUSTOMER INTELLIGENCE</small>
+          <h2>ذكاء العملاء واتساب</h2>
+        </div>
+        <b>3</b>
+      </div>
+
       <div class="grid2">
-        <article class="white"><h3>Top Customer Questions<br><small>أكثر أسئلة العملاء</small></h3><div id="questionsList"></div></article>
-        <article class="white"><h3>Customer Sentiment<br><small>مشاعر العملاء</small></h3><div class="sentiment"><div class="donut" id="sentimentDonut"><strong id="sentimentPercent">0%</strong><span id="sentimentLabel">Positive</span></div><div id="sentimentLegend" class="legend"></div></div></article>
-        <article class="white"><h3>Key Insights<br><small>أهم النتائج</small></h3><div id="customerInsights" class="chips"></div></article>
-        <article class="white"><h3>AI Recommendation<br><small>توصية الذكاء الاصطناعي</small></h3><p id="customerRecommendation" class="aiText">Loading...</p></article>
+        <article class="white">
+          <h3>Top Customer Questions<br><small>أكثر أسئلة العملاء</small></h3>
+          <div id="questionsList"></div>
+        </article>
+
+        <article class="white">
+          <h3>Customer Sentiment<br><small>مشاعر العملاء</small></h3>
+          <div class="sentiment">
+            <div class="donut" id="sentimentDonut">
+              <strong id="sentimentPercent">0%</strong>
+              <span id="sentimentLabel">Positive</span>
+            </div>
+            <div id="sentimentLegend" class="legend"></div>
+          </div>
+        </article>
+
+        <article class="white">
+          <h3>Key Insights<br><small>أهم النتائج</small></h3>
+          <div id="customerInsights" class="chips"></div>
+        </article>
+
+        <article class="white">
+          <h3>AI Recommendation<br><small>توصية الذكاء الاصطناعي</small></h3>
+          <p id="customerRecommendation" class="aiText">Loading...</p>
+        </article>
       </div>
     </section>
 
-    <section class="section">
-      <div class="head"><div><small>COMPETITOR INTELLIGENCE</small><h2>ذكاء المنافسين</h2></div><b>4</b></div>
+    <!-- PAGE 4: COMPETITOR INTELLIGENCE -->
+    <section class="section sectionCompetitor">
+      <div class="head">
+        <div>
+          <small>COMPETITOR INTELLIGENCE</small>
+          <h2>ذكاء المنافسين</h2>
+        </div>
+        <b>4</b>
+      </div>
+
       <div class="grid2">
-        <article class="white"><h3>Promo Activity<br><small>النشاط الترويجي</small></h3><div id="competitorsList"></div></article>
-        <article class="white"><h3>Top Promo Themes<br><small>أبرز المواضيع الترويجية</small></h3><div id="promoThemes"></div></article>
-        <article class="white market"><h3>Market Position<br><small>موقعنا في السوق</small></h3><div id="marketRank" class="rank">#1</div><strong id="shareOfVoice">0%</strong><p id="marketNote"></p></article>
-        <article class="white"><h3>AI Insight<br><small>رؤية الذكاء الاصطناعي</small></h3><div id="competitorInsights" class="chips"></div></article>
+        <article class="white">
+          <h3>Promo Activity<br><small>النشاط الترويجي</small></h3>
+          <div id="competitorsList"></div>
+        </article>
+
+        <article class="white">
+          <h3>Top Promo Themes<br><small>أبرز المواضيع الترويجية</small></h3>
+          <div id="promoThemes"></div>
+        </article>
+
+        <article class="white market">
+          <h3>Market Position<br><small>موقعنا في السوق</small></h3>
+          <div id="marketRank" class="rank">#1</div>
+          <strong id="shareOfVoice">0%</strong>
+          <p id="marketNote"></p>
+        </article>
+
+        <article class="white">
+          <h3>AI Insight<br><small>رؤية الذكاء الاصطناعي</small></h3>
+          <div id="competitorInsights" class="chips"></div>
+        </article>
       </div>
     </section>
 
-    <section class="section">
-      <div class="head"><div><small>RECOMMENDATIONS & NEXT STEPS</small><h2>التوصيات والخطوات القادمة</h2></div><b>5</b></div>
-      <div class="grid2">
-        <article class="white"><h3>Top Recommendations<br><small>أهم التوصيات</small></h3><div id="recommendationsList"></div></article>
-        <article class="white"><h3>Next Steps<br><small>الخطوات القادمة</small></h3><div id="nextStepsList"></div></article>
+    <!-- PAGE 5: RECOMMENDATIONS -->
+    <section class="section sectionRecommendations">
+      <div class="head">
+        <div>
+          <small>RECOMMENDATIONS & NEXT STEPS</small>
+          <h2>التوصيات والخطوات القادمة</h2>
+        </div>
+        <b>5</b>
       </div>
-      <footer><div><span>NEXT REPORT</span><strong id="nextReportDate">-</strong></div><div>♕ ICONIC</div></footer>
+
+      <div class="grid2">
+        <article class="white">
+          <h3>Top Recommendations<br><small>أهم التوصيات</small></h3>
+          <div id="recommendationsList"></div>
+        </article>
+
+        <article class="white">
+          <h3>Next Steps<br><small>الخطوات القادمة</small></h3>
+          <div id="nextStepsList"></div>
+        </article>
+      </div>
+
+      <footer>
+        <div>
+          <span>NEXT REPORT</span>
+          <strong id="nextReportDate">-</strong>
+        </div>
+        <div>♕ ICONIC</div>
+      </footer>
     </section>
+
   </main>
+
   <div id="errorBox" class="error hidden"></div>
-  <script src="/app.js?v=14.1.1" defer></script>
+  <script src="/app.js?v=14.1.2" defer></script>
 </body>
 </html>
