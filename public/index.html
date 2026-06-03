@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iconic AI CMO Owner Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero card">
+      <div class="brand"><span class="logo">♕</span><div><strong>ICONIC AI CMO</strong><small>Owner Dashboard</small></div></div>
+      <div class="hero-grid">
+        <section>
+          <p class="eyebrow">AI Marketing Intelligence</p>
+          <h1>Owner Command Center</h1>
+          <p id="decisionHero">Loading weekly decision...</p>
+          <div class="pills"><span id="week">Week</span><span id="range">Date range</span><span id="generated">Generated</span></div>
+        </section>
+        <aside class="status"><small>Report Status</small><strong id="status">Loading</strong><span id="health">Checking systems...</span></aside>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-head"><div><p class="eyebrow">Executive Snapshot</p><h2>Command Center</h2></div></div>
+      <div class="kpis">
+        <article class="card"><small>Total Spend</small><strong id="totalSpend">AED 0.00</strong><span id="spendChange">+0.0%</span></article>
+        <article class="card"><small>Total Results</small><strong id="totalResults">0</strong><span id="resultsChange">+0.0%</span></article>
+        <article class="card"><small>Best Channel</small><strong id="bestChannel">-</strong><span id="bestChannelDetail">-</span></article>
+        <article class="card"><small>Main Risk</small><strong id="mainRisk">-</strong><span id="mainRiskDetail">-</span></article>
+      </div>
+      <article class="decision card"><div class="target">◎</div><div><h3 id="decisionTitle">Loading...</h3><p id="decisionLine1"></p><p id="decisionLine2"></p></div></article>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><p class="eyebrow">Paid Media</p><h2>Channels Performance</h2></div><span class="rule">WhatsApp Conversations ≠ Traffic Clicks</span></div>
+      <div id="channels" class="channels"></div>
+    </section>
+
+    <section class="section grid2">
+      <article class="card"><p class="eyebrow">Customer Intelligence</p><h2>Top Questions</h2><div id="questions" class="bars"></div></article>
+      <article class="card"><p class="eyebrow">Sentiment</p><h2>Customer Mood</h2><div class="sentiment"><div id="donut" class="donut"><b id="sentimentPct">0%</b><small id="sentimentLabel">Positive</small></div><div id="sentimentLegend" class="legend"></div></div><h3>AI Recommendation</h3><p id="customerRecommendation"></p></article>
+      <article class="card wide"><h3>Key Insights</h3><div id="customerInsights" class="list"></div></article>
+    </section>
+
+    <section class="section grid2">
+      <article class="card"><p class="eyebrow">Market</p><h2>Competitor Activity</h2><div id="competitors" class="list"></div></article>
+      <article class="card"><p class="eyebrow">Promo Themes</p><h2>Market Offers</h2><div id="themes" class="bars"></div></article>
+      <article class="card market"><p class="eyebrow">Market Position</p><strong id="rank">#1</strong><span id="share">0%</span><p id="marketNote"></p></article>
+      <article class="card"><h3>AI Market Insight</h3><div id="marketInsights" class="list"></div></article>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><p class="eyebrow">Action Plan</p><h2>Recommendations & Next Steps</h2></div><div class="next"><small>Next Report</small><strong id="nextReport">-</strong></div></div>
+      <div class="grid2"><article class="card"><h3>Top Recommendations</h3><div id="recommendations" class="list"></div></article><article class="card"><h3>Next Steps</h3><div id="steps" class="list"></div></article></div>
+    </section>
+
+    <footer>♕ ICONIC — AI Powered. Data Driven. Results Focused.</footer>
+    <div id="error" class="error hidden"></div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
