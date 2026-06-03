@@ -1,0 +1,1 @@
+{"name":"iconic-owner-dashboard","version":"14.1.0","description":"Iconic AI CMO Owner Web Dashboard","main":"server.js","scripts":{"start":"node server.js"},"engines":{"node":">=18"},"dependencies":{"express":"^4.18.3"}}
