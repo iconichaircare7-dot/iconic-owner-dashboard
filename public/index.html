@@ -1,14 +1,14 @@
 <!--
-Iconic AI CMO — Page 1 Standalone Dynamic Local Prototype
-Version: v14.3.3-DYNAMIC-LOCAL-PROTOTYPE
+Iconic AI CMO — Page 2 Standalone Prototype
+Version: v14.4.0-PAGE2-CHANNELS-PERFORMANCE-STATIC
 Scope:
-- Standalone HTML/CSS/JS only
-- Local dashboardData object only
+- Page 2 only
+- Standalone HTML/CSS/JS
 - No API
 - No Google Sheets
 - No Render backend
-- No external JS/CSS
-- Desktop/PDF page-one friendly
+- No external files
+- Desktop/PDF page-friendly
 -->
 
 <!doctype html>
@@ -16,7 +16,7 @@ Scope:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Iconic AI CMO — Owner Command Center</title>
+  <title>Iconic AI CMO — Channels Performance</title>
 
   <style>
     :root {
@@ -166,43 +166,27 @@ Scope:
       font-weight:780;
     }
 
-    .date-box {
-      min-width:258px;
-      display:grid;
-      gap:7px;
-      justify-items:end;
-      text-align:right;
-      padding-top:2px;
-    }
-
-    .date-box span {
+    .page-pill {
       display:inline-flex;
+      align-items:center;
+      gap:9px;
       width:fit-content;
       border:1px solid rgba(215,181,109,.38);
       border-radius:999px;
-      padding:7px 11px;
+      padding:8px 12px;
       background:var(--goldSoft);
       color:var(--gold);
       font-size:12px;
       font-weight:760;
     }
 
-    .date-box strong {
-      font-size:14px;
-      color:var(--text);
-      font-weight:760;
-    }
-
-    .date-box small {
+    .label {
       color:var(--muted);
       font-size:11px;
-      line-height:1.2;
-    }
-
-    .kpi-grid {
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:14px;
+      line-height:1;
+      font-weight:740;
+      letter-spacing:.14em;
+      text-transform:uppercase;
     }
 
     .card {
@@ -215,218 +199,144 @@ Scope:
       box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
     }
 
-    .kpi-card {
-      min-height:132px;
-      padding:18px;
+    .top-summary {
       display:grid;
-      align-content:space-between;
-      gap:12px;
+      grid-template-columns:1.15fr .85fr;
+      gap:14px;
     }
 
-    .label {
-      color:var(--muted);
-      font-size:11px;
-      line-height:1;
-      font-weight:740;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-
-    .kpi-card strong {
-      display:block;
-      font-size:clamp(24px,2.55vw,31px);
-      line-height:1;
-      letter-spacing:-.035em;
-      font-weight:760;
-    }
-
-    .kpi-card small {
-      display:block;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.35;
-      font-weight:430;
-    }
-
-    .accent-line {
-      width:38px;
-      height:3px;
-      margin-bottom:6px;
-      border-radius:20px;
-      background:var(--gold);
-      box-shadow:0 0 16px rgba(215,181,109,.22);
-    }
-
-    .kpi-card.success .accent-line { background:var(--success); }
-    .kpi-card.info .accent-line { background:var(--info); }
-    .kpi-card.low .accent-line { background:var(--success); }
-    .kpi-card.medium .accent-line { background:var(--warning); }
-    .kpi-card.high .accent-line { background:var(--danger); }
-
-    .decision {
-      padding:25px 26px 24px;
+    .score-panel {
+      padding:20px;
       display:grid;
-      gap:17px;
+      gap:14px;
       border-color:var(--borderGold);
       background:
         radial-gradient(circle at 96% 8%,rgba(215,181,109,.13),transparent 34%),
         linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96));
     }
 
-    .section-top {
+    .score-title {
       display:flex;
       justify-content:space-between;
-      gap:16px;
+      gap:14px;
       align-items:center;
     }
 
-    .section-top b {
+    .score-title b {
       color:var(--gold);
       font-size:12px;
       font-weight:700;
-      white-space:nowrap;
     }
 
-    .decision h2 {
+    .score-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .mini-score {
+      padding:13px;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:15px;
+      background:rgba(255,255,255,.03);
+      display:grid;
+      gap:9px;
+    }
+
+    .mini-score strong {
+      font-size:19px;
+      line-height:1;
+      font-weight:740;
+    }
+
+    .bar {
+      height:8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+
+    .bar span {
+      display:block;
+      height:100%;
+      width:var(--w,0%);
+      border-radius:999px;
+      background:var(--c,var(--gold));
+    }
+
+    .budget-panel {
+      padding:20px;
+      display:grid;
+      align-content:space-between;
+      gap:14px;
+    }
+
+    .budget-panel h2 {
       margin:0;
-      max-width:920px;
-      font-size:clamp(24px,3.25vw,33px);
-      line-height:1.10;
+      font-size:clamp(22px,2.4vw,29px);
+      line-height:1.08;
       letter-spacing:-.04em;
       font-weight:740;
     }
 
-    .decision ul {
+    .budget-panel p {
       margin:0;
-      padding:0;
-      display:grid;
-      gap:10px;
-      list-style:none;
-      color:var(--text);
-    }
-
-    .decision li {
-      position:relative;
-      padding-left:18px;
-      color:rgba(245,247,250,.86);
+      color:var(--softText);
       font-size:13px;
-      line-height:1.45;
-      font-weight:430;
+      line-height:1.55;
+      font-weight:420;
     }
 
-    .decision li::before {
-      content:"";
-      position:absolute;
-      left:0;
-      top:.66em;
-      width:6px;
-      height:6px;
-      border-radius:50%;
-      background:var(--gold);
+    .decision-badge {
+      display:inline-flex;
+      width:fit-content;
+      border-radius:999px;
+      padding:6px 10px;
+      background:var(--goldSoft);
+      color:var(--gold);
+      font-size:10px;
+      font-weight:780;
+      letter-spacing:.09em;
+      text-transform:uppercase;
     }
 
-    .alert {
-      display:flex;
-      gap:13px;
-      align-items:center;
-      padding:14px 16px;
-      border-radius:18px;
-      border:1px solid rgba(50,213,131,.34);
-      background:rgba(50,213,131,.078);
-    }
-
-    .alert.warning {
-      border-color:rgba(253,176,34,.38);
-      background:rgba(253,176,34,.078);
-    }
-
-    .alert.danger {
-      border-color:rgba(249,112,102,.42);
-      background:rgba(249,112,102,.085);
-    }
-
-    .dot {
-      width:11px;
-      height:11px;
-      flex:0 0 auto;
-      border-radius:50%;
-      background:var(--success);
-      box-shadow:0 0 16px rgba(50,213,131,.50);
-    }
-
-    .alert.warning .dot {
-      background:var(--warning);
-      box-shadow:0 0 16px rgba(253,176,34,.50);
-    }
-
-    .alert.danger .dot {
-      background:var(--danger);
-      box-shadow:0 0 16px rgba(249,112,102,.50);
-    }
-
-    .alert strong {
-      display:block;
-      margin-bottom:3px;
-      font-size:14px;
-      font-weight:720;
-    }
-
-    .alert p {
-      margin:0;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.35;
-      font-weight:400;
-    }
-
-    .intel-grid {
+    .channels-grid {
       display:grid;
-      grid-template-columns:1.04fr 1fr 1fr;
+      grid-template-columns:repeat(4,minmax(0,1fr));
       gap:14px;
-      align-items:stretch;
     }
 
-    .intel-card {
-      min-height:172px;
+    .channel-card {
+      min-height:300px;
       padding:18px;
       display:grid;
-      gap:13px;
+      gap:14px;
       align-content:start;
     }
 
-    .channel-list {
-      display:grid;
-      gap:8px;
-    }
-
-    .channel-row {
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto;
+    .channel-head {
+      display:flex;
+      justify-content:space-between;
       gap:12px;
       align-items:center;
-      padding:8px 10px;
-      border-radius:13px;
-      background:rgba(255,255,255,.032);
-      font-size:12px;
-      font-weight:620;
     }
 
     .channel-name {
       display:flex;
       align-items:center;
-      gap:9px;
+      gap:10px;
       min-width:0;
     }
 
     .platform-logo {
-      width:23px;
-      height:23px;
+      width:34px;
+      height:34px;
       display:grid;
       place-items:center;
-      flex:0 0 23px;
-      border-radius:8px;
+      flex:0 0 34px;
+      border-radius:11px;
       color:#fff;
-      font-size:12px;
+      font-size:15px;
       font-weight:850;
       letter-spacing:-.02em;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 16px rgba(0,0,0,.20);
@@ -443,72 +353,138 @@ Scope:
       color:#fff;
     }
 
-    .badge {
+    .channel-name strong {
+      display:block;
+      font-size:16px;
+      line-height:1;
+      font-weight:740;
+    }
+
+    .channel-name small {
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:520;
+    }
+
+    .status {
       display:inline-flex;
-      align-items:center;
+      min-width:76px;
       justify-content:center;
-      min-width:80px;
       border-radius:999px;
-      padding:5px 9px;
+      padding:6px 9px;
       font-size:10px;
       font-weight:740;
       background:rgba(102,112,133,.18);
       color:var(--muted);
     }
 
-    .badge.strong { background:rgba(50,213,131,.14); color:var(--success); }
-    .badge.pending { background:rgba(253,176,34,.14); color:var(--warning); }
-    .badge.testing { background:rgba(96,165,250,.14); color:var(--info); }
-    .badge.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
-    .badge.risk { background:rgba(249,112,102,.14); color:var(--danger); }
+    .status.strong { background:rgba(50,213,131,.14); color:var(--success); }
+    .status.pending { background:rgba(253,176,34,.14); color:var(--warning); }
+    .status.testing { background:rgba(96,165,250,.14); color:var(--info); }
+    .status.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
 
-    .intel-card p {
-      margin:0;
-      color:var(--softText);
-      font-size:13px;
-      line-height:1.62;
-      font-weight:400;
-    }
-
-    .next-action {
+    .metric-list {
       display:grid;
-      grid-template-columns:190px minmax(0,1fr);
-      gap:20px;
+      gap:9px;
+    }
+
+    .metric-row {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
       align-items:center;
-      padding:18px 20px;
-      border-color:rgba(215,181,109,.40);
+      padding:9px 10px;
+      border-radius:13px;
+      background:rgba(255,255,255,.032);
+    }
+
+    .metric-row span {
+      color:var(--muted);
+      font-size:11px;
+      font-weight:560;
+    }
+
+    .metric-row b {
+      color:var(--text);
+      font-size:12px;
+      font-weight:700;
+      text-align:right;
+    }
+
+    .score-circle {
+      width:74px;
+      height:74px;
+      margin:1px auto 0;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
       background:
-        linear-gradient(90deg,rgba(215,181,109,.12),rgba(13,27,46,.76)),
-        rgba(13,27,46,.94);
+        conic-gradient(var(--scoreColor,var(--gold)) calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0);
+      position:relative;
     }
 
-    .recommended {
-      display:inline-flex;
-      width:fit-content;
-      border-radius:999px;
-      padding:6px 10px;
-      background:var(--goldSoft);
-      color:var(--gold);
-      font-size:10px;
-      font-weight:780;
-      letter-spacing:.09em;
-      text-transform:uppercase;
+    .score-circle::before {
+      content:"";
+      position:absolute;
+      inset:7px;
+      border-radius:50%;
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.05);
     }
 
-    .next-action h3 {
-      margin:9px 0 0;
+    .score-circle strong {
+      position:relative;
+      z-index:2;
       font-size:18px;
-      line-height:1;
-      letter-spacing:-.025em;
+      font-weight:760;
+    }
+
+    .channel-decision {
+      margin-top:auto;
+      border-top:1px solid rgba(255,255,255,.07);
+      padding-top:12px;
+      color:var(--softText);
+      font-size:12px;
+      line-height:1.45;
+      font-weight:420;
+    }
+
+    .owner-rule {
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:14px;
+      align-items:center;
+      padding:16px 18px;
+      border-radius:18px;
+      border:1px solid rgba(253,176,34,.36);
+      background:rgba(253,176,34,.075);
+    }
+
+    .owner-rule-icon {
+      width:38px;
+      height:38px;
+      display:grid;
+      place-items:center;
+      border-radius:14px;
+      background:rgba(253,176,34,.15);
+      color:var(--warning);
+      font-weight:850;
+    }
+
+    .owner-rule strong {
+      display:block;
+      margin-bottom:4px;
+      font-size:14px;
       font-weight:720;
     }
 
-    .next-action p {
+    .owner-rule p {
       margin:0;
-      color:rgba(245,247,250,.86);
-      font-size:14px;
-      line-height:1.50;
-      font-weight:430;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.42;
     }
 
     .print-button {
@@ -526,23 +502,22 @@ Scope:
       box-shadow:0 14px 40px rgba(0,0,0,.30);
     }
 
+    @media (max-width:1020px) {
+      .channels-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .top-summary { grid-template-columns:1fr; }
+    }
+
     @media (max-width:860px) {
       .shell { padding:14px; place-items:start center; }
       .dashboard { padding:18px; border-radius:22px; }
       .header { grid-template-columns:1fr; }
-      .brand { grid-template-columns:50px minmax(0,1fr); }
-      .date-box { min-width:0; justify-items:start; text-align:left; }
-      .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .intel-grid { grid-template-columns:1fr; }
-      .next-action { grid-template-columns:1fr; }
+      .score-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
 
-    @media (max-width:520px) {
-      .kpi-grid { grid-template-columns:1fr; }
-      .brand { align-items:flex-start; }
-      .mark { width:48px; height:48px; border-radius:15px; font-size:24px; }
-      .decision h2 { font-size:24px; }
-      .section-top { align-items:flex-start; }
+    @media (max-width:560px) {
+      .channels-grid { grid-template-columns:1fr; }
+      .score-grid { grid-template-columns:1fr; }
+      .owner-rule { grid-template-columns:1fr; }
     }
 
     @media print {
@@ -569,430 +544,181 @@ Scope:
   <button class="print-button" onclick="window.print()">Save PDF</button>
 
   <main class="shell">
-    <section class="dashboard" aria-label="Iconic AI CMO Owner Command Center">
+    <section class="dashboard" aria-label="Iconic AI CMO Channels Performance Page 2">
       <div class="glow gold" aria-hidden="true"></div>
       <div class="glow blue" aria-hidden="true"></div>
 
       <div class="content">
         <header class="header">
           <div class="brand">
-            <div class="mark" aria-hidden="true">I</div>
+            <div class="mark" aria-hidden="true">2</div>
             <div>
               <p class="eyebrow">ICONIC AI CMO</p>
-              <h1>Owner Command Center</h1>
+              <h1>Channels Performance</h1>
             </div>
           </div>
 
-          <div class="date-box">
-            <span id="weekLabel">Week</span>
-            <strong id="dateRange">Date range</strong>
-            <small>Last Updated: <span id="generatedAt">Checking...</span></small>
-          </div>
+          <div class="page-pill">Page 2 · Paid & Growth Channels</div>
         </header>
 
-        <section class="kpi-grid" aria-label="Executive KPI cards">
-          <article class="card kpi-card">
-            <div><span class="label">Total Spend</span></div>
-            <strong id="totalSpend">AED 0.00</strong>
-            <div><div class="accent-line"></div><small id="totalSpendDetail">All active channels this week</small></div>
+        <section class="top-summary" aria-label="Channel performance summary">
+          <article class="card score-panel">
+            <div class="score-title">
+              <span class="label">Channel Performance Score</span>
+              <b>Executive ranking</b>
+            </div>
+
+            <div class="score-grid">
+              <div class="mini-score">
+                <span class="label">Meta</span>
+                <strong>94/100</strong>
+                <div class="bar"><span style="--w:94%;--c:var(--success)"></span></div>
+              </div>
+
+              <div class="mini-score">
+                <span class="label">Google</span>
+                <strong>Pending</strong>
+                <div class="bar"><span style="--w:22%;--c:var(--warning)"></span></div>
+              </div>
+
+              <div class="mini-score">
+                <span class="label">Snapchat</span>
+                <strong>58/100</strong>
+                <div class="bar"><span style="--w:58%;--c:var(--info)"></span></div>
+              </div>
+
+              <div class="mini-score">
+                <span class="label">TikTok</span>
+                <strong>Inactive</strong>
+                <div class="bar"><span style="--w:8%;--c:var(--inactive)"></span></div>
+              </div>
+            </div>
           </article>
 
-          <article class="card kpi-card success">
-            <div><span class="label">Total Results</span></div>
-            <strong id="totalResults">0</strong>
-            <div><div class="accent-line"></div><small id="totalResultsDetail">Primary results from active channels</small></div>
-          </article>
-
-          <article class="card kpi-card info">
-            <div><span class="label">Best Channel</span></div>
-            <strong id="bestChannel">Meta</strong>
-            <div><div class="accent-line"></div><small id="bestChannelDetail">Strong performance</small></div>
-          </article>
-
-          <article class="card kpi-card low" id="riskCard">
-            <div><span class="label">Main Risk</span></div>
-            <strong id="mainRisk">Low</strong>
-            <div><div class="accent-line"></div><small id="mainRiskDetail">No critical risk detected</small></div>
+          <article class="card budget-panel">
+            <div>
+              <span class="decision-badge">Budget Move</span>
+              <h2>Keep Meta as the main engine. Do not scale testing channels yet.</h2>
+            </div>
+            <p>Meta is the only channel with stable lead/result data. Snapchat is still testing. Google and TikTok should not receive budget until data collection is active.</p>
           </article>
         </section>
 
-        <section class="card decision" aria-label="AI executive decision">
-          <div class="section-top">
-            <span class="label">AI Executive Decision</span>
-            <b>Recommended owner move</b>
-          </div>
+        <section class="channels-grid" aria-label="Channel cards">
+          <article class="card channel-card">
+            <div class="channel-head">
+              <div class="channel-name">
+                <span class="platform-logo meta" aria-hidden="true">M</span>
+                <div>
+                  <strong>Meta</strong>
+                  <small>Facebook / Instagram</small>
+                </div>
+              </div>
+              <span class="status strong">Strong</span>
+            </div>
 
-          <h2 id="decisionTitle">Loading decision...</h2>
-          <ul id="decisionLines"></ul>
+            <div class="score-circle" style="--score:94;--scoreColor:var(--success)">
+              <strong>94</strong>
+            </div>
+
+            <div class="metric-list">
+              <div class="metric-row"><span>Spend</span><b>AED 461.01</b></div>
+              <div class="metric-row"><span>Results</span><b>287</b></div>
+              <div class="metric-row"><span>Cost / Result</span><b>AED 1.61</b></div>
+              <div class="metric-row"><span>CTR</span><b>Stable</b></div>
+            </div>
+
+            <div class="channel-decision">Decision: Keep active. No budget increase until VIP test remains stable.</div>
+          </article>
+
+          <article class="card channel-card">
+            <div class="channel-head">
+              <div class="channel-name">
+                <span class="platform-logo google" aria-hidden="true">G</span>
+                <div>
+                  <strong>Google</strong>
+                  <small>Search / Maps / Booking</small>
+                </div>
+              </div>
+              <span class="status pending">Pending</span>
+            </div>
+
+            <div class="score-circle" style="--score:22;--scoreColor:var(--warning)">
+              <strong>22</strong>
+            </div>
+
+            <div class="metric-list">
+              <div class="metric-row"><span>Spend</span><b>Not active</b></div>
+              <div class="metric-row"><span>Results</span><b>Pending</b></div>
+              <div class="metric-row"><span>Cost / Result</span><b>No data</b></div>
+              <div class="metric-row"><span>Status</span><b>Tracking needed</b></div>
+            </div>
+
+            <div class="channel-decision">Decision: Do not judge yet. Activate tracking before comparing with Meta.</div>
+          </article>
+
+          <article class="card channel-card">
+            <div class="channel-head">
+              <div class="channel-name">
+                <span class="platform-logo snap" aria-hidden="true">S</span>
+                <div>
+                  <strong>Snapchat</strong>
+                  <small>Awareness / Testing</small>
+                </div>
+              </div>
+              <span class="status testing">Testing</span>
+            </div>
+
+            <div class="score-circle" style="--score:58;--scoreColor:var(--info)">
+              <strong>58</strong>
+            </div>
+
+            <div class="metric-list">
+              <div class="metric-row"><span>Spend</span><b>Testing</b></div>
+              <div class="metric-row"><span>Results</span><b>Early signal</b></div>
+              <div class="metric-row"><span>Cost / Result</span><b>Needs data</b></div>
+              <div class="metric-row"><span>Trend</span><b>Watch 3 days</b></div>
+            </div>
+
+            <div class="channel-decision">Decision: Keep testing only. No scale until lead quality is clear.</div>
+          </article>
+
+          <article class="card channel-card">
+            <div class="channel-head">
+              <div class="channel-name">
+                <span class="platform-logo tiktok" aria-hidden="true">T</span>
+                <div>
+                  <strong>TikTok</strong>
+                  <small>Video / Future Growth</small>
+                </div>
+              </div>
+              <span class="status inactive">Not Active</span>
+            </div>
+
+            <div class="score-circle" style="--score:8;--scoreColor:var(--inactive)">
+              <strong>8</strong>
+            </div>
+
+            <div class="metric-list">
+              <div class="metric-row"><span>Spend</span><b>AED 0</b></div>
+              <div class="metric-row"><span>Results</span><b>0</b></div>
+              <div class="metric-row"><span>Cost / Result</span><b>No data</b></div>
+              <div class="metric-row"><span>Status</span><b>Not connected</b></div>
+            </div>
+
+            <div class="channel-decision">Decision: Keep inactive until tracking and content pipeline are ready.</div>
+          </article>
         </section>
 
-        <section class="alert" id="alertBar" aria-label="Risk alert status">
-          <div class="dot" aria-hidden="true"></div>
+        <section class="owner-rule" aria-label="Owner rule">
+          <div class="owner-rule-icon" aria-hidden="true">!</div>
           <div>
-            <strong id="alertStatus">No Critical Risk Detected</strong>
-            <p id="alertText">Performance is stable. No urgent action required.</p>
+            <strong>Owner Rule: Do not compare different result types directly.</strong>
+            <p>WhatsApp conversations, traffic clicks, bookings, and awareness results must be judged separately. Page 2 shows channel health, not a blind cross-channel ranking.</p>
           </div>
-        </section>
-
-        <section class="intel-grid" aria-label="Owner intelligence summary">
-          <article class="card intel-card">
-            <div class="section-top">
-              <span class="label">Channel Health</span>
-              <b>Live summary</b>
-            </div>
-            <div class="channel-list" id="channelHealthList"></div>
-          </article>
-
-          <article class="card intel-card">
-            <div class="section-top">
-              <span class="label" id="customerSignalTitle">Customer Signal</span>
-              <b>Owned conversations</b>
-            </div>
-            <p id="customerSignalText">No customer signal available.</p>
-          </article>
-
-          <article class="card intel-card">
-            <div class="section-top">
-              <span class="label" id="competitorSignalTitle">Competitor Signal</span>
-              <b>Market monitor</b>
-            </div>
-            <p id="competitorSignalText">No competitor signal available.</p>
-          </article>
-        </section>
-
-        <section class="card next-action" aria-label="Next action recommendation">
-          <div>
-            <span class="recommended">Recommended</span>
-            <h3 id="nextActionTitle">Next Action</h3>
-          </div>
-          <p id="nextActionText">Keep monitoring the active campaigns.</p>
         </section>
       </div>
     </section>
   </main>
-
-  <script>
-    /*
-      LOCAL DATA ONLY.
-      To test another scenario, change ACTIVE_SCENARIO to:
-      "normal", "warning", or "danger"
-    */
-    const ACTIVE_SCENARIO = "danger";
-
-    const scenarios = {
-      normal: {
-        reportContext: {
-          weekLabel: "Week 22",
-          dateRange: "May 26 - Jun 1, 2026",
-          generatedAt: "Jun 3, 2026 - 4:30 PM"
-        },
-        executiveSnapshot: {
-          totalSpendLabel: "AED 461.01",
-          totalSpendDetail: "All active channels this week",
-          totalResultsLabel: "287",
-          totalResultsDetail: "Primary results from active channels",
-          bestChannel: {
-            name: "Meta",
-            detail: "Strong performance at AED 1.61/result"
-          },
-          mainRisk: {
-            level: "Low",
-            detail: "No critical risk detected"
-          }
-        },
-        executiveDecision: {
-          title: "Keep Meta active. No budget increase this week.",
-          lines: [
-            "Dubai and Abu Dhabi remain stable, with Meta leading performance.",
-            "Monitor Abu Dhabi VIP before scaling budget.",
-            "Do not increase spend until cost/result stays stable for the next refresh."
-          ]
-        },
-        alert: {
-          level: "normal",
-          status: "No Critical Risk Detected",
-          text: "Performance is stable. No urgent action required."
-        },
-        channelsSummary: [
-          { key: "meta", name: "Meta", status: "Strong" },
-          { key: "google", name: "Google", status: "Pending" },
-          { key: "snapchat", name: "Snapchat", status: "Testing" },
-          { key: "tiktok", name: "TikTok", status: "Not Active" }
-        ],
-        customerIntelligence: {
-          summaryTitle: "Customer Signal",
-          summary: "Most customer questions this week are about price, consultation, and booking availability."
-        },
-        competitorIntelligence: {
-          summaryTitle: "Competitor Signal",
-          summary: "Competitor activity is stable. No aggressive offer detected this week."
-        },
-        nextAction: {
-          title: "Next Action",
-          text: "Keep Dubai and Abu Dhabi active. Do not increase budget until Abu Dhabi VIP gets stable cost/result."
-        }
-      },
-
-      warning: {
-        reportContext: {
-          weekLabel: "Week 23",
-          dateRange: "Jun 2 - Jun 8, 2026",
-          generatedAt: "Jun 8, 2026 - 6:30 PM"
-        },
-        executiveSnapshot: {
-          totalSpendLabel: "AED 720.50",
-          totalSpendDetail: "Spend increased versus prior week",
-          totalResultsLabel: "312",
-          totalResultsDetail: "Results improving but cost needs monitoring",
-          bestChannel: {
-            name: "Snapchat",
-            detail: "Testing phase with early positive signal"
-          },
-          mainRisk: {
-            level: "Medium",
-            detail: "Abu Dhabi cost/result needs monitoring"
-          }
-        },
-        executiveDecision: {
-          title: "Keep campaigns active, but monitor Abu Dhabi cost closely.",
-          lines: [
-            "Snapchat is showing early signal, but Meta remains the safer base.",
-            "Do not scale Abu Dhabi until cost/result stabilizes for 3 days.",
-            "Review creative fatigue before increasing spend."
-          ]
-        },
-        alert: {
-          level: "warning",
-          status: "Cost Monitoring Required",
-          text: "Abu Dhabi cost/result is rising and needs review before scaling."
-        },
-        channelsSummary: [
-          { key: "meta", name: "Meta", status: "Strong" },
-          { key: "google", name: "Google", status: "Pending" },
-          { key: "snapchat", name: "Snapchat", status: "Testing" },
-          { key: "tiktok", name: "TikTok", status: "Not Active" }
-        ],
-        customerIntelligence: {
-          summaryTitle: "Customer Signal",
-          summary: "Customers are asking more about consultation timing, price range, and natural result quality."
-        },
-        competitorIntelligence: {
-          summaryTitle: "Competitor Signal",
-          summary: "Competitors are active, but no major aggressive discount was detected this week."
-        },
-        nextAction: {
-          title: "Next Action",
-          text: "Keep the current budget stable and review Abu Dhabi VIP again after the next refresh."
-        }
-      },
-
-      danger: {
-        reportContext: {
-          weekLabel: "Week 24",
-          dateRange: "Jun 9 - Jun 15, 2026",
-          generatedAt: "Jun 15, 2026 - 6:30 PM"
-        },
-        executiveSnapshot: {
-          totalSpendLabel: "AED 1,240.75",
-          totalSpendDetail: "High spend detected this week",
-          totalResultsLabel: "198",
-          totalResultsDetail: "Results dropped while spend increased",
-          bestChannel: {
-            name: "Meta",
-            detail: "Still leading, but efficiency declined"
-          },
-          mainRisk: {
-            level: "High",
-            detail: "Cost/result increased above safe level"
-          }
-        },
-        executiveDecision: {
-          title: "Pause scaling. Protect budget until cost/result recovers.",
-          lines: [
-            "High spend risk detected across active campaigns.",
-            "Reduce weak ad sets and keep only stable performers active.",
-            "Review creatives and audience overlap before adding new budget."
-          ]
-        },
-        alert: {
-          level: "danger",
-          status: "High Spend Risk Detected",
-          text: "Cost/result increased above the safe level. Immediate review is required."
-        },
-        channelsSummary: [
-          { key: "meta", name: "Meta", status: "Risk" },
-          { key: "google", name: "Google", status: "Pending" },
-          { key: "snapchat", name: "Snapchat", status: "Testing" },
-          { key: "tiktok", name: "TikTok", status: "Not Active" }
-        ],
-        customerIntelligence: {
-          summaryTitle: "Customer Signal",
-          summary: "Customer questions are increasing, but conversion quality is not matching the higher spend."
-        },
-        competitorIntelligence: {
-          summaryTitle: "Competitor Signal",
-          summary: "Competitor activity appears stronger this week, especially around fast consultation messaging."
-        },
-        nextAction: {
-          title: "Next Action",
-          text: "Stop scaling now. Review weak ad sets, refresh creatives, and protect the weekly budget."
-        }
-      }
-    };
-
-    const dashboardData = scenarios[ACTIVE_SCENARIO];
-
-    function byId(id) {
-      return document.getElementById(id);
-    }
-
-    function setText(id, value, fallback = "-") {
-      const el = byId(id);
-      if (!el) return;
-      el.textContent = safe(value, fallback);
-    }
-
-    function safe(value, fallback = "-") {
-      return value === undefined || value === null || value === "" ? fallback : value;
-    }
-
-    function limitText(value, max = 140) {
-      const text = String(safe(value, "")).trim();
-      if (text.length <= max) return text;
-      return text.slice(0, max - 1).trim() + "…";
-    }
-
-    function normalizeLevel(value) {
-      return String(value || "").trim().toLowerCase();
-    }
-
-    function normalizeStatus(value) {
-      const s = String(value || "").trim().toLowerCase();
-      if (s === "strong") return "strong";
-      if (s === "pending") return "pending";
-      if (s === "testing") return "testing";
-      if (s === "not active") return "inactive";
-      if (s === "inactive") return "inactive";
-      if (s === "risk") return "risk";
-      return "inactive";
-    }
-
-    function logoText(channelKey, channelName) {
-      const key = String(channelKey || channelName || "").toLowerCase();
-      if (key.includes("meta")) return "M";
-      if (key.includes("google")) return "G";
-      if (key.includes("snap")) return "S";
-      if (key.includes("tiktok")) return "T";
-      return String(channelName || "?").slice(0, 1).toUpperCase();
-    }
-
-    function logoClass(channelKey, channelName) {
-      const key = String(channelKey || channelName || "").toLowerCase();
-      if (key.includes("meta")) return "meta";
-      if (key.includes("google")) return "google";
-      if (key.includes("snap")) return "snap";
-      if (key.includes("tiktok")) return "tiktok";
-      return "meta";
-    }
-
-    function renderDashboard(data) {
-      const ctx = data.reportContext || {};
-      const snap = data.executiveSnapshot || {};
-      const decision = data.executiveDecision || {};
-      const alert = data.alert || {};
-      const customer = data.customerIntelligence || {};
-      const competitor = data.competitorIntelligence || {};
-      const next = data.nextAction || {};
-
-      setText("weekLabel", ctx.weekLabel, "Week");
-      setText("dateRange", ctx.dateRange, "Date range");
-      setText("generatedAt", ctx.generatedAt, "Checking...");
-
-      setText("totalSpend", snap.totalSpendLabel, "AED 0.00");
-      setText("totalSpendDetail", limitText(snap.totalSpendDetail || "All active channels this week", 62));
-
-      setText("totalResults", snap.totalResultsLabel, "0");
-      setText("totalResultsDetail", limitText(snap.totalResultsDetail || "Primary results from active channels", 62));
-
-      setText("bestChannel", snap.bestChannel?.name, "Meta");
-      setText("bestChannelDetail", limitText(snap.bestChannel?.detail || "Strong performance", 64));
-
-      setText("mainRisk", snap.mainRisk?.level, "Low");
-      setText("mainRiskDetail", limitText(snap.mainRisk?.detail || "No critical risk detected", 64));
-
-      const riskCard = byId("riskCard");
-      if (riskCard) {
-        riskCard.classList.remove("low", "medium", "high");
-        const level = normalizeLevel(snap.mainRisk?.level);
-        riskCard.classList.add(level === "high" ? "high" : level === "medium" ? "medium" : "low");
-      }
-
-      setText("decisionTitle", limitText(decision.title || "Keep performance stable this week.", 92));
-      const linesEl = byId("decisionLines");
-      if (linesEl) {
-        const lines = Array.isArray(decision.lines) ? decision.lines.slice(0, 3) : [];
-        linesEl.innerHTML = "";
-        (lines.length ? lines : ["Review performance after the next refresh."]).forEach(line => {
-          const li = document.createElement("li");
-          li.textContent = limitText(line, 98);
-          linesEl.appendChild(li);
-        });
-      }
-
-      const alertBar = byId("alertBar");
-      if (alertBar) {
-        alertBar.classList.remove("warning", "danger");
-        const level = normalizeLevel(alert.level);
-        if (level === "warning") alertBar.classList.add("warning");
-        if (level === "danger") alertBar.classList.add("danger");
-      }
-
-      setText("alertStatus", limitText(alert.status || "No Critical Risk Detected", 72));
-      setText("alertText", limitText(alert.text || "Performance is stable. No urgent action required.", 110));
-
-      const channelList = byId("channelHealthList");
-      if (channelList) {
-        const channels = Array.isArray(data.channelsSummary) ? data.channelsSummary.slice(0, 4) : [];
-        channelList.innerHTML = "";
-        channels.forEach(channel => {
-          const row = document.createElement("div");
-          row.className = "channel-row";
-
-          const nameWrap = document.createElement("span");
-          nameWrap.className = "channel-name";
-
-          const logo = document.createElement("span");
-          logo.className = "platform-logo " + logoClass(channel.key, channel.name);
-          logo.setAttribute("aria-hidden", "true");
-          logo.textContent = logoText(channel.key, channel.name);
-
-          const name = document.createElement("span");
-          name.textContent = safe(channel.name, "Channel");
-
-          const badge = document.createElement("span");
-          const statusClass = normalizeStatus(channel.status);
-          badge.className = "badge " + statusClass;
-          badge.textContent = safe(channel.status, "Inactive");
-
-          nameWrap.appendChild(logo);
-          nameWrap.appendChild(name);
-          row.appendChild(nameWrap);
-          row.appendChild(badge);
-          channelList.appendChild(row);
-        });
-      }
-
-      setText("customerSignalTitle", customer.summaryTitle || "Customer Signal");
-      setText("customerSignalText", limitText(customer.summary || "No customer signal available.", 145));
-
-      setText("competitorSignalTitle", competitor.summaryTitle || "Competitor Signal");
-      setText("competitorSignalText", limitText(competitor.summary || "No competitor signal available.", 145));
-
-      setText("nextActionTitle", next.title || "Next Action");
-      setText("nextActionText", limitText(next.text || "Keep monitoring the active campaigns.", 135));
-    }
-
-    renderDashboard(dashboardData);
-  </script>
 </body>
 </html>
