@@ -1,10 +1,10 @@
 <!--
 Iconic AI CMO — Page 2 Standalone Prototype
-Version: v14.4.1-PAGE2-STATIC-POLISH-INLINE-PLATFORM-LOGOS
+Version: v14.4.2-PAGE2-FINAL-STATIC-POLISH-INLINE-LOGOS
 Scope:
 - Page 2 only
 - Standalone HTML/CSS
-- Inline SVG platform-style logos
+- Improved inline SVG platform-style logos
 - No API
 - No Google Sheets
 - No Render backend
@@ -32,6 +32,7 @@ Scope:
       --softText:rgba(245,247,250,.84);
       --success:#32D583;
       --warning:#FDB022;
+      --warningSoft:#D7B56D;
       --danger:#F97066;
       --info:#60A5FA;
       --inactive:#667085;
@@ -339,10 +340,20 @@ Scope:
       box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(0,0,0,.20);
     }
 
+    .platform-logo.meta {
+      background:linear-gradient(135deg,#101C35 0%,#172B55 100%);
+      border:1px solid rgba(96,165,250,.20);
+    }
+
     .platform-logo svg {
       width:25px;
       height:25px;
       display:block;
+    }
+
+    .platform-logo.meta svg {
+      width:29px;
+      height:29px;
     }
 
     .platform-logo.snap svg {
@@ -378,7 +389,7 @@ Scope:
     }
 
     .status.strong { background:rgba(50,213,131,.14); color:var(--success); }
-    .status.pending { background:rgba(253,176,34,.14); color:var(--warning); }
+    .status.pending { background:rgba(215,181,109,.13); color:var(--warningSoft); }
     .status.testing { background:rgba(96,165,250,.14); color:var(--info); }
     .status.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
 
@@ -411,7 +422,7 @@ Scope:
     }
 
     .metric-row b.status-value {
-      color:var(--warning);
+      color:var(--warningSoft);
     }
 
     .score-circle {
@@ -579,7 +590,7 @@ Scope:
               <div class="mini-score">
                 <span class="label">Google</span>
                 <strong>Pending</strong>
-                <div class="bar"><span style="--w:22%;--c:var(--warning)"></span></div>
+                <div class="bar"><span style="--w:22%;--c:var(--warningSoft)"></span></div>
               </div>
 
               <div class="mini-score">
@@ -609,10 +620,12 @@ Scope:
           <article class="card channel-card">
             <div class="channel-head">
               <div class="channel-name">
-                <span class="platform-logo" aria-hidden="true">
-                  <svg viewBox="0 0 64 64" role="img">
-                    <path fill="#0866FF" d="M9 38c0-11 6-19 15-19 6 0 10 4 14 10 3-5 7-10 13-10 8 0 13 7 13 17 0 10-5 18-13 18-6 0-10-4-15-12-4 7-7 12-14 12-8 0-13-6-13-16z"/>
-                    <path fill="#fff" d="M18 39c0 4 2 7 5 7 4 0 6-4 10-11-4-6-6-8-10-8-3 0-5 5-5 12zm26-5c4 7 6 12 10 12 3 0 5-4 5-9 0-6-2-10-6-10-3 0-6 3-9 7z"/>
+                <span class="platform-logo meta" aria-hidden="true">
+                  <svg viewBox="0 0 96 64" role="img">
+                    <path fill="none" stroke="#1877F2" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 41C18 20 31 17 48 40C65 17 78 20 84 41C88 55 76 59 66 47C58 37 53 29 48 22C43 29 38 37 30 47C20 59 8 55 12 41Z"/>
+                    <path fill="none" stroke="#60A5FA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+                      d="M17 41C22 26 30 24 43 41M53 41C66 24 74 26 79 41"/>
                   </svg>
                 </span>
                 <div><strong>Meta</strong><small>Facebook / Instagram</small></div>
@@ -629,7 +642,7 @@ Scope:
               <div class="metric-row"><span>CTR</span><b>Stable</b></div>
             </div>
 
-            <div class="channel-decision">Decision: Keep active. No budget increase until VIP test remains stable.</div>
+            <div class="channel-decision">Decision: Keep active. No budget increase yet.</div>
           </article>
 
           <article class="card channel-card">
@@ -648,7 +661,7 @@ Scope:
               <span class="status pending">Pending</span>
             </div>
 
-            <div class="score-circle" style="--score:22;--scoreColor:var(--warning)"><strong>22</strong></div>
+            <div class="score-circle" style="--score:22;--scoreColor:var(--warningSoft)"><strong>22</strong></div>
 
             <div class="metric-list">
               <div class="metric-row"><span>Spend</span><b class="status-value">Not active</b></div>
@@ -657,7 +670,7 @@ Scope:
               <div class="metric-row"><span>Status</span><b>Tracking needed</b></div>
             </div>
 
-            <div class="channel-decision">Decision: Do not judge yet. Activate tracking before comparing with Meta.</div>
+            <div class="channel-decision">Decision: Activate tracking before judging.</div>
           </article>
 
           <article class="card channel-card">
@@ -684,7 +697,7 @@ Scope:
               <div class="metric-row"><span>Trend</span><b>Watch 3 days</b></div>
             </div>
 
-            <div class="channel-decision">Decision: Keep testing only. No scale until lead quality is clear.</div>
+            <div class="channel-decision">Decision: Keep testing. No scale yet.</div>
           </article>
 
           <article class="card channel-card">
@@ -712,7 +725,7 @@ Scope:
               <div class="metric-row"><span>Status</span><b>Not connected</b></div>
             </div>
 
-            <div class="channel-decision">Decision: Keep inactive until tracking and content pipeline are ready.</div>
+            <div class="channel-decision">Decision: Keep inactive until tracking is ready.</div>
           </article>
         </section>
 
