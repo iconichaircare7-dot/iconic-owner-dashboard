@@ -1,9 +1,10 @@
 <!--
 Iconic AI CMO — Page 2 Standalone Prototype
-Version: v14.4.0-PAGE2-CHANNELS-PERFORMANCE-STATIC
+Version: v14.4.1-PAGE2-STATIC-POLISH-INLINE-PLATFORM-LOGOS
 Scope:
 - Page 2 only
-- Standalone HTML/CSS/JS
+- Standalone HTML/CSS
+- Inline SVG platform-style logos
 - No API
 - No Google Sheets
 - No Render backend
@@ -22,7 +23,6 @@ Scope:
     :root {
       --bg:#07111F;
       --card:#0D1B2E;
-      --card2:#10223A;
       --border:#1E3350;
       --borderGold:rgba(215,181,109,.42);
       --gold:#D7B56D;
@@ -40,8 +40,7 @@ Scope:
 
     * { box-sizing:border-box; }
 
-    html,
-    body {
+    html, body {
       margin:0;
       min-height:100%;
       font-family:var(--font);
@@ -71,7 +70,7 @@ Scope:
         linear-gradient(180deg,rgba(255,255,255,.035),transparent 24%),
         linear-gradient(145deg,rgba(13,27,46,.95),rgba(7,17,31,.98));
       box-shadow:0 22px 70px rgba(0,0,0,.36);
-      padding:26px;
+      padding:24px;
     }
 
     .dashboard::before {
@@ -114,7 +113,7 @@ Scope:
       position:relative;
       z-index:2;
       display:grid;
-      gap:16px;
+      gap:14px;
     }
 
     .header {
@@ -122,34 +121,34 @@ Scope:
       grid-template-columns:minmax(0,1fr) auto;
       gap:24px;
       align-items:start;
-      padding-bottom:4px;
+      padding-bottom:2px;
     }
 
     .brand {
       display:grid;
-      grid-template-columns:58px minmax(0,1fr);
-      gap:16px;
+      grid-template-columns:56px minmax(0,1fr);
+      gap:15px;
       align-items:center;
       min-width:0;
     }
 
     .mark {
-      width:54px;
-      height:54px;
+      width:52px;
+      height:52px;
       display:grid;
       place-items:center;
       border:1px solid rgba(215,181,109,.50);
       border-radius:17px;
       background:linear-gradient(145deg,rgba(215,181,109,.20),rgba(255,255,255,.03));
       color:var(--gold);
-      font-size:27px;
+      font-size:25px;
       font-weight:820;
       letter-spacing:-.05em;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 26px rgba(215,181,109,.10);
     }
 
     .eyebrow {
-      margin:0 0 5px;
+      margin:0 0 4px;
       color:var(--gold);
       font-size:11px;
       line-height:1;
@@ -160,7 +159,7 @@ Scope:
 
     h1 {
       margin:0;
-      font-size:clamp(30px,3.6vw,43px);
+      font-size:clamp(30px,3.45vw,41px);
       line-height:1;
       letter-spacing:-.045em;
       font-weight:780;
@@ -169,7 +168,6 @@ Scope:
     .page-pill {
       display:inline-flex;
       align-items:center;
-      gap:9px;
       width:fit-content;
       border:1px solid rgba(215,181,109,.38);
       border-radius:999px;
@@ -178,11 +176,12 @@ Scope:
       color:var(--gold);
       font-size:12px;
       font-weight:760;
+      white-space:nowrap;
     }
 
     .label {
       color:var(--muted);
-      font-size:11px;
+      font-size:10px;
       line-height:1;
       font-weight:740;
       letter-spacing:.14em;
@@ -201,14 +200,14 @@ Scope:
 
     .top-summary {
       display:grid;
-      grid-template-columns:1.15fr .85fr;
+      grid-template-columns:1.12fr .88fr;
       gap:14px;
     }
 
     .score-panel {
-      padding:20px;
+      padding:18px;
       display:grid;
-      gap:14px;
+      gap:13px;
       border-color:var(--borderGold);
       background:
         radial-gradient(circle at 96% 8%,rgba(215,181,109,.13),transparent 34%),
@@ -224,7 +223,7 @@ Scope:
 
     .score-title b {
       color:var(--gold);
-      font-size:12px;
+      font-size:11px;
       font-weight:700;
     }
 
@@ -235,7 +234,7 @@ Scope:
     }
 
     .mini-score {
-      padding:13px;
+      padding:12px;
       border:1px solid rgba(255,255,255,.06);
       border-radius:15px;
       background:rgba(255,255,255,.03);
@@ -244,9 +243,9 @@ Scope:
     }
 
     .mini-score strong {
-      font-size:19px;
+      font-size:17px;
       line-height:1;
-      font-weight:740;
+      font-weight:720;
     }
 
     .bar {
@@ -265,26 +264,26 @@ Scope:
     }
 
     .budget-panel {
-      padding:20px;
+      padding:18px;
       display:grid;
       align-content:space-between;
-      gap:14px;
+      gap:13px;
     }
 
     .budget-panel h2 {
       margin:0;
-      font-size:clamp(22px,2.4vw,29px);
-      line-height:1.08;
+      font-size:clamp(21px,2.22vw,27px);
+      line-height:1.12;
       letter-spacing:-.04em;
-      font-weight:740;
+      font-weight:720;
     }
 
     .budget-panel p {
       margin:0;
       color:var(--softText);
-      font-size:13px;
+      font-size:12px;
       line-height:1.55;
-      font-weight:420;
+      font-weight:410;
     }
 
     .decision-badge {
@@ -307,17 +306,17 @@ Scope:
     }
 
     .channel-card {
-      min-height:300px;
-      padding:18px;
+      min-height:292px;
+      padding:16px;
       display:grid;
-      gap:14px;
+      gap:12px;
       align-content:start;
     }
 
     .channel-head {
       display:flex;
       justify-content:space-between;
-      gap:12px;
+      gap:10px;
       align-items:center;
     }
 
@@ -329,33 +328,31 @@ Scope:
     }
 
     .platform-logo {
-      width:34px;
-      height:34px;
+      width:36px;
+      height:36px;
       display:grid;
       place-items:center;
-      flex:0 0 34px;
-      border-radius:11px;
-      color:#fff;
-      font-size:15px;
-      font-weight:850;
-      letter-spacing:-.02em;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 16px rgba(0,0,0,.20);
+      flex:0 0 36px;
+      border-radius:12px;
+      overflow:hidden;
+      background:rgba(255,255,255,.06);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(0,0,0,.20);
     }
 
-    .platform-logo.meta { background:linear-gradient(135deg,#2563EB,#60A5FA); }
-    .platform-logo.google {
-      background:conic-gradient(from 45deg,#4285F4 0 25%,#34A853 0 50%,#FBBC05 0 75%,#EA4335 0 100%);
-      color:#fff;
+    .platform-logo svg {
+      width:25px;
+      height:25px;
+      display:block;
     }
-    .platform-logo.snap { background:#FDE047; color:#111827; text-shadow:0 1px 0 rgba(255,255,255,.28); }
-    .platform-logo.tiktok {
-      background:linear-gradient(135deg,#111827 0%,#111827 42%,#67E8F9 43%,#67E8F9 58%,#FB7185 59%,#FB7185 100%);
-      color:#fff;
+
+    .platform-logo.snap svg {
+      width:23px;
+      height:23px;
     }
 
     .channel-name strong {
       display:block;
-      font-size:16px;
+      font-size:15px;
       line-height:1;
       font-weight:740;
     }
@@ -364,17 +361,17 @@ Scope:
       display:block;
       margin-top:4px;
       color:var(--muted);
-      font-size:10px;
+      font-size:9px;
       font-weight:520;
     }
 
     .status {
       display:inline-flex;
-      min-width:76px;
+      min-width:72px;
       justify-content:center;
       border-radius:999px;
-      padding:6px 9px;
-      font-size:10px;
+      padding:6px 8px;
+      font-size:9px;
       font-weight:740;
       background:rgba(102,112,133,.18);
       color:var(--muted);
@@ -387,7 +384,7 @@ Scope:
 
     .metric-list {
       display:grid;
-      gap:9px;
+      gap:8px;
     }
 
     .metric-row {
@@ -395,28 +392,32 @@ Scope:
       justify-content:space-between;
       gap:10px;
       align-items:center;
-      padding:9px 10px;
+      padding:8px 10px;
       border-radius:13px;
       background:rgba(255,255,255,.032);
     }
 
     .metric-row span {
       color:var(--muted);
-      font-size:11px;
-      font-weight:560;
+      font-size:10px;
+      font-weight:540;
     }
 
     .metric-row b {
       color:var(--text);
-      font-size:12px;
-      font-weight:700;
+      font-size:11px;
+      font-weight:680;
       text-align:right;
     }
 
+    .metric-row b.status-value {
+      color:var(--warning);
+    }
+
     .score-circle {
-      width:74px;
-      height:74px;
-      margin:1px auto 0;
+      width:68px;
+      height:68px;
+      margin:0 auto;
       display:grid;
       place-items:center;
       border-radius:50%;
@@ -437,18 +438,18 @@ Scope:
     .score-circle strong {
       position:relative;
       z-index:2;
-      font-size:18px;
+      font-size:17px;
       font-weight:760;
     }
 
     .channel-decision {
       margin-top:auto;
       border-top:1px solid rgba(255,255,255,.07);
-      padding-top:12px;
+      padding-top:11px;
       color:var(--softText);
-      font-size:12px;
-      line-height:1.45;
-      font-weight:420;
+      font-size:11px;
+      line-height:1.42;
+      font-weight:400;
     }
 
     .owner-rule {
@@ -456,15 +457,15 @@ Scope:
       grid-template-columns:auto minmax(0,1fr);
       gap:14px;
       align-items:center;
-      padding:16px 18px;
+      padding:15px 17px;
       border-radius:18px;
       border:1px solid rgba(253,176,34,.36);
       background:rgba(253,176,34,.075);
     }
 
     .owner-rule-icon {
-      width:38px;
-      height:38px;
+      width:36px;
+      height:36px;
       display:grid;
       place-items:center;
       border-radius:14px;
@@ -476,14 +477,14 @@ Scope:
     .owner-rule strong {
       display:block;
       margin-bottom:4px;
-      font-size:14px;
+      font-size:13px;
       font-weight:720;
     }
 
     .owner-rule p {
       margin:0;
       color:var(--muted);
-      font-size:12px;
+      font-size:11px;
       line-height:1.42;
     }
 
@@ -608,18 +609,18 @@ Scope:
           <article class="card channel-card">
             <div class="channel-head">
               <div class="channel-name">
-                <span class="platform-logo meta" aria-hidden="true">M</span>
-                <div>
-                  <strong>Meta</strong>
-                  <small>Facebook / Instagram</small>
-                </div>
+                <span class="platform-logo" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" role="img">
+                    <path fill="#0866FF" d="M9 38c0-11 6-19 15-19 6 0 10 4 14 10 3-5 7-10 13-10 8 0 13 7 13 17 0 10-5 18-13 18-6 0-10-4-15-12-4 7-7 12-14 12-8 0-13-6-13-16z"/>
+                    <path fill="#fff" d="M18 39c0 4 2 7 5 7 4 0 6-4 10-11-4-6-6-8-10-8-3 0-5 5-5 12zm26-5c4 7 6 12 10 12 3 0 5-4 5-9 0-6-2-10-6-10-3 0-6 3-9 7z"/>
+                  </svg>
+                </span>
+                <div><strong>Meta</strong><small>Facebook / Instagram</small></div>
               </div>
               <span class="status strong">Strong</span>
             </div>
 
-            <div class="score-circle" style="--score:94;--scoreColor:var(--success)">
-              <strong>94</strong>
-            </div>
+            <div class="score-circle" style="--score:94;--scoreColor:var(--success)"><strong>94</strong></div>
 
             <div class="metric-list">
               <div class="metric-row"><span>Spend</span><b>AED 461.01</b></div>
@@ -634,22 +635,24 @@ Scope:
           <article class="card channel-card">
             <div class="channel-head">
               <div class="channel-name">
-                <span class="platform-logo google" aria-hidden="true">G</span>
-                <div>
-                  <strong>Google</strong>
-                  <small>Search / Maps / Booking</small>
-                </div>
+                <span class="platform-logo" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" role="img">
+                    <path fill="#4285F4" d="M58 33c0-2-.2-4-.6-6H33v11h14c-.6 4-3 7-6 9v7h9c5-5 8-12 8-21z"/>
+                    <path fill="#34A853" d="M33 59c8 0 14-3 19-8l-9-7c-3 2-6 3-10 3-8 0-15-5-17-12H7v7c5 10 15 17 26 17z"/>
+                    <path fill="#FBBC05" d="M16 35c-1-2-1-4-1-6s0-4 1-6v-7H7c-2 4-3 8-3 13s1 9 3 13l9-7z"/>
+                    <path fill="#EA4335" d="M33 12c4 0 8 2 11 4l8-8C47 3 41 1 33 1 22 1 12 8 7 18l9 7c2-8 9-13 17-13z"/>
+                  </svg>
+                </span>
+                <div><strong>Google</strong><small>Search / Maps / Booking</small></div>
               </div>
               <span class="status pending">Pending</span>
             </div>
 
-            <div class="score-circle" style="--score:22;--scoreColor:var(--warning)">
-              <strong>22</strong>
-            </div>
+            <div class="score-circle" style="--score:22;--scoreColor:var(--warning)"><strong>22</strong></div>
 
             <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b>Not active</b></div>
-              <div class="metric-row"><span>Results</span><b>Pending</b></div>
+              <div class="metric-row"><span>Spend</span><b class="status-value">Not active</b></div>
+              <div class="metric-row"><span>Results</span><b class="status-value">Pending</b></div>
               <div class="metric-row"><span>Cost / Result</span><b>No data</b></div>
               <div class="metric-row"><span>Status</span><b>Tracking needed</b></div>
             </div>
@@ -660,21 +663,22 @@ Scope:
           <article class="card channel-card">
             <div class="channel-head">
               <div class="channel-name">
-                <span class="platform-logo snap" aria-hidden="true">S</span>
-                <div>
-                  <strong>Snapchat</strong>
-                  <small>Awareness / Testing</small>
-                </div>
+                <span class="platform-logo snap" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" role="img">
+                    <rect width="64" height="64" rx="14" fill="#FFFC00"/>
+                    <path fill="#111827" d="M32 12c8 0 13 6 13 15 0 3-.2 5-.1 7 .1 2 4 3 7 4 1 .3 1 2 0 3-3 2-6 2-7 4-2 4-5 7-13 7s-11-3-13-7c-1-2-4-2-7-4-1-1-1-3 0-3 3-1 7-2 7-4 .1-2-.1-4-.1-7C19 18 24 12 32 12z"/>
+                    <path fill="#FFFC00" d="M32 16c6 0 9 5 9 12 0 4-.4 7 1 9 1 2 4 3 6 3-2 1-5 1-6 3-2 4-5 5-10 5s-8-1-10-5c-1-2-4-2-6-3 2 0 5-1 6-3 1-2 1-5 1-9 0-7 3-12 9-12z"/>
+                  </svg>
+                </span>
+                <div><strong>Snapchat</strong><small>Awareness / Testing</small></div>
               </div>
               <span class="status testing">Testing</span>
             </div>
 
-            <div class="score-circle" style="--score:58;--scoreColor:var(--info)">
-              <strong>58</strong>
-            </div>
+            <div class="score-circle" style="--score:58;--scoreColor:var(--info)"><strong>58</strong></div>
 
             <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b>Testing</b></div>
+              <div class="metric-row"><span>Spend</span><b class="status-value">Testing</b></div>
               <div class="metric-row"><span>Results</span><b>Early signal</b></div>
               <div class="metric-row"><span>Cost / Result</span><b>Needs data</b></div>
               <div class="metric-row"><span>Trend</span><b>Watch 3 days</b></div>
@@ -686,18 +690,20 @@ Scope:
           <article class="card channel-card">
             <div class="channel-head">
               <div class="channel-name">
-                <span class="platform-logo tiktok" aria-hidden="true">T</span>
-                <div>
-                  <strong>TikTok</strong>
-                  <small>Video / Future Growth</small>
-                </div>
+                <span class="platform-logo" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" role="img">
+                    <rect width="64" height="64" rx="14" fill="#09090B"/>
+                    <path fill="#25F4EE" d="M39 10v29c0 9-7 15-15 15-7 0-13-5-13-12 0-8 6-13 13-13 2 0 3 0 5 1v8c-1-1-3-1-4-1-3 0-6 2-6 5s3 5 6 5 6-2 6-7V10h8z"/>
+                    <path fill="#FE2C55" d="M43 14c3 5 7 8 12 8v8c-5 0-9-2-12-5v14c0 9-7 15-15 15-4 0-8-2-10-4 2 1 4 2 7 2 8 0 15-6 15-15V14h3z"/>
+                    <path fill="#fff" d="M36 10c1 8 7 14 15 14v7c-5 0-9-2-12-5v13c0 9-7 15-15 15-7 0-13-5-13-12s6-13 13-13c2 0 3 0 5 1v8c-1-1-3-1-4-1-3 0-6 2-6 5s3 5 6 5 6-2 6-7V10h5z"/>
+                  </svg>
+                </span>
+                <div><strong>TikTok</strong><small>Video / Future Growth</small></div>
               </div>
               <span class="status inactive">Not Active</span>
             </div>
 
-            <div class="score-circle" style="--score:8;--scoreColor:var(--inactive)">
-              <strong>8</strong>
-            </div>
+            <div class="score-circle" style="--score:8;--scoreColor:var(--inactive)"><strong>8</strong></div>
 
             <div class="metric-list">
               <div class="metric-row"><span>Spend</span><b>AED 0</b></div>
