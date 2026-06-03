@@ -1,10 +1,9 @@
 <!--
-Iconic AI CMO — Page 2 Standalone Prototype
-Version: v14.4.2-PAGE2-FINAL-STATIC-POLISH-INLINE-LOGOS
+Iconic AI CMO — Page 3 Standalone Prototype
+Version: v14.5.0-PAGE3-CUSTOMER-INTELLIGENCE-STATIC
 Scope:
-- Page 2 only
+- Page 3 only
 - Standalone HTML/CSS
-- Improved inline SVG platform-style logos
 - No API
 - No Google Sheets
 - No Render backend
@@ -17,7 +16,7 @@ Scope:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Iconic AI CMO — Channels Performance</title>
+  <title>Iconic AI CMO — Customer Intelligence</title>
 
   <style>
     :root {
@@ -32,10 +31,10 @@ Scope:
       --softText:rgba(245,247,250,.84);
       --success:#32D583;
       --warning:#FDB022;
-      --warningSoft:#D7B56D;
       --danger:#F97066;
       --info:#60A5FA;
       --inactive:#667085;
+      --purple:#A78BFA;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     }
 
@@ -199,58 +198,206 @@ Scope:
       box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
     }
 
-    .top-summary {
+    .top-grid {
       display:grid;
-      grid-template-columns:1.12fr .88fr;
+      grid-template-columns:.85fr 1.15fr;
       gap:14px;
     }
 
-    .score-panel {
+    .score-card {
       padding:18px;
       display:grid;
-      gap:13px;
+      gap:14px;
+      align-content:center;
       border-color:var(--borderGold);
       background:
-        radial-gradient(circle at 96% 8%,rgba(215,181,109,.13),transparent 34%),
+        radial-gradient(circle at 90% 10%,rgba(50,213,131,.09),transparent 38%),
         linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96));
     }
 
-    .score-title {
+    .score-wrap {
+      display:grid;
+      grid-template-columns:104px minmax(0,1fr);
+      gap:18px;
+      align-items:center;
+    }
+
+    .big-score {
+      width:98px;
+      height:98px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      position:relative;
+      background:conic-gradient(var(--success) 82%, rgba(255,255,255,.08) 0);
+    }
+
+    .big-score::before {
+      content:"";
+      position:absolute;
+      inset:9px;
+      border-radius:50%;
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.05);
+    }
+
+    .big-score strong {
+      position:relative;
+      z-index:2;
+      font-size:26px;
+      font-weight:780;
+    }
+
+    .score-card h2 {
+      margin:0;
+      font-size:clamp(22px,2.4vw,30px);
+      line-height:1.1;
+      letter-spacing:-.04em;
+      font-weight:740;
+    }
+
+    .score-card p {
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .intent-grid {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .intent-card {
+      padding:14px;
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      background:rgba(255,255,255,.03);
+      display:grid;
+      gap:8px;
+    }
+
+    .intent-card strong {
+      font-size:22px;
+      line-height:1;
+      font-weight:760;
+    }
+
+    .intent-card small {
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.35;
+    }
+
+    .main-grid {
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:14px;
+    }
+
+    .questions-card,
+    .sentiment-card,
+    .objections-card,
+    .action-card {
+      padding:18px;
+      display:grid;
+      gap:14px;
+      align-content:start;
+    }
+
+    .section-top {
       display:flex;
       justify-content:space-between;
       gap:14px;
       align-items:center;
     }
 
-    .score-title b {
+    .section-top b {
       color:var(--gold);
       font-size:11px;
       font-weight:700;
+      white-space:nowrap;
     }
 
-    .score-grid {
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .mini-score {
-      padding:12px;
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:15px;
-      background:rgba(255,255,255,.03);
+    .question-list {
       display:grid;
       gap:9px;
     }
 
-    .mini-score strong {
-      font-size:17px;
-      line-height:1;
-      font-weight:720;
+    .question-row {
+      display:grid;
+      grid-template-columns:34px minmax(0,1fr) auto;
+      gap:10px;
+      align-items:center;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(255,255,255,.032);
+    }
+
+    .rank {
+      width:28px;
+      height:28px;
+      display:grid;
+      place-items:center;
+      border-radius:10px;
+      background:var(--goldSoft);
+      color:var(--gold);
+      font-size:12px;
+      font-weight:820;
+    }
+
+    .question-row strong {
+      display:block;
+      font-size:12px;
+      line-height:1.25;
+      font-weight:680;
+    }
+
+    .question-row small {
+      display:block;
+      margin-top:3px;
+      color:var(--muted);
+      font-size:10px;
+      line-height:1.25;
+    }
+
+    .tag {
+      display:inline-flex;
+      justify-content:center;
+      min-width:78px;
+      border-radius:999px;
+      padding:6px 8px;
+      font-size:9px;
+      font-weight:760;
+      background:rgba(96,165,250,.14);
+      color:var(--info);
+    }
+
+    .tag.high { background:rgba(50,213,131,.14); color:var(--success); }
+    .tag.medium { background:rgba(253,176,34,.14); color:var(--warning); }
+    .tag.risk { background:rgba(249,112,102,.14); color:var(--danger); }
+
+    .sentiment-bars {
+      display:grid;
+      gap:12px;
+    }
+
+    .sentiment-row {
+      display:grid;
+      gap:7px;
+    }
+
+    .sentiment-head {
+      display:flex;
+      justify-content:space-between;
+      color:var(--softText);
+      font-size:12px;
+      font-weight:620;
     }
 
     .bar {
-      height:8px;
+      height:9px;
       border-radius:999px;
       background:rgba(255,255,255,.08);
       overflow:hidden;
@@ -258,36 +405,63 @@ Scope:
 
     .bar span {
       display:block;
-      height:100%;
       width:var(--w,0%);
+      height:100%;
       border-radius:999px;
       background:var(--c,var(--gold));
     }
 
-    .budget-panel {
+    .signal-grid {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .signal-card {
+      min-height:160px;
       padding:18px;
       display:grid;
-      align-content:space-between;
       gap:13px;
+      align-content:start;
     }
 
-    .budget-panel h2 {
+    .signal-icon {
+      width:38px;
+      height:38px;
+      display:grid;
+      place-items:center;
+      border-radius:14px;
+      background:rgba(215,181,109,.13);
+      color:var(--gold);
+      font-size:18px;
+      font-weight:800;
+    }
+
+    .signal-card h3 {
       margin:0;
-      font-size:clamp(21px,2.22vw,27px);
-      line-height:1.12;
-      letter-spacing:-.04em;
+      font-size:16px;
+      line-height:1.15;
       font-weight:720;
+      letter-spacing:-.025em;
     }
 
-    .budget-panel p {
+    .signal-card p {
       margin:0;
-      color:var(--softText);
+      color:var(--muted);
       font-size:12px;
-      line-height:1.55;
-      font-weight:410;
+      line-height:1.48;
     }
 
-    .decision-badge {
+    .action-card {
+      grid-template-columns:220px minmax(0,1fr);
+      align-items:center;
+      border-color:rgba(215,181,109,.40);
+      background:
+        linear-gradient(90deg,rgba(215,181,109,.12),rgba(13,27,46,.76)),
+        rgba(13,27,46,.94);
+    }
+
+    .recommended {
       display:inline-flex;
       width:fit-content;
       border-radius:999px;
@@ -300,203 +474,20 @@ Scope:
       text-transform:uppercase;
     }
 
-    .channels-grid {
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:14px;
-    }
-
-    .channel-card {
-      min-height:292px;
-      padding:16px;
-      display:grid;
-      gap:12px;
-      align-content:start;
-    }
-
-    .channel-head {
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-    }
-
-    .channel-name {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-
-    .platform-logo {
-      width:36px;
-      height:36px;
-      display:grid;
-      place-items:center;
-      flex:0 0 36px;
-      border-radius:12px;
-      overflow:hidden;
-      background:rgba(255,255,255,.06);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(0,0,0,.20);
-    }
-
-    .platform-logo.meta {
-      background:linear-gradient(135deg,#101C35 0%,#172B55 100%);
-      border:1px solid rgba(96,165,250,.20);
-    }
-
-    .platform-logo svg {
-      width:25px;
-      height:25px;
-      display:block;
-    }
-
-    .platform-logo.meta svg {
-      width:29px;
-      height:29px;
-    }
-
-    .platform-logo.snap svg {
-      width:23px;
-      height:23px;
-    }
-
-    .channel-name strong {
-      display:block;
-      font-size:15px;
+    .action-card h3 {
+      margin:9px 0 0;
+      font-size:18px;
       line-height:1;
-      font-weight:740;
-    }
-
-    .channel-name small {
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:9px;
-      font-weight:520;
-    }
-
-    .status {
-      display:inline-flex;
-      min-width:72px;
-      justify-content:center;
-      border-radius:999px;
-      padding:6px 8px;
-      font-size:9px;
-      font-weight:740;
-      background:rgba(102,112,133,.18);
-      color:var(--muted);
-    }
-
-    .status.strong { background:rgba(50,213,131,.14); color:var(--success); }
-    .status.pending { background:rgba(215,181,109,.13); color:var(--warningSoft); }
-    .status.testing { background:rgba(96,165,250,.14); color:var(--info); }
-    .status.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
-
-    .metric-list {
-      display:grid;
-      gap:8px;
-    }
-
-    .metric-row {
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-      padding:8px 10px;
-      border-radius:13px;
-      background:rgba(255,255,255,.032);
-    }
-
-    .metric-row span {
-      color:var(--muted);
-      font-size:10px;
-      font-weight:540;
-    }
-
-    .metric-row b {
-      color:var(--text);
-      font-size:11px;
-      font-weight:680;
-      text-align:right;
-    }
-
-    .metric-row b.status-value {
-      color:var(--warningSoft);
-    }
-
-    .score-circle {
-      width:68px;
-      height:68px;
-      margin:0 auto;
-      display:grid;
-      place-items:center;
-      border-radius:50%;
-      background:
-        conic-gradient(var(--scoreColor,var(--gold)) calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0);
-      position:relative;
-    }
-
-    .score-circle::before {
-      content:"";
-      position:absolute;
-      inset:7px;
-      border-radius:50%;
-      background:var(--card);
-      border:1px solid rgba(255,255,255,.05);
-    }
-
-    .score-circle strong {
-      position:relative;
-      z-index:2;
-      font-size:17px;
-      font-weight:760;
-    }
-
-    .channel-decision {
-      margin-top:auto;
-      border-top:1px solid rgba(255,255,255,.07);
-      padding-top:11px;
-      color:var(--softText);
-      font-size:11px;
-      line-height:1.42;
-      font-weight:400;
-    }
-
-    .owner-rule {
-      display:grid;
-      grid-template-columns:auto minmax(0,1fr);
-      gap:14px;
-      align-items:center;
-      padding:15px 17px;
-      border-radius:18px;
-      border:1px solid rgba(253,176,34,.36);
-      background:rgba(253,176,34,.075);
-    }
-
-    .owner-rule-icon {
-      width:36px;
-      height:36px;
-      display:grid;
-      place-items:center;
-      border-radius:14px;
-      background:rgba(253,176,34,.15);
-      color:var(--warning);
-      font-weight:850;
-    }
-
-    .owner-rule strong {
-      display:block;
-      margin-bottom:4px;
-      font-size:13px;
+      letter-spacing:-.025em;
       font-weight:720;
     }
 
-    .owner-rule p {
+    .action-card p {
       margin:0;
-      color:var(--muted);
-      font-size:11px;
-      line-height:1.42;
+      color:rgba(245,247,250,.86);
+      font-size:14px;
+      line-height:1.50;
+      font-weight:430;
     }
 
     .print-button {
@@ -515,21 +506,23 @@ Scope:
     }
 
     @media (max-width:1020px) {
-      .channels-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .top-summary { grid-template-columns:1fr; }
+      .top-grid,
+      .main-grid,
+      .action-card { grid-template-columns:1fr; }
+      .signal-grid { grid-template-columns:1fr; }
     }
 
     @media (max-width:860px) {
       .shell { padding:14px; place-items:start center; }
       .dashboard { padding:18px; border-radius:22px; }
       .header { grid-template-columns:1fr; }
-      .score-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .intent-grid { grid-template-columns:1fr; }
     }
 
     @media (max-width:560px) {
-      .channels-grid { grid-template-columns:1fr; }
-      .score-grid { grid-template-columns:1fr; }
-      .owner-rule { grid-template-columns:1fr; }
+      .score-wrap { grid-template-columns:1fr; }
+      .question-row { grid-template-columns:34px minmax(0,1fr); }
+      .question-row .tag { grid-column:2; width:fit-content; }
     }
 
     @media print {
@@ -556,185 +549,169 @@ Scope:
   <button class="print-button" onclick="window.print()">Save PDF</button>
 
   <main class="shell">
-    <section class="dashboard" aria-label="Iconic AI CMO Channels Performance Page 2">
+    <section class="dashboard" aria-label="Iconic AI CMO Customer Intelligence Page 3">
       <div class="glow gold" aria-hidden="true"></div>
       <div class="glow blue" aria-hidden="true"></div>
 
       <div class="content">
         <header class="header">
           <div class="brand">
-            <div class="mark" aria-hidden="true">2</div>
+            <div class="mark" aria-hidden="true">3</div>
             <div>
               <p class="eyebrow">ICONIC AI CMO</p>
-              <h1>Channels Performance</h1>
+              <h1>Customer Intelligence</h1>
             </div>
           </div>
 
-          <div class="page-pill">Page 2 · Paid & Growth Channels</div>
+          <div class="page-pill">Page 3 · Messages & Customer Signals</div>
         </header>
 
-        <section class="top-summary" aria-label="Channel performance summary">
-          <article class="card score-panel">
-            <div class="score-title">
-              <span class="label">Channel Performance Score</span>
-              <b>Executive ranking</b>
-            </div>
-
-            <div class="score-grid">
-              <div class="mini-score">
-                <span class="label">Meta</span>
-                <strong>94/100</strong>
-                <div class="bar"><span style="--w:94%;--c:var(--success)"></span></div>
-              </div>
-
-              <div class="mini-score">
-                <span class="label">Google</span>
-                <strong>Pending</strong>
-                <div class="bar"><span style="--w:22%;--c:var(--warningSoft)"></span></div>
-              </div>
-
-              <div class="mini-score">
-                <span class="label">Snapchat</span>
-                <strong>58/100</strong>
-                <div class="bar"><span style="--w:58%;--c:var(--info)"></span></div>
-              </div>
-
-              <div class="mini-score">
-                <span class="label">TikTok</span>
-                <strong>Inactive</strong>
-                <div class="bar"><span style="--w:8%;--c:var(--inactive)"></span></div>
+        <section class="top-grid" aria-label="Customer intelligence summary">
+          <article class="card score-card">
+            <div class="score-wrap">
+              <div class="big-score"><strong>82</strong></div>
+              <div>
+                <span class="label">Customer Intelligence Score</span>
+                <h2>Strong buying signal, but price questions need better handling.</h2>
+                <p>Customers are showing interest in consultation, natural result, and booking availability. The strongest objection remains price clarity.</p>
               </div>
             </div>
           </article>
 
-          <article class="card budget-panel">
+          <article class="card score-card">
+            <div class="intent-grid">
+              <div class="intent-card">
+                <span class="label">Buying Intent</span>
+                <strong>High</strong>
+                <small>Consultation and booking questions are active.</small>
+              </div>
+
+              <div class="intent-card">
+                <span class="label">Sentiment</span>
+                <strong>Positive</strong>
+                <small>Most messages are interested, not complaints.</small>
+              </div>
+
+              <div class="intent-card">
+                <span class="label">Main Objection</span>
+                <strong>Price</strong>
+                <small>Needs a clearer value-based reply.</small>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="main-grid" aria-label="Customer questions and sentiment">
+          <article class="card questions-card">
+            <div class="section-top">
+              <span class="label">Top Customer Questions</span>
+              <b>Last 7 days</b>
+            </div>
+
+            <div class="question-list">
+              <div class="question-row">
+                <span class="rank">1</span>
+                <div>
+                  <strong>How much does hair replacement cost?</strong>
+                  <small>Needs confident price-range handling with consultation CTA.</small>
+                </div>
+                <span class="tag high">High Intent</span>
+              </div>
+
+              <div class="question-row">
+                <span class="rank">2</span>
+                <div>
+                  <strong>Is the result natural and private?</strong>
+                  <small>Use privacy, natural look, and real consultation reassurance.</small>
+                </div>
+                <span class="tag high">Trust Signal</span>
+              </div>
+
+              <div class="question-row">
+                <span class="rank">3</span>
+                <div>
+                  <strong>Can I book a free consultation?</strong>
+                  <small>Push direct booking link and WhatsApp confirmation.</small>
+                </div>
+                <span class="tag medium">Booking</span>
+              </div>
+
+              <div class="question-row">
+                <span class="rank">4</span>
+                <div>
+                  <strong>Dubai or Abu Dhabi branch availability?</strong>
+                  <small>Route customer to nearest branch with clear timing.</small>
+                </div>
+                <span class="tag">Branch</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card sentiment-card">
+            <div class="section-top">
+              <span class="label">Sentiment & Intent Mix</span>
+              <b>Conversation quality</b>
+            </div>
+
+            <div class="sentiment-bars">
+              <div class="sentiment-row">
+                <div class="sentiment-head"><span>Interested / Warm</span><b>64%</b></div>
+                <div class="bar"><span style="--w:64%;--c:var(--success)"></span></div>
+              </div>
+
+              <div class="sentiment-row">
+                <div class="sentiment-head"><span>Price Sensitive</span><b>22%</b></div>
+                <div class="bar"><span style="--w:22%;--c:var(--warning)"></span></div>
+              </div>
+
+              <div class="sentiment-row">
+                <div class="sentiment-head"><span>Booking Ready</span><b>11%</b></div>
+                <div class="bar"><span style="--w:11%;--c:var(--info)"></span></div>
+              </div>
+
+              <div class="sentiment-row">
+                <div class="sentiment-head"><span>Low Quality / Noise</span><b>3%</b></div>
+                <div class="bar"><span style="--w:3%;--c:var(--inactive)"></span></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="signal-grid" aria-label="Customer signal cards">
+          <article class="card signal-card">
+            <div class="signal-icon" aria-hidden="true">?</div>
             <div>
-              <span class="decision-badge">Budget Move</span>
-              <h2>Keep Meta as the main engine. Do not scale testing channels yet.</h2>
+              <span class="label">Repeated Objection</span>
+              <h3>Price needs stronger framing.</h3>
             </div>
-            <p>Meta is the only channel with stable lead/result data. Snapchat is still testing. Google and TikTok should not receive budget until data collection is active.</p>
+            <p>Do not answer price only. Connect price to material quality, natural result, privacy, and consultation.</p>
+          </article>
+
+          <article class="card signal-card">
+            <div class="signal-icon" aria-hidden="true">✓</div>
+            <div>
+              <span class="label">Conversion Signal</span>
+              <h3>Booking questions are valuable.</h3>
+            </div>
+            <p>Any customer asking about consultation or branch timing should receive a direct booking path immediately.</p>
+          </article>
+
+          <article class="card signal-card">
+            <div class="signal-icon" aria-hidden="true">!</div>
+            <div>
+              <span class="label">Reply Risk</span>
+              <h3>Weak replies can lose warm leads.</h3>
+            </div>
+            <p>Short price replies should be replaced with guided consultation replies and branch-based routing.</p>
           </article>
         </section>
 
-        <section class="channels-grid" aria-label="Channel cards">
-          <article class="card channel-card">
-            <div class="channel-head">
-              <div class="channel-name">
-                <span class="platform-logo meta" aria-hidden="true">
-                  <svg viewBox="0 0 96 64" role="img">
-                    <path fill="none" stroke="#1877F2" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"
-                      d="M12 41C18 20 31 17 48 40C65 17 78 20 84 41C88 55 76 59 66 47C58 37 53 29 48 22C43 29 38 37 30 47C20 59 8 55 12 41Z"/>
-                    <path fill="none" stroke="#60A5FA" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
-                      d="M17 41C22 26 30 24 43 41M53 41C66 24 74 26 79 41"/>
-                  </svg>
-                </span>
-                <div><strong>Meta</strong><small>Facebook / Instagram</small></div>
-              </div>
-              <span class="status strong">Strong</span>
-            </div>
-
-            <div class="score-circle" style="--score:94;--scoreColor:var(--success)"><strong>94</strong></div>
-
-            <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b>AED 461.01</b></div>
-              <div class="metric-row"><span>Results</span><b>287</b></div>
-              <div class="metric-row"><span>Cost / Result</span><b>AED 1.61</b></div>
-              <div class="metric-row"><span>CTR</span><b>Stable</b></div>
-            </div>
-
-            <div class="channel-decision">Decision: Keep active. No budget increase yet.</div>
-          </article>
-
-          <article class="card channel-card">
-            <div class="channel-head">
-              <div class="channel-name">
-                <span class="platform-logo" aria-hidden="true">
-                  <svg viewBox="0 0 64 64" role="img">
-                    <path fill="#4285F4" d="M58 33c0-2-.2-4-.6-6H33v11h14c-.6 4-3 7-6 9v7h9c5-5 8-12 8-21z"/>
-                    <path fill="#34A853" d="M33 59c8 0 14-3 19-8l-9-7c-3 2-6 3-10 3-8 0-15-5-17-12H7v7c5 10 15 17 26 17z"/>
-                    <path fill="#FBBC05" d="M16 35c-1-2-1-4-1-6s0-4 1-6v-7H7c-2 4-3 8-3 13s1 9 3 13l9-7z"/>
-                    <path fill="#EA4335" d="M33 12c4 0 8 2 11 4l8-8C47 3 41 1 33 1 22 1 12 8 7 18l9 7c2-8 9-13 17-13z"/>
-                  </svg>
-                </span>
-                <div><strong>Google</strong><small>Search / Maps / Booking</small></div>
-              </div>
-              <span class="status pending">Pending</span>
-            </div>
-
-            <div class="score-circle" style="--score:22;--scoreColor:var(--warningSoft)"><strong>22</strong></div>
-
-            <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b class="status-value">Not active</b></div>
-              <div class="metric-row"><span>Results</span><b class="status-value">Pending</b></div>
-              <div class="metric-row"><span>Cost / Result</span><b>No data</b></div>
-              <div class="metric-row"><span>Status</span><b>Tracking needed</b></div>
-            </div>
-
-            <div class="channel-decision">Decision: Activate tracking before judging.</div>
-          </article>
-
-          <article class="card channel-card">
-            <div class="channel-head">
-              <div class="channel-name">
-                <span class="platform-logo snap" aria-hidden="true">
-                  <svg viewBox="0 0 64 64" role="img">
-                    <rect width="64" height="64" rx="14" fill="#FFFC00"/>
-                    <path fill="#111827" d="M32 12c8 0 13 6 13 15 0 3-.2 5-.1 7 .1 2 4 3 7 4 1 .3 1 2 0 3-3 2-6 2-7 4-2 4-5 7-13 7s-11-3-13-7c-1-2-4-2-7-4-1-1-1-3 0-3 3-1 7-2 7-4 .1-2-.1-4-.1-7C19 18 24 12 32 12z"/>
-                    <path fill="#FFFC00" d="M32 16c6 0 9 5 9 12 0 4-.4 7 1 9 1 2 4 3 6 3-2 1-5 1-6 3-2 4-5 5-10 5s-8-1-10-5c-1-2-4-2-6-3 2 0 5-1 6-3 1-2 1-5 1-9 0-7 3-12 9-12z"/>
-                  </svg>
-                </span>
-                <div><strong>Snapchat</strong><small>Awareness / Testing</small></div>
-              </div>
-              <span class="status testing">Testing</span>
-            </div>
-
-            <div class="score-circle" style="--score:58;--scoreColor:var(--info)"><strong>58</strong></div>
-
-            <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b class="status-value">Testing</b></div>
-              <div class="metric-row"><span>Results</span><b>Early signal</b></div>
-              <div class="metric-row"><span>Cost / Result</span><b>Needs data</b></div>
-              <div class="metric-row"><span>Trend</span><b>Watch 3 days</b></div>
-            </div>
-
-            <div class="channel-decision">Decision: Keep testing. No scale yet.</div>
-          </article>
-
-          <article class="card channel-card">
-            <div class="channel-head">
-              <div class="channel-name">
-                <span class="platform-logo" aria-hidden="true">
-                  <svg viewBox="0 0 64 64" role="img">
-                    <rect width="64" height="64" rx="14" fill="#09090B"/>
-                    <path fill="#25F4EE" d="M39 10v29c0 9-7 15-15 15-7 0-13-5-13-12 0-8 6-13 13-13 2 0 3 0 5 1v8c-1-1-3-1-4-1-3 0-6 2-6 5s3 5 6 5 6-2 6-7V10h8z"/>
-                    <path fill="#FE2C55" d="M43 14c3 5 7 8 12 8v8c-5 0-9-2-12-5v14c0 9-7 15-15 15-4 0-8-2-10-4 2 1 4 2 7 2 8 0 15-6 15-15V14h3z"/>
-                    <path fill="#fff" d="M36 10c1 8 7 14 15 14v7c-5 0-9-2-12-5v13c0 9-7 15-15 15-7 0-13-5-13-12s6-13 13-13c2 0 3 0 5 1v8c-1-1-3-1-4-1-3 0-6 2-6 5s3 5 6 5 6-2 6-7V10h5z"/>
-                  </svg>
-                </span>
-                <div><strong>TikTok</strong><small>Video / Future Growth</small></div>
-              </div>
-              <span class="status inactive">Not Active</span>
-            </div>
-
-            <div class="score-circle" style="--score:8;--scoreColor:var(--inactive)"><strong>8</strong></div>
-
-            <div class="metric-list">
-              <div class="metric-row"><span>Spend</span><b>AED 0</b></div>
-              <div class="metric-row"><span>Results</span><b>0</b></div>
-              <div class="metric-row"><span>Cost / Result</span><b>No data</b></div>
-              <div class="metric-row"><span>Status</span><b>Not connected</b></div>
-            </div>
-
-            <div class="channel-decision">Decision: Keep inactive until tracking is ready.</div>
-          </article>
-        </section>
-
-        <section class="owner-rule" aria-label="Owner rule">
-          <div class="owner-rule-icon" aria-hidden="true">!</div>
+        <section class="card action-card" aria-label="AI customer intelligence recommendation">
           <div>
-            <strong>Owner Rule: Do not compare different result types directly.</strong>
-            <p>WhatsApp conversations, traffic clicks, bookings, and awareness results must be judged separately. Page 2 shows channel health, not a blind cross-channel ranking.</p>
+            <span class="recommended">Recommended</span>
+            <h3>AI Reply Action</h3>
           </div>
+          <p>Update WhatsApp and Messenger replies to answer price with value, privacy, natural result, and a direct free consultation CTA.</p>
         </section>
       </div>
     </section>
