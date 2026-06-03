@@ -1,126 +1,625 @@
 <!--
 Iconic AI CMO — Page 1 Standalone Prototype
-Version: v14.3.0-STANDALONE-PAGE1
-How to use:
-1) Copy this whole file.
-2) Save it as: index.html
-3) Open it in browser, or upload it as a static page.
-4) For PDF: use browser Print > Save as PDF, preferably Landscape.
-No API connection. No Google Sheets connection. No Render backend required.
+Version: v14.3.1-STATIC-POLISH
+Scope:
+- Standalone HTML/CSS only
+- No API
+- No Google Sheets
+- No Render backend
+- No external JS/CSS
+- Desktop/PDF page-one friendly
 -->
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Iconic AI CMO — Owner Command Center</title>
+
   <style>
     :root {
-      --bg:#07111F; --card:#0D1B2E; --card2:#10223A; --border:#1E3350;
-      --gold:#D7B56D; --goldSoft:rgba(215,181,109,.16);
-      --text:#F5F7FA; --muted:#9AA8BC; --success:#32D583;
-      --warning:#FDB022; --danger:#F97066; --info:#60A5FA; --inactive:#667085;
+      --bg:#07111F;
+      --card:#0D1B2E;
+      --card2:#10223A;
+      --border:#1E3350;
+      --borderGold:rgba(215,181,109,.42);
+      --gold:#D7B56D;
+      --goldSoft:rgba(215,181,109,.14);
+      --text:#F5F7FA;
+      --muted:#9AA8BC;
+      --softText:rgba(245,247,250,.84);
+      --success:#32D583;
+      --warning:#FDB022;
+      --danger:#F97066;
+      --info:#60A5FA;
+      --inactive:#667085;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;font-family:var(--font);color:var(--text);background:
-      radial-gradient(circle at 8% 0%,rgba(215,181,109,.16),transparent 28rem),
-      radial-gradient(circle at 92% 12%,rgba(96,165,250,.12),transparent 24rem),
-      linear-gradient(135deg,#050B15 0%,var(--bg) 58%,#030914 100%);}
-    body{overflow-x:hidden}
-    .shell{min-height:100vh;display:grid;place-items:center;padding:30px}
-    .dashboard{position:relative;width:min(1220px,100%);overflow:hidden;border:1px solid rgba(215,181,109,.24);
-      border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 22%),
-      linear-gradient(145deg,rgba(13,27,46,.94),rgba(7,17,31,.98));box-shadow:0 24px 80px rgba(0,0,0,.38);padding:28px}
-    .dashboard:before{content:"";position:absolute;inset:0;pointer-events:none;background:
-      linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:58px 58px;
-      mask-image:linear-gradient(to bottom,rgba(0,0,0,.45),transparent 82%)}
-    .glow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(18px);opacity:.7}
-    .glow.gold{width:340px;height:340px;top:-190px;left:-120px;background:rgba(215,181,109,.20)}
-    .glow.blue{width:380px;height:380px;right:-190px;top:120px;background:rgba(96,165,250,.12)}
-    .content{position:relative;z-index:2;display:grid;gap:18px}
-    .header{display:flex;justify-content:space-between;gap:22px;align-items:flex-start;padding-bottom:8px}
-    .brand{display:flex;gap:16px;align-items:center}
-    .mark{width:58px;height:58px;display:grid;place-items:center;border:1px solid rgba(215,181,109,.50);
-      border-radius:18px;background:linear-gradient(145deg,rgba(215,181,109,.22),rgba(255,255,255,.03));
-      color:var(--gold);font-size:30px;font-weight:900;letter-spacing:-.06em;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 28px rgba(215,181,109,.12)}
-    .eyebrow{margin:0 0 7px;color:var(--gold);font-size:12px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}
-    h1{margin:0;font-size:clamp(30px,4vw,46px);line-height:.95;letter-spacing:-.055em;font-weight:920}
-    .date-box{min-width:280px;display:grid;gap:8px;justify-items:end;text-align:right}
-    .date-box span{display:inline-flex;width:fit-content;border:1px solid rgba(215,181,109,.35);border-radius:999px;
-      padding:8px 12px;background:var(--goldSoft);color:var(--gold);font-size:13px;font-weight:800}
-    .date-box strong{font-size:16px;color:var(--text)}
-    .date-box small{color:var(--muted);font-size:12px}
-    .kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-    .card{border:1px solid var(--border);border-radius:20px;background:
-      radial-gradient(circle at 88% 0%,rgba(215,181,109,.10),transparent 48%),
-      linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.015)),rgba(13,27,46,.92);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
-    .kpi-card{min-height:142px;padding:20px;display:grid;align-content:space-between;gap:14px}
-    .label{color:var(--muted);font-size:12px;font-weight:820;letter-spacing:.12em;text-transform:uppercase}
-    .kpi-card strong{display:block;font-size:clamp(26px,3vw,34px);line-height:1;letter-spacing:-.045em;font-weight:920}
-    .kpi-card small{color:var(--muted);font-size:13px;line-height:1.35}
-    .accent-line{width:42px;height:3px;border-radius:20px;background:var(--gold);box-shadow:0 0 18px rgba(215,181,109,.25)}
-    .kpi-card.success .accent-line{background:var(--success)} .kpi-card.info .accent-line{background:var(--info)}
-    .kpi-card.low .accent-line{background:var(--success)}
-    .decision{padding:26px;display:grid;gap:16px;border-color:rgba(215,181,109,.42);background:
-      radial-gradient(circle at 94% 6%,rgba(215,181,109,.15),transparent 36%),
-      linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96))}
-    .section-top{display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .section-top b{color:var(--gold);font-size:13px;font-weight:850}
-    .decision h2{margin:0;max-width:920px;font-size:clamp(26px,4vw,38px);line-height:1.05;letter-spacing:-.05em;font-weight:920}
-    .decision ul{margin:0;padding:0;display:grid;gap:9px;list-style:none;color:var(--text)}
-    .decision li{position:relative;padding-left:20px;color:rgba(245,247,250,.88);font-size:15px;line-height:1.45}
-    .decision li:before{content:"";position:absolute;left:0;top:.66em;width:7px;height:7px;border-radius:50%;background:var(--gold)}
-    .alert{display:flex;gap:14px;align-items:center;padding:16px 18px;border-radius:20px;border:1px solid rgba(50,213,131,.34);background:rgba(50,213,131,.08)}
-    .dot{width:12px;height:12px;flex:0 0 auto;border-radius:50%;background:var(--success);box-shadow:0 0 18px rgba(50,213,131,.55)}
-    .alert strong{display:block;margin-bottom:3px;font-size:15px}.alert p{margin:0;color:var(--muted);font-size:13px}
-    .intel-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px}
-    .intel-card{min-height:182px;padding:20px;display:grid;gap:14px;align-content:start}
-    .channel-list{display:grid;gap:9px}.channel-row{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.035);font-size:13px;font-weight:720}
-    .badge{display:inline-flex;align-items:center;justify-content:center;min-width:84px;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:850;background:rgba(102,112,133,.18);color:var(--muted)}
-    .badge.strong{background:rgba(50,213,131,.14);color:var(--success)}.badge.pending{background:rgba(253,176,34,.14);color:var(--warning)}
-    .badge.testing{background:rgba(96,165,250,.14);color:var(--info)}.badge.inactive{background:rgba(102,112,133,.16);color:var(--inactive)}
-    .intel-card p{margin:0;color:rgba(245,247,250,.84);font-size:14px;line-height:1.62}
-    .next-action{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:center;padding:20px 22px;border-color:rgba(215,181,109,.40);background:
-      linear-gradient(90deg,rgba(215,181,109,.13),rgba(13,27,46,.76)),rgba(13,27,46,.94)}
-    .recommended{display:inline-flex;width:fit-content;border-radius:999px;padding:7px 11px;background:var(--goldSoft);color:var(--gold);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-    .next-action h3{margin:10px 0 0;font-size:20px;letter-spacing:-.035em}.next-action p{margin:0;color:rgba(245,247,250,.88);font-size:16px;line-height:1.48;font-weight:620}
-    .print-button{position:fixed;right:20px;bottom:20px;z-index:20;border:1px solid rgba(215,181,109,.42);border-radius:999px;padding:12px 16px;background:rgba(13,27,46,.92);color:var(--gold);font:800 13px var(--font);cursor:pointer;box-shadow:0 14px 40px rgba(0,0,0,.30)}
-    @media(max-width:860px){.shell{padding:14px;place-items:start center}.dashboard{padding:18px;border-radius:22px}.header{display:grid}.date-box{min-width:0;justify-items:start;text-align:left}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-grid{grid-template-columns:1fr}.next-action{grid-template-columns:1fr}}
-    @media(max-width:520px){.kpi-grid{grid-template-columns:1fr}.brand{align-items:flex-start}.mark{width:48px;height:48px;border-radius:15px;font-size:25px}.decision h2{font-size:25px}}
-    @media print{@page{size:landscape;margin:10mm}body{background:#07111F!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.shell{min-height:auto;padding:0}.dashboard{width:100%;box-shadow:none;border-radius:20px}.print-button{display:none!important}}
+
+    * { box-sizing:border-box; }
+
+    html,
+    body {
+      margin:0;
+      min-height:100%;
+      font-family:var(--font);
+      color:var(--text);
+      background:
+        radial-gradient(circle at 9% 0%,rgba(215,181,109,.14),transparent 26rem),
+        radial-gradient(circle at 92% 12%,rgba(96,165,250,.11),transparent 25rem),
+        linear-gradient(135deg,#050B15 0%,var(--bg) 58%,#030914 100%);
+    }
+
+    body { overflow-x:hidden; }
+
+    .shell {
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+
+    .dashboard {
+      position:relative;
+      width:min(1220px,100%);
+      overflow:hidden;
+      border:1px solid rgba(215,181,109,.26);
+      border-radius:26px;
+      background:
+        linear-gradient(180deg,rgba(255,255,255,.035),transparent 24%),
+        linear-gradient(145deg,rgba(13,27,46,.95),rgba(7,17,31,.98));
+      box-shadow:0 22px 70px rgba(0,0,0,.36);
+      padding:26px;
+    }
+
+    .dashboard::before {
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(rgba(255,255,255,.020) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);
+      background-size:58px 58px;
+      mask-image:linear-gradient(to bottom,rgba(0,0,0,.38),transparent 84%);
+    }
+
+    .glow {
+      position:absolute;
+      pointer-events:none;
+      border-radius:50%;
+      filter:blur(18px);
+      opacity:.65;
+    }
+
+    .glow.gold {
+      width:310px;
+      height:310px;
+      top:-180px;
+      left:-115px;
+      background:rgba(215,181,109,.18);
+    }
+
+    .glow.blue {
+      width:360px;
+      height:360px;
+      right:-180px;
+      top:110px;
+      background:rgba(96,165,250,.10);
+    }
+
+    .content {
+      position:relative;
+      z-index:2;
+      display:grid;
+      gap:16px;
+    }
+
+    .header {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:24px;
+      align-items:start;
+      padding-bottom:4px;
+    }
+
+    .brand {
+      display:grid;
+      grid-template-columns:58px minmax(0,1fr);
+      gap:16px;
+      align-items:center;
+      min-width:0;
+    }
+
+    .mark {
+      width:54px;
+      height:54px;
+      display:grid;
+      place-items:center;
+      border:1px solid rgba(215,181,109,.50);
+      border-radius:17px;
+      background:linear-gradient(145deg,rgba(215,181,109,.20),rgba(255,255,255,.03));
+      color:var(--gold);
+      font-size:27px;
+      font-weight:820;
+      letter-spacing:-.05em;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 26px rgba(215,181,109,.10);
+    }
+
+    .eyebrow {
+      margin:0 0 5px;
+      color:var(--gold);
+      font-size:11px;
+      line-height:1;
+      font-weight:780;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+    }
+
+    h1 {
+      margin:0;
+      font-size:clamp(30px,3.6vw,43px);
+      line-height:1;
+      letter-spacing:-.045em;
+      font-weight:780;
+    }
+
+    .date-box {
+      min-width:258px;
+      display:grid;
+      gap:7px;
+      justify-items:end;
+      text-align:right;
+      padding-top:2px;
+    }
+
+    .date-box span {
+      display:inline-flex;
+      width:fit-content;
+      border:1px solid rgba(215,181,109,.38);
+      border-radius:999px;
+      padding:7px 11px;
+      background:var(--goldSoft);
+      color:var(--gold);
+      font-size:12px;
+      font-weight:760;
+    }
+
+    .date-box strong {
+      font-size:14px;
+      color:var(--text);
+      font-weight:760;
+    }
+
+    .date-box small {
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.2;
+    }
+
+    .kpi-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+    }
+
+    .card {
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:
+        radial-gradient(circle at 88% 0%,rgba(215,181,109,.08),transparent 48%),
+        linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012)),
+        rgba(13,27,46,.92);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .kpi-card {
+      min-height:132px;
+      padding:18px;
+      display:grid;
+      align-content:space-between;
+      gap:12px;
+    }
+
+    .label {
+      color:var(--muted);
+      font-size:11px;
+      line-height:1;
+      font-weight:740;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+
+    .kpi-card strong {
+      display:block;
+      font-size:clamp(24px,2.55vw,31px);
+      line-height:1;
+      letter-spacing:-.035em;
+      font-weight:760;
+    }
+
+    .kpi-card small {
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    .accent-line {
+      width:38px;
+      height:3px;
+      margin-bottom:6px;
+      border-radius:20px;
+      background:var(--gold);
+      box-shadow:0 0 16px rgba(215,181,109,.22);
+    }
+
+    .kpi-card.success .accent-line { background:var(--success); }
+    .kpi-card.info .accent-line { background:var(--info); }
+    .kpi-card.low .accent-line { background:var(--success); }
+
+    .decision {
+      padding:23px 25px;
+      display:grid;
+      gap:14px;
+      border-color:var(--borderGold);
+      background:
+        radial-gradient(circle at 96% 8%,rgba(215,181,109,.13),transparent 34%),
+        linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96));
+    }
+
+    .section-top {
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      align-items:center;
+    }
+
+    .section-top b {
+      color:var(--gold);
+      font-size:12px;
+      font-weight:720;
+      white-space:nowrap;
+    }
+
+    .decision h2 {
+      margin:0;
+      max-width:920px;
+      font-size:clamp(24px,3.35vw,34px);
+      line-height:1.08;
+      letter-spacing:-.04em;
+      font-weight:760;
+    }
+
+    .decision ul {
+      margin:0;
+      padding:0;
+      display:grid;
+      gap:8px;
+      list-style:none;
+      color:var(--text);
+    }
+
+    .decision li {
+      position:relative;
+      padding-left:18px;
+      color:rgba(245,247,250,.87);
+      font-size:14px;
+      line-height:1.42;
+      font-weight:520;
+    }
+
+    .decision li::before {
+      content:"";
+      position:absolute;
+      left:0;
+      top:.66em;
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:var(--gold);
+    }
+
+    .alert {
+      display:flex;
+      gap:13px;
+      align-items:center;
+      padding:14px 16px;
+      border-radius:18px;
+      border:1px solid rgba(50,213,131,.34);
+      background:rgba(50,213,131,.078);
+    }
+
+    .dot {
+      width:11px;
+      height:11px;
+      flex:0 0 auto;
+      border-radius:50%;
+      background:var(--success);
+      box-shadow:0 0 16px rgba(50,213,131,.50);
+    }
+
+    .alert strong {
+      display:block;
+      margin-bottom:3px;
+      font-size:14px;
+      font-weight:760;
+    }
+
+    .alert p {
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+
+    .intel-grid {
+      display:grid;
+      grid-template-columns:1.04fr 1fr 1fr;
+      gap:14px;
+      align-items:stretch;
+    }
+
+    .intel-card {
+      min-height:172px;
+      padding:18px;
+      display:grid;
+      gap:13px;
+      align-content:start;
+    }
+
+    .channel-list {
+      display:grid;
+      gap:8px;
+    }
+
+    .channel-row {
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      align-items:center;
+      padding:8px 10px;
+      border-radius:13px;
+      background:rgba(255,255,255,.032);
+      font-size:12px;
+      font-weight:650;
+    }
+
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:80px;
+      border-radius:999px;
+      padding:5px 9px;
+      font-size:10px;
+      font-weight:760;
+      background:rgba(102,112,133,.18);
+      color:var(--muted);
+    }
+
+    .badge.strong { background:rgba(50,213,131,.14); color:var(--success); }
+    .badge.pending { background:rgba(253,176,34,.14); color:var(--warning); }
+    .badge.testing { background:rgba(96,165,250,.14); color:var(--info); }
+    .badge.inactive { background:rgba(102,112,133,.16); color:var(--inactive); }
+
+    .intel-card p {
+      margin:0;
+      color:var(--softText);
+      font-size:13px;
+      line-height:1.58;
+      font-weight:500;
+    }
+
+    .next-action {
+      display:grid;
+      grid-template-columns:190px minmax(0,1fr);
+      gap:20px;
+      align-items:center;
+      padding:18px 20px;
+      border-color:rgba(215,181,109,.40);
+      background:
+        linear-gradient(90deg,rgba(215,181,109,.12),rgba(13,27,46,.76)),
+        rgba(13,27,46,.94);
+    }
+
+    .recommended {
+      display:inline-flex;
+      width:fit-content;
+      border-radius:999px;
+      padding:6px 10px;
+      background:var(--goldSoft);
+      color:var(--gold);
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.09em;
+      text-transform:uppercase;
+    }
+
+    .next-action h3 {
+      margin:9px 0 0;
+      font-size:18px;
+      line-height:1;
+      letter-spacing:-.025em;
+      font-weight:760;
+    }
+
+    .next-action p {
+      margin:0;
+      color:rgba(245,247,250,.88);
+      font-size:14px;
+      line-height:1.48;
+      font-weight:560;
+    }
+
+    .print-button {
+      position:fixed;
+      right:20px;
+      bottom:20px;
+      z-index:20;
+      border:1px solid rgba(215,181,109,.42);
+      border-radius:999px;
+      padding:12px 16px;
+      background:rgba(13,27,46,.92);
+      color:var(--gold);
+      font:760 13px var(--font);
+      cursor:pointer;
+      box-shadow:0 14px 40px rgba(0,0,0,.30);
+    }
+
+    @media (max-width:860px) {
+      .shell { padding:14px; place-items:start center; }
+      .dashboard { padding:18px; border-radius:22px; }
+      .header { grid-template-columns:1fr; }
+      .brand { grid-template-columns:50px minmax(0,1fr); }
+      .date-box { min-width:0; justify-items:start; text-align:left; }
+      .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .intel-grid { grid-template-columns:1fr; }
+      .next-action { grid-template-columns:1fr; }
+    }
+
+    @media (max-width:520px) {
+      .kpi-grid { grid-template-columns:1fr; }
+      .brand { align-items:flex-start; }
+      .mark { width:48px; height:48px; border-radius:15px; font-size:24px; }
+      .decision h2 { font-size:24px; }
+      .section-top { align-items:flex-start; }
+    }
+
+    @media print {
+      @page { size:landscape; margin:8mm; }
+      body {
+        background:#07111F!important;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      }
+      .shell { min-height:auto; padding:0; }
+      .dashboard {
+        width:100%;
+        box-shadow:none;
+        border-radius:20px;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      }
+      .print-button { display:none!important; }
+    }
   </style>
 </head>
+
 <body>
   <button class="print-button" onclick="window.print()">Save PDF</button>
+
   <main class="shell">
     <section class="dashboard" aria-label="Iconic AI CMO Owner Command Center">
-      <div class="glow gold" aria-hidden="true"></div><div class="glow blue" aria-hidden="true"></div>
+      <div class="glow gold" aria-hidden="true"></div>
+      <div class="glow blue" aria-hidden="true"></div>
+
       <div class="content">
         <header class="header">
-          <div class="brand"><div class="mark" aria-hidden="true">I</div><div><p class="eyebrow">ICONIC AI CMO</p><h1>Owner Command Center</h1></div></div>
-          <div class="date-box"><span>Week 22</span><strong>May 26 - Jun 1, 2026</strong><small>Last Updated: Jun 3, 2026 - 4:30 PM</small></div>
+          <div class="brand">
+            <div class="mark" aria-hidden="true">I</div>
+            <div>
+              <p class="eyebrow">ICONIC AI CMO</p>
+              <h1>Owner Command Center</h1>
+            </div>
+          </div>
+
+          <div class="date-box">
+            <span>Week 22</span>
+            <strong>May 26 - Jun 1, 2026</strong>
+            <small>Last Updated: Jun 3, 2026 - 4:30 PM</small>
+          </div>
         </header>
+
         <section class="kpi-grid" aria-label="Executive KPI cards">
-          <article class="card kpi-card"><div><span class="label">Total Spend</span></div><strong>AED 461.01</strong><div><div class="accent-line"></div><small>All active channels this week</small></div></article>
-          <article class="card kpi-card success"><div><span class="label">Total Results</span></div><strong>287</strong><div><div class="accent-line"></div><small>Primary results from active channels</small></div></article>
-          <article class="card kpi-card info"><div><span class="label">Best Channel</span></div><strong>Meta</strong><div><div class="accent-line"></div><small>Strong performance at AED 1.61/result</small></div></article>
-          <article class="card kpi-card low"><div><span class="label">Main Risk</span></div><strong>Low</strong><div><div class="accent-line"></div><small>No critical risk detected</small></div></article>
+          <article class="card kpi-card">
+            <div><span class="label">Total Spend</span></div>
+            <strong>AED 461.01</strong>
+            <div><div class="accent-line"></div><small>All active channels this week</small></div>
+          </article>
+
+          <article class="card kpi-card success">
+            <div><span class="label">Total Results</span></div>
+            <strong>287</strong>
+            <div><div class="accent-line"></div><small>Primary results from active channels</small></div>
+          </article>
+
+          <article class="card kpi-card info">
+            <div><span class="label">Best Channel</span></div>
+            <strong>Meta</strong>
+            <div><div class="accent-line"></div><small>Strong performance at AED 1.61/result</small></div>
+          </article>
+
+          <article class="card kpi-card low">
+            <div><span class="label">Main Risk</span></div>
+            <strong>Low</strong>
+            <div><div class="accent-line"></div><small>No critical risk detected</small></div>
+          </article>
         </section>
+
         <section class="card decision" aria-label="AI executive decision">
-          <div class="section-top"><span class="label">AI Executive Decision</span><b>Recommended owner move</b></div>
+          <div class="section-top">
+            <span class="label">AI Executive Decision</span>
+            <b>Recommended owner move</b>
+          </div>
+
           <h2>Keep Meta active. No budget increase this week.</h2>
-          <ul><li>Dubai and Abu Dhabi remain stable, with Meta leading performance.</li><li>Monitor Abu Dhabi VIP before scaling budget.</li><li>Do not increase spend until cost/result stays stable for the next refresh.</li></ul>
+
+          <ul>
+            <li>Dubai and Abu Dhabi remain stable, with Meta leading performance.</li>
+            <li>Monitor Abu Dhabi VIP before scaling budget.</li>
+            <li>Do not increase spend until cost/result stays stable for the next refresh.</li>
+          </ul>
         </section>
-        <section class="alert" aria-label="Risk alert status"><div class="dot" aria-hidden="true"></div><div><strong>No Critical Risk Detected</strong><p>Performance is stable. No urgent action required.</p></div></section>
+
+        <section class="alert" aria-label="Risk alert status">
+          <div class="dot" aria-hidden="true"></div>
+          <div>
+            <strong>No Critical Risk Detected</strong>
+            <p>Performance is stable. No urgent action required.</p>
+          </div>
+        </section>
+
         <section class="intel-grid" aria-label="Owner intelligence summary">
-          <article class="card intel-card"><div class="section-top"><span class="label">Channel Health</span><b>Live summary</b></div><div class="channel-list"><div class="channel-row"><span>Meta</span><span class="badge strong">Strong</span></div><div class="channel-row"><span>Google</span><span class="badge pending">Pending</span></div><div class="channel-row"><span>Snapchat</span><span class="badge testing">Testing</span></div><div class="channel-row"><span>TikTok</span><span class="badge inactive">Not Active</span></div></div></article>
-          <article class="card intel-card"><div class="section-top"><span class="label">Customer Signal</span><b>Owned conversations</b></div><p>Most customer questions this week are about price, consultation, and booking availability.</p></article>
-          <article class="card intel-card"><div class="section-top"><span class="label">Competitor Signal</span><b>Market monitor</b></div><p>Competitor activity is stable. No aggressive offer detected this week.</p></article>
+          <article class="card intel-card">
+            <div class="section-top">
+              <span class="label">Channel Health</span>
+              <b>Live summary</b>
+            </div>
+
+            <div class="channel-list">
+              <div class="channel-row"><span>Meta</span><span class="badge strong">Strong</span></div>
+              <div class="channel-row"><span>Google</span><span class="badge pending">Pending</span></div>
+              <div class="channel-row"><span>Snapchat</span><span class="badge testing">Testing</span></div>
+              <div class="channel-row"><span>TikTok</span><span class="badge inactive">Not Active</span></div>
+            </div>
+          </article>
+
+          <article class="card intel-card">
+            <div class="section-top">
+              <span class="label">Customer Signal</span>
+              <b>Owned conversations</b>
+            </div>
+            <p>Most customer questions this week are about price, consultation, and booking availability.</p>
+          </article>
+
+          <article class="card intel-card">
+            <div class="section-top">
+              <span class="label">Competitor Signal</span>
+              <b>Market monitor</b>
+            </div>
+            <p>Competitor activity is stable. No aggressive offer detected this week.</p>
+          </article>
         </section>
-        <section class="card next-action" aria-label="Next action recommendation"><div><span class="recommended">Recommended</span><h3>Next Action</h3></div><p>Keep Dubai and Abu Dhabi active. Do not increase budget until Abu Dhabi VIP gets stable cost/result.</p></section>
+
+        <section class="card next-action" aria-label="Next action recommendation">
+          <div>
+            <span class="recommended">Recommended</span>
+            <h3>Next Action</h3>
+          </div>
+          <p>Keep Dubai and Abu Dhabi active. Do not increase budget until Abu Dhabi VIP gets stable cost/result.</p>
+        </section>
       </div>
     </section>
   </main>
