@@ -1,6 +1,6 @@
 <!--
 Iconic AI CMO — Page 1 Standalone Prototype
-Version: v14.3.1-STATIC-POLISH
+Version: v14.3.2-FINAL-STATIC-POLISH-CHANNEL-LOGOS
 Scope:
 - Standalone HTML/CSS only
 - No API
@@ -34,6 +34,10 @@ Scope:
       --danger:#F97066;
       --info:#60A5FA;
       --inactive:#667085;
+      --meta:#60A5FA;
+      --google:#FDB022;
+      --snap:#FDE047;
+      --tiktok:#67E8F9;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     }
 
@@ -244,6 +248,7 @@ Scope:
       color:var(--muted);
       font-size:12px;
       line-height:1.35;
+      font-weight:430;
     }
 
     .accent-line {
@@ -260,9 +265,9 @@ Scope:
     .kpi-card.low .accent-line { background:var(--success); }
 
     .decision {
-      padding:23px 25px;
+      padding:25px 26px 24px;
       display:grid;
-      gap:14px;
+      gap:17px;
       border-color:var(--borderGold);
       background:
         radial-gradient(circle at 96% 8%,rgba(215,181,109,.13),transparent 34%),
@@ -279,24 +284,24 @@ Scope:
     .section-top b {
       color:var(--gold);
       font-size:12px;
-      font-weight:720;
+      font-weight:700;
       white-space:nowrap;
     }
 
     .decision h2 {
       margin:0;
       max-width:920px;
-      font-size:clamp(24px,3.35vw,34px);
-      line-height:1.08;
+      font-size:clamp(24px,3.25vw,33px);
+      line-height:1.10;
       letter-spacing:-.04em;
-      font-weight:760;
+      font-weight:740;
     }
 
     .decision ul {
       margin:0;
       padding:0;
       display:grid;
-      gap:8px;
+      gap:10px;
       list-style:none;
       color:var(--text);
     }
@@ -304,10 +309,10 @@ Scope:
     .decision li {
       position:relative;
       padding-left:18px;
-      color:rgba(245,247,250,.87);
-      font-size:14px;
-      line-height:1.42;
-      font-weight:520;
+      color:rgba(245,247,250,.86);
+      font-size:13px;
+      line-height:1.45;
+      font-weight:430;
     }
 
     .decision li::before {
@@ -344,7 +349,7 @@ Scope:
       display:block;
       margin-bottom:3px;
       font-size:14px;
-      font-weight:760;
+      font-weight:720;
     }
 
     .alert p {
@@ -352,6 +357,7 @@ Scope:
       color:var(--muted);
       font-size:12px;
       line-height:1.35;
+      font-weight:400;
     }
 
     .intel-grid {
@@ -375,15 +381,56 @@ Scope:
     }
 
     .channel-row {
-      display:flex;
-      justify-content:space-between;
-      gap:14px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:12px;
       align-items:center;
       padding:8px 10px;
       border-radius:13px;
       background:rgba(255,255,255,.032);
       font-size:12px;
-      font-weight:650;
+      font-weight:620;
+    }
+
+    .channel-name {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      min-width:0;
+    }
+
+    .platform-logo {
+      width:23px;
+      height:23px;
+      display:grid;
+      place-items:center;
+      flex:0 0 23px;
+      border-radius:8px;
+      color:#fff;
+      font-size:12px;
+      font-weight:850;
+      letter-spacing:-.02em;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 16px rgba(0,0,0,.20);
+    }
+
+    .platform-logo.meta {
+      background:linear-gradient(135deg,#2563EB,#60A5FA);
+    }
+
+    .platform-logo.google {
+      background:conic-gradient(from 45deg,#4285F4 0 25%,#34A853 0 50%,#FBBC05 0 75%,#EA4335 0 100%);
+      color:#fff;
+    }
+
+    .platform-logo.snap {
+      background:#FDE047;
+      color:#111827;
+      text-shadow:0 1px 0 rgba(255,255,255,.28);
+    }
+
+    .platform-logo.tiktok {
+      background:linear-gradient(135deg,#111827 0%,#111827 42%,#67E8F9 43%,#67E8F9 58%,#FB7185 59%,#FB7185 100%);
+      color:#fff;
     }
 
     .badge {
@@ -394,7 +441,7 @@ Scope:
       border-radius:999px;
       padding:5px 9px;
       font-size:10px;
-      font-weight:760;
+      font-weight:740;
       background:rgba(102,112,133,.18);
       color:var(--muted);
     }
@@ -408,8 +455,8 @@ Scope:
       margin:0;
       color:var(--softText);
       font-size:13px;
-      line-height:1.58;
-      font-weight:500;
+      line-height:1.62;
+      font-weight:400;
     }
 
     .next-action {
@@ -432,7 +479,7 @@ Scope:
       background:var(--goldSoft);
       color:var(--gold);
       font-size:10px;
-      font-weight:800;
+      font-weight:780;
       letter-spacing:.09em;
       text-transform:uppercase;
     }
@@ -442,15 +489,15 @@ Scope:
       font-size:18px;
       line-height:1;
       letter-spacing:-.025em;
-      font-weight:760;
+      font-weight:720;
     }
 
     .next-action p {
       margin:0;
-      color:rgba(245,247,250,.88);
+      color:rgba(245,247,250,.86);
       font-size:14px;
-      line-height:1.48;
-      font-weight:560;
+      line-height:1.50;
+      font-weight:430;
     }
 
     .print-button {
@@ -589,10 +636,37 @@ Scope:
             </div>
 
             <div class="channel-list">
-              <div class="channel-row"><span>Meta</span><span class="badge strong">Strong</span></div>
-              <div class="channel-row"><span>Google</span><span class="badge pending">Pending</span></div>
-              <div class="channel-row"><span>Snapchat</span><span class="badge testing">Testing</span></div>
-              <div class="channel-row"><span>TikTok</span><span class="badge inactive">Not Active</span></div>
+              <div class="channel-row">
+                <span class="channel-name">
+                  <span class="platform-logo meta" aria-hidden="true">M</span>
+                  <span>Meta</span>
+                </span>
+                <span class="badge strong">Strong</span>
+              </div>
+
+              <div class="channel-row">
+                <span class="channel-name">
+                  <span class="platform-logo google" aria-hidden="true">G</span>
+                  <span>Google</span>
+                </span>
+                <span class="badge pending">Pending</span>
+              </div>
+
+              <div class="channel-row">
+                <span class="channel-name">
+                  <span class="platform-logo snap" aria-hidden="true">S</span>
+                  <span>Snapchat</span>
+                </span>
+                <span class="badge testing">Testing</span>
+              </div>
+
+              <div class="channel-row">
+                <span class="channel-name">
+                  <span class="platform-logo tiktok" aria-hidden="true">T</span>
+                  <span>TikTok</span>
+                </span>
+                <span class="badge inactive">Not Active</span>
+              </div>
             </div>
           </article>
 
