@@ -4,237 +4,107 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Iconic AI CMO Owner Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=14.1.2-final"/>
+  <link rel="stylesheet" href="/style.css?v=14.2.0"/>
 </head>
-
 <body>
-  <main class="dashboard-shell">
+  <main class="stage">
+    <section class="reportPage pageOne" aria-label="Iconic AI CMO Executive Command Center">
+      <div class="orb orbTop"></div>
+      <div class="orb orbRight"></div>
 
-    <!-- PAGE 1: EXECUTIVE COMMAND CENTER -->
-    <header class="visual-page hero-page">
-      <div class="gold-orbit orbit-one"></div>
-      <div class="gold-orbit orbit-two"></div>
-
-      <div class="hero-topline">
-        <div class="brand-lockup">
-          <div class="brand-mark">♕</div>
-          <div>
+      <header class="pageHeader">
+        <div class="brandBlock">
+          <div class="brandMark" aria-hidden="true">♕</div>
+          <div class="brandText">
             <strong>ICONIC</strong>
-            <span>AI CMO COMMAND CENTER</span>
+            <span>BE ICONIC</span>
           </div>
+          <small>AI CMO COMMAND CENTER</small>
         </div>
 
-        <aside class="report-status">
-          <span>REPORT STATUS</span>
-          <strong id="reportStatus">Loading</strong>
-          <small id="generatedAt">Checking systems...</small>
-        </aside>
-      </div>
-
-      <section class="hero-stage">
-        <div class="hero-copy">
-          <span class="eyebrow">AI MARKETING INTELLIGENCE</span>
+        <div class="titleBlock">
           <h1>ICONIC AI <em>MARKETING</em> REPORT</h1>
           <h2>التقرير التسويقي الذكي</h2>
-          <p id="executiveDecision">Loading weekly executive decision...</p>
         </div>
 
-        <div class="owner-card">
-          <span>OWNER VIEW</span>
-          <h3>Executive Command Center</h3>
-          <p>One premium view for performance, customers, competitors, risk, and next action.</p>
+        <div class="timeBlock">
+          <div class="timePill" id="reportWeek">Week</div>
+          <div class="timePill wide" id="dateRange">Date range</div>
         </div>
+      </header>
+
+      <section class="kpiStrip" aria-label="Executive snapshot KPIs">
+        <article class="kpiCard spendCard">
+          <span>TOTAL SPEND</span>
+          <small>إجمالي الإنفاق</small>
+          <strong id="totalSpend">AED 0.00</strong>
+          <div class="kpiFooter"><b>vs Last Week</b><em id="totalSpendChange">+0.0%</em></div>
+        </article>
+
+        <article class="kpiCard resultsCard">
+          <span>TOTAL RESULTS</span>
+          <small>إجمالي النتائج</small>
+          <div class="miniIcon" aria-hidden="true">♧</div>
+          <strong id="totalResults">0</strong>
+          <div class="kpiFooter"><b>vs Last Week</b><em id="totalResultsChange">+0.0%</em></div>
+        </article>
+
+        <article class="kpiCard bestCard">
+          <span>BEST CHANNEL</span>
+          <small>أفضل قناة</small>
+          <strong id="bestChannel">-</strong>
+          <div class="channelLine"><i class="waIcon">☎</i><b id="bestChannelDetail">-</b></div>
+        </article>
+
+        <article class="kpiCard driverCard">
+          <span>MAIN ROAS DRIVER</span>
+          <small>محرك العائد الرئيسي</small>
+          <strong id="mainRoasDriver">WhatsApp Conversations</strong>
+          <b id="mainRoasDriverDetail">Lowest Cost / Result</b>
+        </article>
+
+        <article class="kpiCard riskCard">
+          <span>MAIN RISK</span>
+          <small>المخاطر الرئيسية</small>
+          <strong id="mainRisk">-</strong>
+          <div class="googleWord" id="mainRiskDetail">-</div>
+        </article>
       </section>
 
-      <div class="system-strip">
-        <span id="reportWeek">Week</span>
-        <span id="dateRange">Date range</span>
-        <span id="healthData">Data Sources</span>
-        <span id="healthAI">AI Analysis</span>
-        <span id="healthReady">Ready for Decision</span>
-      </div>
-    </header>
-
-    <section class="visual-page page-executive">
-      <div class="page-head">
-        <div>
-          <span class="eyebrow">EXECUTIVE SNAPSHOT</span>
-          <h2>Owner Command Center</h2>
-        </div>
-        <b>01</b>
-      </div>
-
-      <div class="kpis">
-        <article>
-          <span>TOTAL SPEND</span>
-          <i>إجمالي الإنفاق</i>
-          <strong id="totalSpend">AED 0.00</strong>
-          <em id="totalSpendChange">+0.0%</em>
+      <section class="decisionGrid" aria-label="Executive decision and report status">
+        <article class="targetPanel">
+          <div class="targetIcon" aria-hidden="true">⌖</div>
         </article>
 
-        <article>
-          <span>TOTAL RESULTS</span>
-          <i>إجمالي النتائج</i>
-          <strong id="totalResults">0</strong>
-          <em id="totalResultsChange">+0.0%</em>
-        </article>
-
-        <article>
-          <span>BEST CHANNEL</span>
-          <i>أفضل قناة</i>
-          <strong id="bestChannel">-</strong>
-          <em id="bestChannelDetail">-</em>
-        </article>
-
-        <article>
-          <span>MAIN RISK</span>
-          <i>المخاطر الرئيسية</i>
-          <strong id="mainRisk">-</strong>
-          <em id="mainRiskDetail">-</em>
-        </article>
-      </div>
-
-      <div class="decision">
-        <div class="target">
-          <span>◎</span>
-          <small>COMMAND SIGNAL</small>
-        </div>
-
-        <article>
+        <article class="decisionPanel">
           <span>EXECUTIVE DECISION</span>
-          <i>القرار التنفيذي</i>
-          <h3 id="decisionTitle">Loading...</h3>
-          <p id="decisionLine1"></p>
+          <small>القرار التنفيذي</small>
+          <h3 id="decisionTitle">Loading executive decision...</h3>
+          <p id="decisionLine1">Loading weekly analysis...</p>
           <p id="decisionLine2"></p>
         </article>
-      </div>
+
+        <article class="statusPanel">
+          <span>REPORT STATUS</span>
+          <small>حالة التقرير</small>
+          <h3><i>✓</i><b id="reportStatus">Loading</b></h3>
+          <hr/>
+          <p>Data Updated</p>
+          <strong id="generatedAt">Checking systems...</strong>
+        </article>
+      </section>
+
+      <section class="healthBar" aria-label="Automation health">
+        <div class="pageNumber">1</div>
+        <div class="healthItem"><i>＋</i><span id="healthData">Data Sources Connected</span></div>
+        <div class="healthItem"><i>⚙</i><span id="healthAI">AI Analysis Completed</span></div>
+        <div class="healthItem"><i>⇧</i><span id="healthGenerated">Report Generated</span></div>
+        <div class="healthItem ready"><i>✓</i><span id="healthReady">Ready for Decision</span></div>
+      </section>
     </section>
-
-    <!-- PAGE 2: CHANNELS PERFORMANCE -->
-    <section class="visual-page page-channels">
-      <div class="page-head">
-        <div>
-          <span class="eyebrow">ALL CHANNELS PERFORMANCE SUMMARY</span>
-          <h2>ملخص أداء جميع القنوات</h2>
-        </div>
-        <b>02</b>
-      </div>
-
-      <div class="report-rule">
-        Meta = WhatsApp Conversations • Google = Search Conversions • Snapchat/TikTok = Traffic Clicks
-      </div>
-
-      <div class="channels" id="channelsGrid"></div>
-    </section>
-
-    <!-- PAGE 3: CUSTOMER INTELLIGENCE -->
-    <section class="visual-page page-customer">
-      <div class="page-head">
-        <div>
-          <span class="eyebrow">CUSTOMER INTELLIGENCE</span>
-          <h2>ذكاء العملاء واتساب</h2>
-        </div>
-        <b>03</b>
-      </div>
-
-      <div class="insight-layout">
-        <article class="report-card wide-card">
-          <h3>Top Customer Questions<br><small>أكثر أسئلة العملاء</small></h3>
-          <div id="questionsList"></div>
-        </article>
-
-        <article class="report-card sentiment-card">
-          <h3>Customer Sentiment<br><small>مشاعر العملاء</small></h3>
-          <div class="sentiment">
-            <div class="donut" id="sentimentDonut">
-              <strong id="sentimentPercent">0%</strong>
-              <span id="sentimentLabel">Positive</span>
-            </div>
-            <div id="sentimentLegend" class="legend"></div>
-          </div>
-        </article>
-
-        <article class="report-card">
-          <h3>Key Insights<br><small>أهم النتائج</small></h3>
-          <div id="customerInsights" class="chips"></div>
-        </article>
-
-        <article class="report-card dark-card">
-          <h3>AI Recommendation<br><small>توصية الذكاء الاصطناعي</small></h3>
-          <p id="customerRecommendation" class="aiText">Loading...</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- PAGE 4: COMPETITOR INTELLIGENCE -->
-    <section class="visual-page page-competitor">
-      <div class="page-head">
-        <div>
-          <span class="eyebrow">COMPETITOR INTELLIGENCE</span>
-          <h2>ذكاء المنافسين</h2>
-        </div>
-        <b>04</b>
-      </div>
-
-      <div class="competitor-layout">
-        <article class="report-card">
-          <h3>Promo Activity<br><small>النشاط الترويجي</small></h3>
-          <div id="competitorsList"></div>
-        </article>
-
-        <article class="report-card">
-          <h3>Top Promo Themes<br><small>أبرز المواضيع الترويجية</small></h3>
-          <div id="promoThemes"></div>
-        </article>
-
-        <article class="report-card market">
-          <h3>Market Position<br><small>موقعنا في السوق</small></h3>
-          <div id="marketRank" class="rank">#1</div>
-          <strong id="shareOfVoice">0% Share of Voice</strong>
-          <p id="marketNote"></p>
-        </article>
-
-        <article class="report-card dark-card">
-          <h3>AI Insight<br><small>رؤية الذكاء الاصطناعي</small></h3>
-          <div id="competitorInsights" class="chips"></div>
-        </article>
-      </div>
-    </section>
-
-    <!-- PAGE 5: RECOMMENDATIONS -->
-    <section class="visual-page page-next">
-      <div class="page-head">
-        <div>
-          <span class="eyebrow">RECOMMENDATIONS & NEXT STEPS</span>
-          <h2>التوصيات والخطوات القادمة</h2>
-        </div>
-        <b>05</b>
-      </div>
-
-      <div class="next-layout">
-        <article class="report-card">
-          <h3>Top Recommendations<br><small>أهم التوصيات</small></h3>
-          <div id="recommendationsList"></div>
-        </article>
-
-        <article class="report-card">
-          <h3>Next Steps<br><small>الخطوات القادمة</small></h3>
-          <div id="nextStepsList"></div>
-        </article>
-      </div>
-
-      <footer class="report-footer">
-        <div>
-          <span>NEXT REPORT</span>
-          <strong id="nextReportDate">-</strong>
-        </div>
-        <div>♕ ICONIC</div>
-      </footer>
-    </section>
-
   </main>
 
   <div id="errorBox" class="error hidden"></div>
-  <script src="/app.js?v=14.1.2-final" defer></script>
+  <script src="/app.js?v=14.2.0" defer></script>
 </body>
 </html>
