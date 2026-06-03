@@ -5,28 +5,41 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function safe(value, fallback = '-') {
+  return value === undefined || value === null || value === '' ? fallback : value;
+}
+
 function setText(id, value, fallback = '-') {
   const el = $(id);
   if (!el) return;
-  el.textContent = value === undefined || value === null || value === '' ? fallback : value;
-}
-
-function safe(value, fallback = '-') {
-  return value === undefined || value === null || value === '' ? fallback : value;
+  el.textContent = safe(value, fallback);
 }
 
 function fm(value) {
   return money.format(Number(value || 0)).replace('AED', 'AED ');
 }
 
-function compactMoney(value) {
-  const formatted = fm(value);
-  return formatted.replace('AED ', 'AED\n');
+function moneyTwoLines(value) {
+  return fm(value).replace('AED ', 'AED\n');
 }
 
-function normalizeDate(value) {
+function setChange(id, value) {
+  const el = $(id);
+  if (!el) return;
+  const text = safe(value, '+0.0%');
+  el.textContent = text;
+  el.classList.toggle('neg', String(text).trim().startsWith('-'));
+}
+
+function normalizeGeneratedAt(value) {
   if (!value) return 'Checking systems...';
-  return String(value).replace('T', ' ').replace(/\.\d+Z?$/, '').replace('Z', ' GMT+4');
+  const raw = String(value).trim();
+  return raw
+    .replace('T', ' ')
+    .replace(/\.\d+Z?$/, '')
+    .replace(/Z$/, ' GMT+4')
+    .replace(/GM\s*\+4/i, 'GMT+4')
+    .replace(/GMT\s*\+4/i, 'GMT+4');
 }
 
 async function loadDashboard() {
@@ -54,25 +67,25 @@ function renderPageOne(data) {
   setText('reportWeek', safe(report.week, 'Week'));
   setText('dateRange', safe(report.dateRange, 'Date range'));
 
-  setText('totalSpend', compactMoney(executive.totalSpend), 'AED\n0.00');
-  setText('totalSpendChange', safe(executive.totalSpendChange, '+0.0%'));
+  setText('totalSpend', moneyTwoLines(executive.totalSpend), 'AED\n0.00');
+  setChange('totalSpendChange', safe(executive.totalSpendChange, '+0.0%'));
 
   setText('totalResults', number.format(Number(executive.totalResults || 0)), '0');
-  setText('totalResultsChange', safe(executive.totalResultsChange, '+0.0%'));
+  setChange('totalResultsChange', safe(executive.totalResultsChange, '+0.0%'));
 
   setText('bestChannel', safe(executive.bestChannel, 'Meta'));
   setText('bestChannelDetail', safe(executive.bestChannelDetail, 'WhatsApp Conversations'));
 
-  const roasDriver = safe(
+  const mainDriver = safe(
     executive.mainRoasDriver || executive.roasDriver || executive.bestChannelDetail,
     'WhatsApp Conversations'
   );
-  const roasDriverDetail = safe(
+  const mainDriverDetail = safe(
     executive.mainRoasDriverDetail || executive.roasDriverDetail || 'Lowest Cost / Result',
     'Lowest Cost / Result'
   );
-  setText('mainRoasDriver', roasDriver);
-  setText('mainRoasDriverDetail', roasDriverDetail);
+  setText('mainRoasDriver', mainDriver);
+  setText('mainRoasDriverDetail', mainDriverDetail);
 
   setText('mainRisk', safe(executive.mainRisk, 'No major risk detected'));
   setText('mainRiskDetail', safe(executive.mainRiskDetail, 'Stable'));
@@ -82,7 +95,7 @@ function renderPageOne(data) {
   setText('decisionLine2', safe(executive.decisionLine2, 'Do not compare traffic clicks with WhatsApp conversations.'));
 
   setText('reportStatus', safe(executive.status, 'All Systems Active'));
-  setText('generatedAt', normalizeDate(data.generatedAt));
+  setText('generatedAt', normalizeGeneratedAt(data.generatedAt));
 
   setText('healthData', health.dataSourcesConnected ? 'Data Sources Connected' : 'Data Sources Pending');
   setText('healthAI', health.aiAnalysisCompleted ? 'AI Analysis Completed' : 'AI Analysis Pending');
