@@ -2,6 +2,7 @@ const fs = require('fs');
 const express = require('express');
 const chromiumModule = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
+const { PDFDocument } = require('pdf-lib');
 
 const chromium = chromiumModule.default || chromiumModule.chromium || chromiumModule;
 
@@ -15,6 +16,7 @@ const PDF_WIDTH = 1280;
 const PDF_HEIGHT = 1800;
 const REPORT_WIDTH = 1220;
 const PAGE_SELECTOR = '.report-page';
+const TOTAL_REPORT_PAGES = 5;
 
 app.set('trust proxy', true);
 
@@ -47,6 +49,12 @@ function authHeaderValue() {
   return `Basic ${token}`;
 }
 
+function clampPageNumber(value) {
+  const parsed = Number.parseInt(String(value || '1'), 10);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(TOTAL_REPORT_PAGES, parsed));
+}
+
 async function resolveChromiumExecutablePath() {
   const candidates = [
     chromium && chromium.executablePath,
@@ -61,9 +69,7 @@ async function resolveChromiumExecutablePath() {
       if (resolved) return resolved;
     }
 
-    if (typeof candidate === 'string') {
-      return candidate;
-    }
+    if (typeof candidate === 'string') return candidate;
 
     if (typeof candidate.then === 'function') {
       const resolved = await candidate;
@@ -120,12 +126,6 @@ async function launchPdfBrowser() {
   });
 }
 
-function clampPageNumber(value) {
-  const parsed = Number.parseInt(String(value || '1'), 10);
-  if (!Number.isFinite(parsed)) return 1;
-  return Math.max(1, Math.min(5, parsed));
-}
-
 async function prepareReportPage(page, reportUrl) {
   await page.setExtraHTTPHeaders({
     Authorization: authHeaderValue()
@@ -155,7 +155,7 @@ async function prepareReportPage(page, reportUrl) {
   }, { timeout: 45000 });
 }
 
-async function renderSinglePagePdf(page, requestedPageNumber) {
+async function applySinglePagePrintMode(page, requestedPageNumber) {
   const safePageNumber = clampPageNumber(requestedPageNumber);
   const pageIndex = safePageNumber - 1;
 
@@ -245,9 +245,19 @@ async function renderSinglePagePdf(page, requestedPageNumber) {
     `
   });
 
+  return {
+    pageNumber: safePageNumber,
+    pageHeight: calculatedHeight,
+    availablePages: info.count
+  };
+}
+
+async function renderSinglePagePdfBuffer(page, requestedPageNumber) {
+  const result = await applySinglePagePrintMode(page, requestedPageNumber);
+
   const pdfData = await page.pdf({
     width: `${PDF_WIDTH}px`,
-    height: `${calculatedHeight}px`,
+    height: `${result.pageHeight}px`,
     printBackground: true,
     preferCSSPageSize: true,
     margin: {
@@ -258,14 +268,22 @@ async function renderSinglePagePdf(page, requestedPageNumber) {
     }
   });
 
-  const pdfBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
-
   return {
-    pdfBuffer,
-    pageNumber: safePageNumber,
-    pageHeight: calculatedHeight,
-    availablePages: info.count
+    ...result,
+    pdfBuffer: Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData)
   };
+}
+
+async function mergePdfBuffers(pdfBuffers) {
+  const mergedDoc = await PDFDocument.create();
+
+  for (const buffer of pdfBuffers) {
+    const srcDoc = await PDFDocument.load(buffer);
+    const pages = await mergedDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+    pages.forEach(page => mergedDoc.addPage(page));
+  }
+
+  return Buffer.from(await mergedDoc.save());
 }
 
 app.use(basicAuth);
@@ -291,10 +309,8 @@ app.get('/api/dashboard-data', async (req, res) => {
 });
 
 /*
-Stable full report endpoint:
-- Kept from v15.1.6 stable base.
-- Produces 5-page PDF using direct page.pdf().
-- This remains the safe full-report fallback.
+Legacy stable full report endpoint:
+- Kept as safe fallback from v15.1.6 behavior.
 */
 app.get('/api/report-pdf', async (req, res) => {
   let browser;
@@ -384,7 +400,7 @@ app.get('/api/report-pdf', async (req, res) => {
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_11_full_stable.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_12_legacy_full.pdf"',
       'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-store'
     });
@@ -394,7 +410,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.11-single-page-capture-mode'
+      version: 'v15.1.12-combine-single-pages-final-pdf'
     });
   } finally {
     if (browser) {
@@ -404,13 +420,8 @@ app.get('/api/report-pdf', async (req, res) => {
 });
 
 /*
-Single Page Capture Mode:
-Example:
+Single page endpoint:
   /api/report-page-pdf?page=1
-  /api/report-page-pdf?page=2
-Purpose:
-- Test one report page at a time.
-- Helps tune spacing/height without stressing Render or changing frontend.
 */
 app.get('/api/report-page-pdf', async (req, res) => {
   let browser;
@@ -425,12 +436,12 @@ app.get('/api/report-page-pdf', async (req, res) => {
 
     await prepareReportPage(page, reportUrl);
 
-    const result = await renderSinglePagePdf(page, requestedPageNumber);
+    const result = await renderSinglePagePdfBuffer(page, requestedPageNumber);
 
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_11_page_${result.pageNumber}.pdf"`,
+      'Content-Disposition': `attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_12_page_${result.pageNumber}.pdf"`,
       'Content-Length': result.pdfBuffer.length,
       'Cache-Control': 'no-store',
       'X-Iconic-Page-Number': String(result.pageNumber),
@@ -443,7 +454,63 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.11-single-page-capture-mode'
+      version: 'v15.1.12-combine-single-pages-final-pdf'
+    });
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+});
+
+/*
+Final combined endpoint:
+  /api/report-final-pdf
+
+Implementation:
+- Opens report once.
+- Renders pages 1–5 one at a time using the approved single-page method.
+- Merges the five one-page PDFs into one final 5-page PDF.
+*/
+app.get('/api/report-final-pdf', async (req, res) => {
+  let browser;
+
+  try {
+    const baseUrl = getBaseUrl(req);
+    const reportUrl = `${baseUrl}/?snapshot=pdf&final=1`;
+
+    browser = await launchPdfBrowser();
+    const page = await browser.newPage();
+
+    await prepareReportPage(page, reportUrl);
+
+    const pdfBuffers = [];
+    const heights = [];
+
+    for (let pageNumber = 1; pageNumber <= TOTAL_REPORT_PAGES; pageNumber += 1) {
+      const result = await renderSinglePagePdfBuffer(page, pageNumber);
+      pdfBuffers.push(result.pdfBuffer);
+      heights.push(result.pageHeight);
+    }
+
+    const finalPdfBuffer = await mergePdfBuffers(pdfBuffers);
+
+    res.status(200);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_12_FINAL.pdf"',
+      'Content-Length': finalPdfBuffer.length,
+      'Cache-Control': 'no-store',
+      'X-Iconic-Pages': String(TOTAL_REPORT_PAGES),
+      'X-Iconic-Page-Heights': heights.join(',')
+    });
+
+    return res.end(finalPdfBuffer);
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message || String(error),
+      version: 'v15.1.12-combine-single-pages-final-pdf'
     });
   } finally {
     if (browser) {
@@ -455,7 +522,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.11-single-page-capture-mode'
+  version: 'v15.1.12-combine-single-pages-final-pdf'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
