@@ -1,10 +1,6 @@
-const path = require('path');
-
-process.env.PUPPETEER_CACHE_DIR =
-  process.env.PUPPETEER_CACHE_DIR || path.join(__dirname, '.cache', 'puppeteer');
-
 const express = require('express');
-const puppeteer = require('puppeteer');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,16 +40,25 @@ function authHeaderValue() {
 }
 
 async function launchPdfBrowser() {
+  const executablePath = await chromium.executablePath();
+
   return puppeteer.launch({
-    headless: 'new',
     args: [
+      ...chromium.args,
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
       '--no-first-run',
       '--no-zygote'
-    ]
+    ],
+    defaultViewport: {
+      width: 1280,
+      height: 1800,
+      deviceScaleFactor: 1
+    },
+    executablePath,
+    headless: chromium.headless
   });
 }
 
@@ -183,7 +188,7 @@ app.get('/api/report-pdf', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_2.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_4.pdf"',
       'Cache-Control': 'no-store'
     });
 
@@ -192,7 +197,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.2-chrome-install-fix'
+      version: 'v15.1.4-sparticuz-chromium'
     });
   } finally {
     if (browser) {
@@ -204,7 +209,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.2-chrome-install-fix'
+  version: 'v15.1.4-sparticuz-chromium'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
