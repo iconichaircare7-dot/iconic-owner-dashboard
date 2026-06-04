@@ -1,9 +1,10 @@
 {
   "name": "iconic-owner-dashboard",
-  "version": "15.1.1",
+  "version": "15.1.2",
   "description": "Iconic AI CMO Owner Web Dashboard",
   "main": "server.js",
   "scripts": {
+    "postinstall": "PUPPETEER_CACHE_DIR=.cache/puppeteer npx puppeteer browsers install chrome",
     "start": "node server.js"
   },
   "engines": {
