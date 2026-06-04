@@ -1,8 +1,8 @@
 <!--
-Iconic AI CMO — Page 3 Standalone Prototype
-Version: v14.5.1-PAGE3-CUSTOMER-INTELLIGENCE-STATIC-POLISH
+Iconic AI CMO — Page 4 Standalone Prototype
+Version: v14.6.0-PAGE4-COMPETITOR-INTELLIGENCE-STATIC
 Scope:
-- Page 3 only
+- Page 4 only
 - Standalone HTML/CSS
 - No API
 - No Google Sheets
@@ -10,707 +10,241 @@ Scope:
 - No external files
 - Desktop/PDF page-friendly
 -->
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Iconic AI CMO — Customer Intelligence</title>
-
+  <title>Iconic AI CMO — Competitor Intelligence</title>
   <style>
     :root {
-      --bg:#07111F;
-      --card:#0D1B2E;
-      --border:#1E3350;
-      --borderGold:rgba(215,181,109,.42);
-      --gold:#D7B56D;
-      --goldSoft:rgba(215,181,109,.14);
-      --text:#F5F7FA;
-      --muted:#9AA8BC;
-      --softText:rgba(245,247,250,.84);
-      --success:#32D583;
-      --warning:#FDB022;
-      --danger:#F97066;
-      --info:#60A5FA;
-      --inactive:#667085;
+      --bg:#07111F; --card:#0D1B2E; --border:#1E3350;
+      --borderGold:rgba(215,181,109,.42); --gold:#D7B56D; --goldSoft:rgba(215,181,109,.14);
+      --text:#F5F7FA; --muted:#9AA8BC; --softText:rgba(245,247,250,.84);
+      --success:#32D583; --warning:#FDB022; --danger:#F97066; --info:#60A5FA; --inactive:#667085; --purple:#A78BFA;
       --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     }
-
-    * { box-sizing:border-box; }
-
-    html, body {
-      margin:0;
-      min-height:100%;
-      font-family:var(--font);
-      color:var(--text);
-      background:
-        radial-gradient(circle at 9% 0%,rgba(215,181,109,.14),transparent 26rem),
-        radial-gradient(circle at 92% 12%,rgba(96,165,250,.11),transparent 25rem),
-        linear-gradient(135deg,#050B15 0%,var(--bg) 58%,#030914 100%);
-    }
-
-    body { overflow-x:hidden; }
-
-    .shell {
-      min-height:100vh;
-      display:grid;
-      place-items:center;
-      padding:24px;
-    }
-
-    .dashboard {
-      position:relative;
-      width:min(1220px,100%);
-      overflow:hidden;
-      border:1px solid rgba(215,181,109,.26);
-      border-radius:26px;
-      background:
-        linear-gradient(180deg,rgba(255,255,255,.035),transparent 24%),
-        linear-gradient(145deg,rgba(13,27,46,.95),rgba(7,17,31,.98));
-      box-shadow:0 22px 70px rgba(0,0,0,.36);
-      padding:24px;
-    }
-
-    .dashboard::before {
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background:
-        linear-gradient(rgba(255,255,255,.020) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);
-      background-size:58px 58px;
-      mask-image:linear-gradient(to bottom,rgba(0,0,0,.38),transparent 84%);
-    }
-
-    .glow {
-      position:absolute;
-      pointer-events:none;
-      border-radius:50%;
-      filter:blur(18px);
-      opacity:.65;
-    }
-
-    .glow.gold { width:310px; height:310px; top:-180px; left:-115px; background:rgba(215,181,109,.18); }
-    .glow.blue { width:360px; height:360px; right:-180px; top:110px; background:rgba(96,165,250,.10); }
-
-    .content {
-      position:relative;
-      z-index:2;
-      display:grid;
-      gap:14px;
-    }
-
-    .header {
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto;
-      gap:24px;
-      align-items:start;
-      padding-bottom:2px;
-    }
-
-    .brand {
-      display:grid;
-      grid-template-columns:56px minmax(0,1fr);
-      gap:15px;
-      align-items:center;
-      min-width:0;
-    }
-
-    .mark {
-      width:52px;
-      height:52px;
-      display:grid;
-      place-items:center;
-      border:1px solid rgba(215,181,109,.50);
-      border-radius:17px;
-      background:linear-gradient(145deg,rgba(215,181,109,.20),rgba(255,255,255,.03));
-      color:var(--gold);
-      font-size:25px;
-      font-weight:820;
-      letter-spacing:-.05em;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 26px rgba(215,181,109,.10);
-    }
-
-    .eyebrow {
-      margin:0 0 4px;
-      color:var(--gold);
-      font-size:11px;
-      line-height:1;
-      font-weight:780;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-    }
-
-    h1 {
-      margin:0;
-      font-size:clamp(30px,3.45vw,41px);
-      line-height:1;
-      letter-spacing:-.045em;
-      font-weight:780;
-    }
-
-    .page-pill {
-      display:inline-flex;
-      align-items:center;
-      width:fit-content;
-      border:1px solid rgba(215,181,109,.38);
-      border-radius:999px;
-      padding:8px 12px;
-      background:var(--goldSoft);
-      color:var(--gold);
-      font-size:12px;
-      font-weight:760;
-      white-space:nowrap;
-    }
-
-    .label {
-      color:var(--muted);
-      font-size:10px;
-      line-height:1;
-      font-weight:740;
-      letter-spacing:.14em;
-      text-transform:uppercase;
-    }
-
-    .card {
-      border:1px solid var(--border);
-      border-radius:18px;
-      background:
-        radial-gradient(circle at 88% 0%,rgba(215,181,109,.08),transparent 48%),
-        linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012)),
-        rgba(13,27,46,.92);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
-    }
-
-    .top-grid {
-      display:grid;
-      grid-template-columns:.84fr 1.16fr;
-      gap:14px;
-    }
-
-    .score-card {
-      padding:18px;
-      display:grid;
-      gap:14px;
-      align-content:center;
-      border-color:var(--borderGold);
-      background:
-        radial-gradient(circle at 90% 10%,rgba(50,213,131,.09),transparent 38%),
-        linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96));
-    }
-
-    .score-wrap {
-      display:grid;
-      grid-template-columns:96px minmax(0,1fr);
-      gap:17px;
-      align-items:center;
-    }
-
-    .big-score {
-      width:92px;
-      height:92px;
-      display:grid;
-      place-items:center;
-      border-radius:50%;
-      position:relative;
-      background:conic-gradient(var(--success) 82%, rgba(255,255,255,.08) 0);
-    }
-
-    .big-score::before {
-      content:"";
-      position:absolute;
-      inset:9px;
-      border-radius:50%;
-      background:var(--card);
-      border:1px solid rgba(255,255,255,.05);
-    }
-
-    .big-score strong {
-      position:relative;
-      z-index:2;
-      font-size:25px;
-      font-weight:780;
-    }
-
-    .score-card h2 {
-      margin:0;
-      font-size:clamp(20px,2.2vw,27px);
-      line-height:1.10;
-      letter-spacing:-.04em;
-      font-weight:730;
-    }
-
-    .score-card p {
-      margin:8px 0 0;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
-      max-width:420px;
-    }
-
-    .intent-grid {
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:10px;
-    }
-
-    .intent-card {
-      padding:14px;
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:16px;
-      background:rgba(255,255,255,.03);
-      display:grid;
-      gap:8px;
-      align-content:start;
-    }
-
-    .intent-card strong {
-      font-size:21px;
-      line-height:1;
-      font-weight:740;
-    }
-
-    .intent-card small {
-      color:var(--muted);
-      font-size:11px;
-      line-height:1.38;
-    }
-
-    .main-grid {
-      display:grid;
-      grid-template-columns:1.05fr .95fr;
-      gap:14px;
-    }
-
-    .questions-card,
-    .sentiment-card,
-    .signal-card,
-    .action-card {
-      padding:18px;
-      display:grid;
-      gap:14px;
-      align-content:start;
-    }
-
-    .section-top {
-      display:flex;
-      justify-content:space-between;
-      gap:14px;
-      align-items:center;
-    }
-
-    .section-top b {
-      color:var(--gold);
-      font-size:11px;
-      font-weight:700;
-      white-space:nowrap;
-    }
-
-    .question-list {
-      display:grid;
-      gap:9px;
-    }
-
-    .question-row {
-      display:grid;
-      grid-template-columns:34px minmax(0,1fr) auto;
-      gap:10px;
-      align-items:center;
-      padding:10px;
-      border-radius:14px;
-      background:rgba(255,255,255,.032);
-    }
-
-    .rank {
-      width:28px;
-      height:28px;
-      display:grid;
-      place-items:center;
-      border-radius:10px;
-      background:var(--goldSoft);
-      color:var(--gold);
-      font-size:12px;
-      font-weight:820;
-    }
-
-    .question-row strong {
-      display:block;
-      font-size:12px;
-      line-height:1.25;
-      font-weight:680;
-    }
-
-    .question-row small {
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:10.5px;
-      line-height:1.34;
-    }
-
-    .tag {
-      display:inline-flex;
-      justify-content:center;
-      min-width:78px;
-      border-radius:999px;
-      padding:6px 8px;
-      font-size:9px;
-      font-weight:760;
-      background:rgba(96,165,250,.14);
-      color:var(--info);
-    }
-
-    .tag.high { background:rgba(50,213,131,.14); color:var(--success); }
-    .tag.medium { background:rgba(253,176,34,.14); color:var(--warning); }
-    .tag.risk { background:rgba(249,112,102,.14); color:var(--danger); }
-
-    .sentiment-bars {
-      display:grid;
-      gap:12px;
-    }
-
-    .sentiment-row {
-      display:grid;
-      gap:7px;
-    }
-
-    .sentiment-head {
-      display:flex;
-      justify-content:space-between;
-      color:var(--softText);
-      font-size:12px;
-      font-weight:620;
-    }
-
-    .bar {
-      height:9px;
-      border-radius:999px;
-      background:rgba(255,255,255,.08);
-      overflow:hidden;
-    }
-
-    .bar span {
-      display:block;
-      width:var(--w,0%);
-      height:100%;
-      border-radius:999px;
-      background:var(--c,var(--gold));
-    }
-
-    .signal-grid {
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:14px;
-    }
-
-    .signal-card {
-      min-height:146px;
-      gap:11px;
-      align-content:start;
-    }
-
-    .signal-top {
-      display:flex;
-      align-items:center;
-      gap:12px;
-    }
-
-    .signal-icon {
-      width:36px;
-      height:36px;
-      display:grid;
-      place-items:center;
-      flex:0 0 36px;
-      border-radius:14px;
-      background:rgba(215,181,109,.13);
-      color:var(--gold);
-      font-size:16px;
-      font-weight:800;
-    }
-
-    .signal-card h3 {
-      margin:5px 0 0;
-      font-size:15px;
-      line-height:1.18;
-      font-weight:720;
-      letter-spacing:-.025em;
-    }
-
-    .signal-card p {
-      margin:0;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.48;
-    }
-
-    .action-card {
-      grid-template-columns:220px minmax(0,1fr);
-      align-items:center;
-      border-color:rgba(215,181,109,.40);
-      background:
-        linear-gradient(90deg,rgba(215,181,109,.12),rgba(13,27,46,.76)),
-        rgba(13,27,46,.94);
-    }
-
-    .recommended {
-      display:inline-flex;
-      width:fit-content;
-      border-radius:999px;
-      padding:6px 10px;
-      background:var(--goldSoft);
-      color:var(--gold);
-      font-size:10px;
-      font-weight:780;
-      letter-spacing:.09em;
-      text-transform:uppercase;
-    }
-
-    .action-card h3 {
-      margin:9px 0 0;
-      font-size:18px;
-      line-height:1;
-      letter-spacing:-.025em;
-      font-weight:720;
-    }
-
-    .action-card p {
-      margin:0;
-      color:rgba(245,247,250,.86);
-      font-size:14px;
-      line-height:1.50;
-      font-weight:430;
-    }
-
-    .print-button {
-      position:fixed;
-      right:20px;
-      bottom:20px;
-      z-index:20;
-      border:1px solid rgba(215,181,109,.42);
-      border-radius:999px;
-      padding:12px 16px;
-      background:rgba(13,27,46,.92);
-      color:var(--gold);
-      font:760 13px var(--font);
-      cursor:pointer;
-      box-shadow:0 14px 40px rgba(0,0,0,.30);
-    }
-
-    @media (max-width:1020px) {
-      .top-grid,
-      .main-grid,
-      .action-card { grid-template-columns:1fr; }
-      .signal-grid { grid-template-columns:1fr; }
-    }
-
-    @media (max-width:860px) {
-      .shell { padding:14px; place-items:start center; }
-      .dashboard { padding:18px; border-radius:22px; }
-      .header { grid-template-columns:1fr; }
-      .intent-grid { grid-template-columns:1fr; }
-    }
-
-    @media (max-width:560px) {
-      .score-wrap { grid-template-columns:1fr; }
-      .question-row { grid-template-columns:34px minmax(0,1fr); }
-      .question-row .tag { grid-column:2; width:fit-content; }
-    }
-
-    @media print {
-      @page { size:landscape; margin:8mm; }
-      body {
-        background:#07111F!important;
-        -webkit-print-color-adjust:exact;
-        print-color-adjust:exact;
-      }
-      .shell { min-height:auto; padding:0; }
-      .dashboard {
-        width:100%;
-        box-shadow:none;
-        border-radius:20px;
-        page-break-inside:avoid;
-        break-inside:avoid;
-      }
-      .print-button { display:none!important; }
-    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:var(--font);color:var(--text);background:
+      radial-gradient(circle at 9% 0%,rgba(215,181,109,.14),transparent 26rem),
+      radial-gradient(circle at 92% 12%,rgba(96,165,250,.11),transparent 25rem),
+      linear-gradient(135deg,#050B15 0%,var(--bg) 58%,#030914 100%)}
+    body{overflow-x:hidden}
+    .shell{min-height:100vh;display:grid;place-items:center;padding:24px}
+    .dashboard{position:relative;width:min(1220px,100%);overflow:hidden;border:1px solid rgba(215,181,109,.26);
+      border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 24%),
+      linear-gradient(145deg,rgba(13,27,46,.95),rgba(7,17,31,.98));box-shadow:0 22px 70px rgba(0,0,0,.36);padding:24px}
+    .dashboard:before{content:"";position:absolute;inset:0;pointer-events:none;background:
+      linear-gradient(rgba(255,255,255,.020) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:58px 58px;
+      mask-image:linear-gradient(to bottom,rgba(0,0,0,.38),transparent 84%)}
+    .glow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(18px);opacity:.65}
+    .glow.gold{width:310px;height:310px;top:-180px;left:-115px;background:rgba(215,181,109,.18)}
+    .glow.blue{width:360px;height:360px;right:-180px;top:110px;background:rgba(96,165,250,.10)}
+    .content{position:relative;z-index:2;display:grid;gap:14px}
+    .header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:start;padding-bottom:2px}
+    .brand{display:grid;grid-template-columns:56px minmax(0,1fr);gap:15px;align-items:center;min-width:0}
+    .mark{width:52px;height:52px;display:grid;place-items:center;border:1px solid rgba(215,181,109,.50);border-radius:17px;
+      background:linear-gradient(145deg,rgba(215,181,109,.20),rgba(255,255,255,.03));color:var(--gold);font-size:25px;font-weight:820;
+      letter-spacing:-.05em;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 26px rgba(215,181,109,.10)}
+    .eyebrow{margin:0 0 4px;color:var(--gold);font-size:11px;line-height:1;font-weight:780;letter-spacing:.16em;text-transform:uppercase}
+    h1{margin:0;font-size:clamp(30px,3.45vw,41px);line-height:1;letter-spacing:-.045em;font-weight:780}
+    .page-pill{display:inline-flex;align-items:center;width:fit-content;border:1px solid rgba(215,181,109,.38);border-radius:999px;padding:8px 12px;
+      background:var(--goldSoft);color:var(--gold);font-size:12px;font-weight:760;white-space:nowrap}
+    .label{color:var(--muted);font-size:10px;line-height:1;font-weight:740;letter-spacing:.14em;text-transform:uppercase}
+    .card{border:1px solid var(--border);border-radius:18px;background:
+      radial-gradient(circle at 88% 0%,rgba(215,181,109,.08),transparent 48%),
+      linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012)),rgba(13,27,46,.92);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+    .top-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:14px}
+    .position-card,.market-card{padding:18px;display:grid;gap:14px;align-content:center}
+    .position-card{border-color:var(--borderGold);background:
+      radial-gradient(circle at 90% 10%,rgba(215,181,109,.13),transparent 38%),
+      linear-gradient(145deg,rgba(16,34,58,.96),rgba(13,27,46,.96))}
+    .position-wrap{display:grid;grid-template-columns:106px minmax(0,1fr);gap:18px;align-items:center}
+    .rank-badge{width:98px;height:98px;display:grid;place-items:center;border-radius:28px;border:1px solid rgba(215,181,109,.40);
+      background:radial-gradient(circle at 28% 22%,rgba(215,181,109,.35),transparent 48%),rgba(215,181,109,.10);
+      color:var(--gold);box-shadow:0 14px 36px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.08)}
+    .rank-badge strong{font-size:34px;line-height:1;font-weight:820;letter-spacing:-.06em}
+    .position-card h2{margin:0;font-size:clamp(21px,2.3vw,29px);line-height:1.10;letter-spacing:-.04em;font-weight:730}
+    .position-card p,.market-card p{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+    .market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .market-mini{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:16px;background:rgba(255,255,255,.03);display:grid;gap:8px;align-content:start}
+    .market-mini strong{font-size:21px;line-height:1;font-weight:740}
+    .market-mini small{color:var(--muted);font-size:11px;line-height:1.38}
+    .main-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:14px}
+    .competitors-card,.promo-card,.theme-card,.insight-card{padding:18px;display:grid;gap:14px;align-content:start}
+    .section-top{display:flex;justify-content:space-between;gap:14px;align-items:center}
+    .section-top b{color:var(--gold);font-size:11px;font-weight:700;white-space:nowrap}
+    .competitor-list{display:grid;gap:9px}
+    .competitor-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.032)}
+    .rank{width:28px;height:28px;display:grid;place-items:center;border-radius:10px;background:var(--goldSoft);color:var(--gold);font-size:12px;font-weight:820}
+    .competitor-row strong{display:block;font-size:12px;line-height:1.25;font-weight:680}
+    .competitor-row small{display:block;margin-top:4px;color:var(--muted);font-size:10.5px;line-height:1.34}
+    .tag{display:inline-flex;justify-content:center;min-width:82px;border-radius:999px;padding:6px 8px;font-size:9px;font-weight:760;background:rgba(96,165,250,.14);color:var(--info)}
+    .tag.high{background:rgba(249,112,102,.14);color:var(--danger)}
+    .tag.medium{background:rgba(253,176,34,.14);color:var(--warning)}
+    .tag.low{background:rgba(50,213,131,.14);color:var(--success)}
+    .activity-bars{display:grid;gap:12px}
+    .activity-row{display:grid;gap:7px}
+    .activity-head{display:flex;justify-content:space-between;color:var(--softText);font-size:12px;font-weight:620}
+    .bar{height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+    .bar span{display:block;width:var(--w,0%);height:100%;border-radius:999px;background:var(--c,var(--gold))}
+    .theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .theme-card{min-height:146px;gap:11px;align-content:start}
+    .theme-top{display:flex;align-items:center;gap:12px}
+    .theme-icon{width:36px;height:36px;display:grid;place-items:center;flex:0 0 36px;border-radius:14px;background:rgba(215,181,109,.13);color:var(--gold);font-size:16px;font-weight:800}
+    .theme-card h3{margin:5px 0 0;font-size:15px;line-height:1.18;font-weight:720;letter-spacing:-.025em}
+    .theme-card p{margin:0;color:var(--muted);font-size:12px;line-height:1.48}
+    .insight-card{grid-template-columns:220px minmax(0,1fr);align-items:center;border-color:rgba(215,181,109,.40);background:
+      linear-gradient(90deg,rgba(215,181,109,.12),rgba(13,27,46,.76)),rgba(13,27,46,.94)}
+    .recommended{display:inline-flex;width:fit-content;border-radius:999px;padding:6px 10px;background:var(--goldSoft);color:var(--gold);font-size:10px;font-weight:780;letter-spacing:.09em;text-transform:uppercase}
+    .insight-card h3{margin:9px 0 0;font-size:18px;line-height:1;letter-spacing:-.025em;font-weight:720}
+    .insight-card p{margin:0;color:rgba(245,247,250,.86);font-size:14px;line-height:1.50;font-weight:430}
+    .print-button{position:fixed;right:20px;bottom:20px;z-index:20;border:1px solid rgba(215,181,109,.42);border-radius:999px;padding:12px 16px;background:rgba(13,27,46,.92);color:var(--gold);font:760 13px var(--font);cursor:pointer;box-shadow:0 14px 40px rgba(0,0,0,.30)}
+    @media(max-width:1020px){.top-grid,.main-grid,.insight-card{grid-template-columns:1fr}.theme-grid{grid-template-columns:1fr}}
+    @media(max-width:860px){.shell{padding:14px;place-items:start center}.dashboard{padding:18px;border-radius:22px}.header{grid-template-columns:1fr}.market-grid{grid-template-columns:1fr}}
+    @media(max-width:560px){.position-wrap{grid-template-columns:1fr}.competitor-row{grid-template-columns:34px minmax(0,1fr)}.competitor-row .tag{grid-column:2;width:fit-content}}
+    @media print{@page{size:landscape;margin:8mm}body{background:#07111F!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.shell{min-height:auto;padding:0}.dashboard{width:100%;box-shadow:none;border-radius:20px;page-break-inside:avoid;break-inside:avoid}.print-button{display:none!important}}
   </style>
 </head>
-
 <body>
   <button class="print-button" onclick="window.print()">Save PDF</button>
-
   <main class="shell">
-    <section class="dashboard" aria-label="Iconic AI CMO Customer Intelligence Page 3">
+    <section class="dashboard" aria-label="Iconic AI CMO Competitor Intelligence Page 4">
       <div class="glow gold" aria-hidden="true"></div>
       <div class="glow blue" aria-hidden="true"></div>
-
       <div class="content">
         <header class="header">
           <div class="brand">
-            <div class="mark" aria-hidden="true">3</div>
+            <div class="mark" aria-hidden="true">4</div>
             <div>
               <p class="eyebrow">ICONIC AI CMO</p>
-              <h1>Customer Intelligence</h1>
+              <h1>Competitor Intelligence</h1>
             </div>
           </div>
-
-          <div class="page-pill">Page 3 · Messages & Customer Signals</div>
+          <div class="page-pill">Page 4 · Market & Competitor Signals</div>
         </header>
 
-        <section class="top-grid" aria-label="Customer intelligence summary">
-          <article class="card score-card">
-            <div class="score-wrap">
-              <div class="big-score"><strong>82</strong></div>
+        <section class="top-grid" aria-label="Market position summary">
+          <article class="card position-card">
+            <div class="position-wrap">
+              <div class="rank-badge"><strong>#1</strong></div>
               <div>
-                <span class="label">Customer Intelligence Score</span>
-                <h2>Strong buying signal. Price questions need better handling.</h2>
-                <p>Customers show interest in consultation, natural results, and booking. Price clarity remains the main objection.</p>
+                <span class="label">Market Position</span>
+                <h2>Iconic is positioned as the premium private consultation choice.</h2>
+                <p>Competitors compete on speed, price clarity, and social proof. Iconic should defend premium trust and privacy.</p>
               </div>
             </div>
           </article>
 
-          <article class="card score-card">
-            <div class="intent-grid">
-              <div class="intent-card">
-                <span class="label">Buying Intent</span>
-                <strong>High</strong>
-                <small>Consultation and booking questions are active.</small>
+          <article class="card market-card">
+            <div class="market-grid">
+              <div class="market-mini">
+                <span class="label">Share of Voice</span>
+                <strong>28%</strong>
+                <small>Estimated visibility among tracked competitors.</small>
               </div>
-
-              <div class="intent-card">
-                <span class="label">Sentiment</span>
-                <strong>Positive</strong>
-                <small>Most messages are interested, not complaints.</small>
+              <div class="market-mini">
+                <span class="label">Promo Pressure</span>
+                <strong>Medium</strong>
+                <small>No extreme discount war detected this week.</small>
               </div>
-
-              <div class="intent-card">
-                <span class="label">Main Objection</span>
-                <strong>Price</strong>
-                <small>Needs a clearer value-based reply.</small>
+              <div class="market-mini">
+                <span class="label">Main Threat</span>
+                <strong>Yalla Hair</strong>
+                <small>Strong visibility, messaging, and social proof.</small>
               </div>
             </div>
           </article>
         </section>
 
-        <section class="main-grid" aria-label="Customer questions and sentiment">
-          <article class="card questions-card">
+        <section class="main-grid" aria-label="Competitor ranking and activity">
+          <article class="card competitors-card">
             <div class="section-top">
-              <span class="label">Top Customer Questions</span>
-              <b>Last 7 days</b>
+              <span class="label">Tracked Competitors</span>
+              <b>Priority ranking</b>
             </div>
-
-            <div class="question-list">
-              <div class="question-row">
+            <div class="competitor-list">
+              <div class="competitor-row">
                 <span class="rank">1</span>
-                <div>
-                  <strong>How much does hair replacement cost?</strong>
-                  <small>Use price range + value + consultation CTA.</small>
-                </div>
-                <span class="tag high">High Intent</span>
+                <div><strong>Yalla Hair</strong><small>Strong direct messaging, reviews, social proof, and city coverage.</small></div>
+                <span class="tag high">High Threat</span>
               </div>
-
-              <div class="question-row">
+              <div class="competitor-row">
                 <span class="rank">2</span>
-                <div>
-                  <strong>Is the result natural and private?</strong>
-                  <small>Reassure privacy, natural look, and consultation.</small>
-                </div>
-                <span class="tag high">Trust Signal</span>
+                <div><strong>Modern Hair Fixing GCC</strong><small>Confidence-focused positioning and regional presence.</small></div>
+                <span class="tag medium">Medium</span>
               </div>
-
-              <div class="question-row">
+              <div class="competitor-row">
                 <span class="rank">3</span>
-                <div>
-                  <strong>Can I book a free consultation?</strong>
-                  <small>Send booking link and confirm branch timing.</small>
-                </div>
-                <span class="tag medium">Booking</span>
+                <div><strong>Vivandi Trichology Center</strong><small>Medical/trichology positioning can attract trust-driven leads.</small></div>
+                <span class="tag medium">Trust Angle</span>
               </div>
-
-              <div class="question-row">
+              <div class="competitor-row">
                 <span class="rank">4</span>
-                <div>
-                  <strong>Dubai or Abu Dhabi branch availability?</strong>
-                  <small>Route to the nearest branch with clear timing.</small>
-                </div>
-                <span class="tag">Branch</span>
+                <div><strong>Magio Hair Experience</strong><small>Luxury and personal-service angle in Abu Dhabi.</small></div>
+                <span class="tag">Niche</span>
               </div>
             </div>
           </article>
 
-          <article class="card sentiment-card">
+          <article class="card promo-card">
             <div class="section-top">
-              <span class="label">Sentiment & Intent Mix</span>
-              <b>Conversation quality</b>
+              <span class="label">Competitor Activity Mix</span>
+              <b>Market signals</b>
             </div>
-
-            <div class="sentiment-bars">
-              <div class="sentiment-row">
-                <div class="sentiment-head"><span>Interested / Warm</span><b>64%</b></div>
-                <div class="bar"><span style="--w:64%;--c:var(--success)"></span></div>
+            <div class="activity-bars">
+              <div class="activity-row">
+                <div class="activity-head"><span>Social Proof / Reels</span><b>72%</b></div>
+                <div class="bar"><span style="--w:72%;--c:var(--info)"></span></div>
               </div>
-
-              <div class="sentiment-row">
-                <div class="sentiment-head"><span>Price Sensitive</span><b>22%</b></div>
-                <div class="bar"><span style="--w:22%;--c:var(--warning)"></span></div>
+              <div class="activity-row">
+                <div class="activity-head"><span>Price / Offer Clarity</span><b>61%</b></div>
+                <div class="bar"><span style="--w:61%;--c:var(--warning)"></span></div>
               </div>
-
-              <div class="sentiment-row">
-                <div class="sentiment-head"><span>Booking Ready</span><b>11%</b></div>
-                <div class="bar"><span style="--w:11%;--c:var(--info)"></span></div>
+              <div class="activity-row">
+                <div class="activity-head"><span>Medical Trust Positioning</span><b>38%</b></div>
+                <div class="bar"><span style="--w:38%;--c:var(--purple)"></span></div>
               </div>
-
-              <div class="sentiment-row">
-                <div class="sentiment-head"><span>Low Quality / Noise</span><b>3%</b></div>
-                <div class="bar"><span style="--w:3%;--c:var(--inactive)"></span></div>
+              <div class="activity-row">
+                <div class="activity-head"><span>Luxury / Privacy Messaging</span><b>31%</b></div>
+                <div class="bar"><span style="--w:31%;--c:var(--gold)"></span></div>
               </div>
             </div>
           </article>
         </section>
 
-        <section class="signal-grid" aria-label="Customer signal cards">
-          <article class="card signal-card">
-            <div class="signal-top">
-              <div class="signal-icon" aria-hidden="true">?</div>
-              <div>
-                <span class="label">Repeated Objection</span>
-                <h3>Price needs stronger framing.</h3>
-              </div>
+        <section class="theme-grid" aria-label="Competitive themes">
+          <article class="card theme-card">
+            <div class="theme-top">
+              <div class="theme-icon" aria-hidden="true">↯</div>
+              <div><span class="label">Attack Theme</span><h3>Instant natural result.</h3></div>
             </div>
-            <p>Connect price to material quality, natural result, privacy, and consultation.</p>
+            <p>Competitors push fast, natural, non-surgical transformation. Iconic must match clarity without losing premium tone.</p>
           </article>
-
-          <article class="card signal-card">
-            <div class="signal-top">
-              <div class="signal-icon" aria-hidden="true">✓</div>
-              <div>
-                <span class="label">Conversion Signal</span>
-                <h3>Booking questions are valuable.</h3>
-              </div>
+          <article class="card theme-card">
+            <div class="theme-top">
+              <div class="theme-icon" aria-hidden="true">%</div>
+              <div><span class="label">Offer Theme</span><h3>Pricing clarity wins attention.</h3></div>
             </div>
-            <p>Customers asking about consultation should receive a direct booking path.</p>
+            <p>Price clarity is a competitive advantage. Iconic should frame price through quality, privacy, and consultation.</p>
           </article>
-
-          <article class="card signal-card">
-            <div class="signal-top">
-              <div class="signal-icon" aria-hidden="true">!</div>
-              <div>
-                <span class="label">Reply Risk</span>
-                <h3>Weak replies can lose warm leads.</h3>
-              </div>
+          <article class="card theme-card">
+            <div class="theme-top">
+              <div class="theme-icon" aria-hidden="true">★</div>
+              <div><span class="label">Defense Theme</span><h3>Privacy is Iconic’s edge.</h3></div>
             </div>
-            <p>Replace short price replies with guided consultation and branch routing.</p>
+            <p>Iconic should own private consultation, natural look, premium handling, and Dubai/Abu Dhabi availability.</p>
           </article>
         </section>
 
-        <section class="card action-card" aria-label="AI customer intelligence recommendation">
+        <section class="card insight-card" aria-label="AI competitor intelligence recommendation">
           <div>
             <span class="recommended">Recommended</span>
-            <h3>AI Reply Action</h3>
+            <h3>AI Counter-Move</h3>
           </div>
-          <p>Update replies to handle price with value, privacy, natural result, and direct consultation CTA.</p>
+          <p>Defend premium positioning with privacy, natural result, and free consultation. Do not enter a discount war unless competitor pressure becomes high.</p>
         </section>
       </div>
     </section>
