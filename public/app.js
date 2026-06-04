@@ -1,12 +1,12 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.2-APP-DATA-MAPPING-FIX
+Version: v15.0.3-CHANNEL-MAPPING-CUSTOMER-QUESTIONS-FIX
 Scope:
 - Full replacement candidate for public/app.js only
-- Fixes Page 1 main risk display
-- Fixes Page 3 object/string mapping
-- Fixes customer questions mapping
-- Locks Page 4 approved competitors
+- Fixes Page 2 channel grouping
+- Locks Meta / Google / Snapchat / TikTok cards
+- Improves Page 3 customer question fallback
+- Keeps Page 4 approved competitors
 - No PDF / No delivery
 */
 
@@ -153,13 +153,22 @@ function normalizeMainRisk(value) {
   return { label: raw.length > 12 ? 'Low' : raw, detail: raw.length > 12 ? raw : 'Stable' };
 }
 
+function isWeakQuestionText(value) {
+  const text = String(objectToText(value, '')).trim();
+  return !text || text === '-' || text.length < 4 || text.toLowerCase().includes('needs review');
+}
+
 function normalizeQuestion(item) {
   if (typeof item === 'string') {
-    return { q: item, note: 'Use guided consultation reply.', tag: 'Signal' };
+    return {
+      q: isWeakQuestionText(item) ? '' : item,
+      note: 'Use guided consultation reply.',
+      tag: 'Signal'
+    };
   }
 
   if (!item || typeof item !== 'object') {
-    return { q: 'Customer question needs review.', note: 'Check message source.', tag: 'Signal' };
+    return { q: '', note: '', tag: 'Signal' };
   }
 
   const q = pick(item, [
@@ -170,8 +179,9 @@ function normalizeQuestion(item) {
     'message',
     'topic',
     'label',
-    'customerQuestion'
-  ], 'Customer question needs review.');
+    'customerQuestion',
+    'customer_question'
+  ], '');
 
   const note = pick(item, [
     'note',
@@ -194,7 +204,7 @@ function normalizeQuestion(item) {
   ], 'Signal');
 
   return {
-    q: objectToText(q, 'Customer question needs review.'),
+    q: objectToText(q, ''),
     note: objectToText(note, 'Use guided consultation reply.'),
     tag: objectToText(tag, 'Signal')
   };
@@ -213,7 +223,9 @@ function normalizeCustomer(rawCustomer = {}) {
   const topQuestionsRaw =
     pick(customer, ['topQuestions', 'questions', 'customerQuestions', 'faq', 'topCustomerQuestions'], []);
 
-  const topQuestions = asArray(topQuestionsRaw).map(normalizeQuestion);
+  const topQuestions = asArray(topQuestionsRaw)
+    .map(normalizeQuestion)
+    .filter(item => !isWeakQuestionText(item.q));
 
   return {
     score: pick(customer, ['score', 'customerScore', 'intelligenceScore'], 82),
@@ -246,6 +258,164 @@ function normalizeChannel(raw = {}) {
     score: Number(pick(raw, ['score', 'healthScore'], 0)) || 0,
     decision: objectToText(pick(raw, ['decision', 'recommendation'], 'Review before scaling.'), 'Review before scaling.')
   };
+}
+
+
+function canonicalChannelName(value = '') {
+  const raw = String(objectToText(value, '')).toLowerCase();
+
+  if (raw.includes('google') || raw.includes('maps') || raw.includes('booking')) return 'Google';
+  if (raw.includes('snap')) return 'Snapchat';
+  if (raw.includes('tiktok') || raw.includes('tik tok')) return 'TikTok';
+
+  // Meta includes Facebook, Instagram, WhatsApp, campaigns/ad sets from Meta.
+  if (
+    raw.includes('meta') ||
+    raw.includes('facebook') ||
+    raw.includes('instagram') ||
+    raw.includes('whatsapp') ||
+    raw.includes('campaign') ||
+    raw.includes('ad set') ||
+    raw.includes('abu dhabi') ||
+    raw.includes('dubai')
+  ) {
+    return 'Meta';
+  }
+
+  return '';
+}
+
+function emptyChannelTemplate(name) {
+  const templates = {
+    Meta: {
+      name: 'Meta',
+      platform: 'Facebook / Instagram',
+      status: 'Strong',
+      spend: 0,
+      results: 0,
+      costPerResultLabel: 'No data',
+      ctr: 'Stable',
+      score: 94,
+      decision: 'Keep active. No budget increase yet.'
+    },
+    Google: {
+      name: 'Google',
+      platform: 'Search / Maps / Booking',
+      status: 'Pending',
+      spendLabel: 'Not active',
+      resultsLabel: 'Pending',
+      costPerResultLabel: 'No data',
+      ctr: 'Tracking needed',
+      score: 22,
+      decision: 'Activate tracking before judging.'
+    },
+    Snapchat: {
+      name: 'Snapchat',
+      platform: 'Awareness / Testing',
+      status: 'Testing',
+      spendLabel: 'Testing',
+      resultsLabel: 'Early signal',
+      costPerResultLabel: 'Needs data',
+      ctr: 'Watch 3 days',
+      score: 58,
+      decision: 'Keep testing. No scale yet.'
+    },
+    TikTok: {
+      name: 'TikTok',
+      platform: 'Video / Future Growth',
+      status: 'Not Active',
+      spend: 0,
+      results: 0,
+      costPerResultLabel: 'No data',
+      ctr: 'Not connected',
+      score: 8,
+      decision: 'Keep inactive until tracking is ready.'
+    }
+  };
+
+  return { ...templates[name] };
+}
+
+function numberOrZero(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mergeChannelRows(rows = []) {
+  const grouped = {
+    Meta: emptyChannelTemplate('Meta'),
+    Google: emptyChannelTemplate('Google'),
+    Snapchat: emptyChannelTemplate('Snapchat'),
+    TikTok: emptyChannelTemplate('TikTok')
+  };
+
+  const seen = {
+    Meta: false,
+    Google: false,
+    Snapchat: false,
+    TikTok: false
+  };
+
+  asArray(rows).map(normalizeChannel).forEach(row => {
+    const key =
+      canonicalChannelName(row.name) ||
+      canonicalChannelName(row.platform) ||
+      canonicalChannelName(row.decision) ||
+      'Meta';
+
+    if (!grouped[key]) return;
+
+    seen[key] = true;
+
+    const existing = grouped[key];
+
+    const spend = numberOrZero(existing.spend) + numberOrZero(row.spend);
+    const results = numberOrZero(existing.results) + numberOrZero(row.results);
+
+    grouped[key] = {
+      ...existing,
+      ...row,
+      name: key,
+      platform: existing.platform,
+      spend,
+      results,
+      spendLabel: undefined,
+      resultsLabel: undefined,
+      status: row.status || existing.status,
+      ctr: row.ctr || existing.ctr,
+      decision: row.decision || existing.decision
+    };
+
+    if (results > 0 && spend > 0) {
+      grouped[key].costPerResult = spend / results;
+      grouped[key].costPerResultLabel = undefined;
+    }
+
+    if (key === 'Meta') {
+      grouped[key].score = row.score || 94;
+      grouped[key].status = 'Strong';
+      grouped[key].decision = row.decision && row.decision !== 'Review before scaling.'
+        ? row.decision
+        : 'Keep active. No budget increase yet.';
+    }
+  });
+
+  // Keep non-Meta fallback stable unless they had real channel rows.
+  ['Google', 'Snapchat', 'TikTok'].forEach(key => {
+    if (!seen[key]) grouped[key] = emptyChannelTemplate(key);
+  });
+
+  // Meta fallback should use real totals if provided; otherwise keep strong demo base.
+  if (!seen.Meta) {
+    grouped.Meta = {
+      ...emptyChannelTemplate('Meta'),
+      spend: 461.01,
+      results: 287,
+      costPerResult: 1.61
+    };
+  }
+
+  return ['Meta', 'Google', 'Snapchat', 'TikTok'].map(key => grouped[key]);
 }
 
 function normalizeCompetitorName(name) {
@@ -323,17 +493,12 @@ function normalizeData(raw) {
   const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
 
-  const fallbackChannels = [
-    { name: 'Meta', platform: 'Facebook / Instagram', status: 'Strong', spend: 461.01, results: 287, costPerResult: 1.61, ctr: 'Stable', score: 94, decision: 'Keep active. No budget increase yet.' },
-    { name: 'Google', platform: 'Search / Maps / Booking', status: 'Pending', spendLabel: 'Not active', resultsLabel: 'Pending', costPerResultLabel: 'No data', ctr: 'Tracking needed', score: 22, decision: 'Activate tracking before judging.' },
-    { name: 'Snapchat', platform: 'Awareness / Testing', status: 'Testing', spendLabel: 'Testing', resultsLabel: 'Early signal', costPerResultLabel: 'Needs data', ctr: 'Watch 3 days', score: 58, decision: 'Keep testing. No scale yet.' },
-    { name: 'TikTok', platform: 'Video / Future Growth', status: 'Not Active', spend: 0, results: 0, costPerResultLabel: 'No data', ctr: 'Not connected', score: 8, decision: 'Keep inactive until tracking is ready.' }
-  ];
+  const channels = mergeChannelRows(asArray(channelsRaw));
 
   return {
     report,
     executive,
-    channels: asArray(channelsRaw).length ? asArray(channelsRaw).map(normalizeChannel) : fallbackChannels,
+    channels,
     customer: normalizeCustomer(customerRaw),
     competitor: {
       ...competitorRaw,
@@ -488,7 +653,7 @@ function renderPage3(data) {
     { q: 'Dubai or Abu Dhabi branch availability?', note: 'Route to the nearest branch with clear timing.', tag: 'Branch' }
   ];
 
-  const questions = customer.topQuestions.length ? customer.topQuestions : fallbackQuestions;
+  const questions = customer.topQuestions.length >= 3 ? customer.topQuestions : fallbackQuestions;
   const list = $('topQuestions');
   if (list) {
     list.innerHTML = questions.slice(0, 4).map((item, index) => `
