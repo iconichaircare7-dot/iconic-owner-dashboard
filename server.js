@@ -1,3 +1,8 @@
+const path = require('path');
+
+process.env.PUPPETEER_CACHE_DIR =
+  process.env.PUPPETEER_CACHE_DIR || path.join(__dirname, '.cache', 'puppeteer');
+
 const express = require('express');
 const puppeteer = require('puppeteer');
 
@@ -178,7 +183,7 @@ app.get('/api/report-pdf', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_1.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_2.pdf"',
       'Cache-Control': 'no-store'
     });
 
@@ -187,7 +192,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.1-pdf-endpoint'
+      version: 'v15.1.2-chrome-install-fix'
     });
   } finally {
     if (browser) {
@@ -199,7 +204,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.1-pdf-endpoint'
+  version: 'v15.1.2-chrome-install-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
