@@ -1,6 +1,6 @@
 <!--
 Iconic AI CMO — Page 4 Standalone Prototype
-Version: v14.6.5-PAGE4-FINAL-RADAR-POLISH-ICONIC-REAL-LOGO
+Version: v14.6.6-PAGE4-FINAL-LOGO-FIT
 Scope:
 - Page 4 only
 - Standalone HTML/CSS
@@ -290,11 +290,11 @@ Scope:
       left:50%;
       top:50%;
       transform:translate(-50%,-50%);
-      width:122px;
-      height:92px;
+      width:150px;
+      height:90px;
       display:grid;
       place-items:center;
-      gap:6px;
+      gap:4px;
       border-radius:30px;
       border:1px solid rgba(215,181,109,.46);
       background:rgba(215,181,109,.10);
@@ -304,14 +304,20 @@ Scope:
     }
 
     .center-node .logo-iconic {
-      width:96px;
-      height:42px;
-      border-radius:16px;
+      width:126px;
+      height:45px;
+      border-radius:14px;
+      padding:3px;
+    }
+
+    .center-node .logo-iconic img {
+      object-fit:contain;
+      transform:scale(.94);
     }
 
     .center-node strong {
       color:var(--gold);
-      font-size:12px;
+      font-size:11px;
       font-weight:820;
       line-height:1.05;
     }
@@ -356,8 +362,8 @@ Scope:
     }
 
     .orbit-yalla { right:20px; top:21px; }
-    .orbit-advanced { left:22px; bottom:24px; }
-    .orbit-modern { right:22px; bottom:24px; }
+    .orbit-advanced { left:22px; bottom:34px; }
+    .orbit-modern { right:22px; bottom:34px; }
 
     .orbit-yalla .orbit-card { border-color:rgba(249,112,102,.32); }
     .orbit-advanced .orbit-card { border-color:rgba(253,176,34,.28); }
@@ -368,25 +374,25 @@ Scope:
       left:14px;
       top:14px;
       display:grid;
-      gap:4px;
-      padding:8px 10px;
-      border-radius:14px;
-      background:rgba(13,27,46,.70);
-      border:1px solid rgba(215,181,109,.18);
-      max-width:132px;
+      gap:3px;
+      padding:7px 9px;
+      border-radius:13px;
+      background:rgba(13,27,46,.62);
+      border:1px solid rgba(215,181,109,.16);
+      max-width:118px;
       z-index:5;
     }
 
     .radar-mini-insight strong {
-      font-size:10px;
+      font-size:9px;
       color:var(--gold);
-      line-height:1.2;
+      line-height:1.15;
     }
 
     .radar-mini-insight small {
-      font-size:8.5px;
+      font-size:7.8px;
       color:var(--muted);
-      line-height:1.25;
+      line-height:1.22;
     }
 
     .competitor-stack {
