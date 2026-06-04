@@ -1,6 +1,6 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.1-CLEAN-DYNAMIC-WEB-REPORT-BASE
+Version: v15.0.3.1-SAFE-WIDTH-GUARD
 Scope:
 - Full replacement candidate for public/style.css
 - Dynamic Web Report only
@@ -1368,5 +1368,71 @@ body { overflow-x:hidden; }
   .question-row .tag {
     grid-column:2;
     width:fit-content;
+  }
+}
+
+
+/* v15.0.3.1 Safe Width Guard
+   Purpose:
+   - Prevent horizontal crop on smaller screens
+   - Do not change Page 5 layout
+   - Do not change visual design
+*/
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-topbar,
+.report-shell {
+  max-width: 1220px;
+  width: 100%;
+}
+
+.report-page {
+  max-width: 100%;
+  width: 100%;
+}
+
+.page-content,
+.page-header,
+.brand-lockup,
+.card,
+.top-summary,
+channels-grid,
+.customer-top,
+.customer-main,
+.war-room,
+.strategy-grid,
+.decision-board,
+.timeline-grid,
+.risk-grid,
+.closing-card {
+  min-width: 0;
+}
+
+.page-pill {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+@media (max-width: 1220px) {
+  .app-topbar,
+  .report-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .report-page {
+    border-left-width: 1px;
+    border-right-width: 1px;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-pill {
+    white-space: normal;
   }
 }
