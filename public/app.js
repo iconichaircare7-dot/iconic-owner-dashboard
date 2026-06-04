@@ -1,11 +1,11 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.3-CHANNEL-MAPPING-CUSTOMER-QUESTIONS-FIX
+Version: v15.0.4-REAL-MULTI-CHANNEL-API-MAPPING-FIX
 Scope:
 - Full replacement candidate for public/app.js only
-- Fixes Page 2 channel grouping
-- Locks Meta / Google / Snapchat / TikTok cards
-- Improves Page 3 customer question fallback
+- Reads real keyed channels object from API
+- Maps channels.meta / google / snapchat / tiktok correctly
+- Displays real spend / results / cost per result per channel
 - Keeps Page 4 approved competitors
 - No PDF / No delivery
 */
@@ -336,6 +336,109 @@ function emptyChannelTemplate(name) {
   return { ...templates[name] };
 }
 
+
+function channelRowsFromApi(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const keyMap = {
+    meta: 'Meta',
+    facebook: 'Meta',
+    instagram: 'Meta',
+    whatsapp: 'Meta',
+    google: 'Google',
+    snapchat: 'Snapchat',
+    snap: 'Snapchat',
+    tiktok: 'TikTok',
+    tikTok: 'TikTok',
+    tik_tok: 'TikTok'
+  };
+
+  return Object.entries(value)
+    .map(([key, row]) => {
+      if (!row || typeof row !== 'object') return null;
+
+      const canonicalName =
+        keyMap[String(key).trim()] ||
+        canonicalChannelName(key) ||
+        canonicalChannelName(row.name || row.channel || row.platformName) ||
+        String(key);
+
+      return {
+        ...row,
+        name: canonicalName,
+        channel: canonicalName
+      };
+    })
+    .filter(Boolean);
+}
+
+function scoreFromRealChannel(name, row) {
+  const key = canonicalChannelName(name);
+  const spend = numberOrZero(row.spend);
+  const results = numberOrZero(row.results);
+  const cpr = numberOrZero(row.costPerResult || row.cost_per_result || row.cpr);
+  const status = String(row.status || '').toLowerCase();
+
+  if (key === 'Meta') {
+    if (results > 0 && cpr > 0 && cpr <= 2) return 94;
+    if (results > 0) return 82;
+    return 70;
+  }
+
+  if (key === 'Google') {
+    if (status.includes('watch')) return 58;
+    if (results > 0) return 52;
+    return 22;
+  }
+
+  if (key === 'Snapchat') {
+    if (status.includes('traffic')) return 58;
+    if (results > 0) return 55;
+    return 30;
+  }
+
+  if (key === 'TikTok') {
+    if (status.includes('strong')) return 68;
+    if (results > 0) return 58;
+    return 8;
+  }
+
+  return 0;
+}
+
+function statusFromApi(name, row, fallbackStatus) {
+  const raw = objectToText(row.status, fallbackStatus);
+  const lower = String(raw).toLowerCase();
+
+  if (lower.includes('main engine')) return 'Strong';
+  if (lower.includes('strong')) return 'Strong';
+  if (lower.includes('watch')) return 'Watch';
+  if (lower.includes('traffic')) return 'Traffic';
+  if (lower.includes('testing')) return 'Testing';
+  if (lower.includes('pending')) return 'Pending';
+  if (lower.includes('not')) return 'Not Active';
+
+  return raw || fallbackStatus;
+}
+
+function decisionFromApi(name, row) {
+  const apiDecision = objectToText(row.decision || row.recommendation, '');
+  if (apiDecision) return apiDecision;
+
+  const key = canonicalChannelName(name);
+  if (key === 'Meta') return 'Keep active. No budget increase yet.';
+  if (key === 'Google') return 'Watch. Improve tracking before scaling.';
+  if (key === 'Snapchat') return 'Traffic driver. Monitor lead quality.';
+  if (key === 'TikTok') return 'Good traffic signal. Keep under observation.';
+  return 'Review before scaling.';
+}
+
 function numberOrZero(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -356,7 +459,7 @@ function mergeChannelRows(rows = []) {
     TikTok: false
   };
 
-  asArray(rows).map(normalizeChannel).forEach(row => {
+  channelRowsFromApi(rows).map(normalizeChannel).forEach(row => {
     const key =
       canonicalChannelName(row.name) ||
       canonicalChannelName(row.platform) ||
@@ -372,6 +475,15 @@ function mergeChannelRows(rows = []) {
     const spend = numberOrZero(existing.spend) + numberOrZero(row.spend);
     const results = numberOrZero(existing.results) + numberOrZero(row.results);
 
+    const realCost =
+      row.costPerResult !== undefined && row.costPerResult !== null
+        ? numberOrZero(row.costPerResult)
+        : row.costPerResultLabel !== undefined
+          ? 0
+          : spend > 0 && results > 0
+            ? spend / results
+            : 0;
+
     grouped[key] = {
       ...existing,
       ...row,
@@ -381,31 +493,27 @@ function mergeChannelRows(rows = []) {
       results,
       spendLabel: undefined,
       resultsLabel: undefined,
-      status: row.status || existing.status,
+      status: statusFromApi(key, row, existing.status),
       ctr: row.ctr || existing.ctr,
-      decision: row.decision || existing.decision
+      score: row.score || scoreFromRealChannel(key, row),
+      decision: decisionFromApi(key, row)
     };
 
-    if (results > 0 && spend > 0) {
+    if (realCost > 0) {
+      grouped[key].costPerResult = realCost;
+      grouped[key].costPerResultLabel = undefined;
+    } else if (spend > 0 && results > 0) {
       grouped[key].costPerResult = spend / results;
       grouped[key].costPerResultLabel = undefined;
     }
-
-    if (key === 'Meta') {
-      grouped[key].score = row.score || 94;
-      grouped[key].status = 'Strong';
-      grouped[key].decision = row.decision && row.decision !== 'Review before scaling.'
-        ? row.decision
-        : 'Keep active. No budget increase yet.';
-    }
   });
 
-  // Keep non-Meta fallback stable unless they had real channel rows.
+  // Keep fallback only for channels missing from API.
   ['Google', 'Snapchat', 'TikTok'].forEach(key => {
     if (!seen[key]) grouped[key] = emptyChannelTemplate(key);
   });
 
-  // Meta fallback should use real totals if provided; otherwise keep strong demo base.
+  // Meta fallback only if API has no Meta data at all.
   if (!seen.Meta) {
     grouped.Meta = {
       ...emptyChannelTemplate('Meta'),
@@ -493,7 +601,7 @@ function normalizeData(raw) {
   const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
 
-  const channels = mergeChannelRows(asArray(channelsRaw));
+  const channels = mergeChannelRows(channelsRaw);
 
   return {
     report,
@@ -813,7 +921,9 @@ function renderRules(id, items, icon) {
 
 function statusToClass(status = '') {
   const s = String(status).toLowerCase();
-  if (s.includes('strong') || s.includes('active')) return 'strong';
+  if (s.includes('strong') || s.includes('main engine') || s.includes('active')) return 'strong';
+  if (s.includes('traffic')) return 'testing';
+  if (s.includes('watch')) return 'pending';
   if (s.includes('test')) return 'testing';
   if (s.includes('pending')) return 'pending';
   if (s.includes('not') || s.includes('inactive')) return 'inactive';
