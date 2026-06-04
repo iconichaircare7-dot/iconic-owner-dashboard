@@ -1,9 +1,9 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.4-REAL-MULTI-CHANNEL-API-MAPPING-FIX
+Version: v15.0.5-PREFER-REAL-KEYED-CHANNELS
 Scope:
 - Full replacement candidate for public/app.js only
-- Reads real keyed channels object from API
+- Prioritizes data.channels keyed object over channelsSummary
 - Maps channels.meta / google / snapchat / tiktok correctly
 - Displays real spend / results / cost per result per channel
 - Keeps Page 4 approved competitors
@@ -596,7 +596,7 @@ function normalizeData(raw) {
   const data = raw || {};
   const report = data.report || data.reportContext || {};
   const executive = data.executive || data.executiveSnapshot || {};
-  const channelsRaw = data.channelsSummary || data.channels || data.channelSummary || [];
+  const channelsRaw = data.channels || data.channelsSummary || data.channelSummary || [];
   const customerRaw = data.customerIntelligence || {};
   const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
