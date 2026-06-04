@@ -226,7 +226,7 @@ app.get('/api/report-pdf', async (req, res) => {
       `
     });
 
-    const pdfBuffer = await page.pdf({
+    const pdfData = await page.pdf({
       width: '1280px',
       height: '1800px',
       printBackground: true,
@@ -239,18 +239,22 @@ app.get('/api/report-pdf', async (req, res) => {
       }
     });
 
+    const pdfBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+
+    res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_5.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_6.pdf"',
+      'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-store'
     });
 
-    return res.send(pdfBuffer);
+    return res.end(pdfBuffer);
   } catch (error) {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.5-sparticuz-executable-path-fix'
+      version: 'v15.1.6-pdf-buffer-fix'
     });
   } finally {
     if (browser) {
@@ -262,7 +266,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.5-sparticuz-executable-path-fix'
+  version: 'v15.1.6-pdf-buffer-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
