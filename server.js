@@ -2,7 +2,6 @@ const fs = require('fs');
 const express = require('express');
 const chromiumModule = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
-const { PDFDocument } = require('pdf-lib');
 
 const chromium = chromiumModule.default || chromiumModule.chromium || chromiumModule;
 
@@ -12,15 +11,7 @@ const OWNER_DASHBOARD_USER = process.env.OWNER_DASHBOARD_USER || 'admin';
 const OWNER_DASHBOARD_PASS = process.env.OWNER_DASHBOARD_PASS || 'change-me';
 const OWNER_DATA_API_URL = process.env.OWNER_DATA_API_URL || '';
 
-const SNAPSHOT_WIDTH = 1280;
-const SNAPSHOT_HEIGHT = 950;
-const PAGE_SELECTOR = '.report-page';
-
 app.set('trust proxy', true);
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 function basicAuth(req, res, next) {
   const header = req.headers.authorization || '';
@@ -109,63 +100,19 @@ function chromiumHeadlessValue() {
   return 'new';
 }
 
-async function launchSnapshotBrowser() {
+async function launchPdfBrowser() {
   const executablePath = await resolveChromiumExecutablePath();
 
   return puppeteer.launch({
     args: chromiumArgs(),
     defaultViewport: {
-      width: SNAPSHOT_WIDTH,
-      height: SNAPSHOT_HEIGHT,
-      deviceScaleFactor: 2
+      width: 1280,
+      height: 1800,
+      deviceScaleFactor: 1
     },
     executablePath,
     headless: chromiumHeadlessValue()
   });
-}
-
-async function screenshotPagesToPdf(page) {
-  const pageHandles = await page.$$(PAGE_SELECTOR);
-
-  if (!pageHandles.length) {
-    throw new Error(`No report pages found with selector ${PAGE_SELECTOR}`);
-  }
-
-  const pdfDoc = await PDFDocument.create();
-
-  for (let index = 0; index < pageHandles.length; index += 1) {
-    const handle = pageHandles[index];
-
-    await handle.evaluate(el => {
-      el.scrollIntoView({ block: 'start', inline: 'nearest' });
-    });
-
-    await sleep(250);
-
-    const box = await handle.boundingBox();
-
-    if (!box || box.width <= 0 || box.height <= 0) {
-      throw new Error(`Could not measure report page ${index + 1}`);
-    }
-
-    const imageBuffer = await handle.screenshot({
-      type: 'png',
-      omitBackground: false
-    });
-
-    const pngImage = await pdfDoc.embedPng(imageBuffer);
-
-    const pdfPage = pdfDoc.addPage([pngImage.width, pngImage.height]);
-
-    pdfPage.drawImage(pngImage, {
-      x: 0,
-      y: 0,
-      width: pngImage.width,
-      height: pngImage.height
-    });
-  }
-
-  return Buffer.from(await pdfDoc.save());
 }
 
 app.use(basicAuth);
@@ -197,7 +144,7 @@ app.get('/api/report-pdf', async (req, res) => {
     const baseUrl = getBaseUrl(req);
     const reportUrl = `${baseUrl}/?snapshot=pdf`;
 
-    browser = await launchSnapshotBrowser();
+    browser = await launchPdfBrowser();
     const page = await browser.newPage();
 
     await page.setExtraHTTPHeaders({
@@ -205,9 +152,9 @@ app.get('/api/report-pdf', async (req, res) => {
     });
 
     await page.setViewport({
-      width: SNAPSHOT_WIDTH,
-      height: SNAPSHOT_HEIGHT,
-      deviceScaleFactor: 2
+      width: 1280,
+      height: 1800,
+      deviceScaleFactor: 1
     });
 
     await page.goto(reportUrl, {
@@ -216,26 +163,26 @@ app.get('/api/report-pdf', async (req, res) => {
     });
 
     await page.waitForFunction(() => {
-      const reportPages = document.querySelectorAll('.report-page');
       const cards = document.querySelectorAll('#channelCards .channel-card');
       const text = document.body ? document.body.innerText : '';
-      return reportPages.length >= 5 &&
-        cards.length >= 4 &&
-        text.includes('Meta') &&
-        text.includes('Google') &&
-        text.includes('Snapchat') &&
-        text.includes('TikTok');
+      return cards.length >= 4 && text.includes('Meta') && text.includes('Google') && text.includes('Snapchat') && text.includes('TikTok');
     }, { timeout: 45000 });
 
     await page.addStyleTag({
       content: `
+        @page {
+          size: 1280px 1800px;
+          margin: 0;
+        }
+
         html,
         body {
+          width: 1280px !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #07111F !important;
-          -webkit-font-smoothing: antialiased !important;
-          text-rendering: geometricPrecision !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
 
         .app-topbar {
@@ -246,29 +193,58 @@ app.get('/api/report-pdf', async (req, res) => {
           width: 1220px !important;
           max-width: none !important;
           margin: 0 auto !important;
-          padding: 16px 0 24px !important;
-          display: grid !important;
-          gap: 18px !important;
+          padding: 24px 0 !important;
+          gap: 0 !important;
+          display: block !important;
         }
 
         .report-page {
           width: 1220px !important;
           max-width: none !important;
+          min-height: auto !important;
           margin: 0 auto !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
           box-shadow: none !important;
-          transform: none !important;
+        }
+
+        .report-page + .report-page {
+          margin-top: 0 !important;
+        }
+
+        .report-page:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       `
     });
 
-    await sleep(500);
+    const pdfData = await page.pdf({
+      width: '1280px',
+      height: '1800px',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: {
+        top: '0px',
+        right: '0px',
+        bottom: '0px',
+        left: '0px'
+      }
+    });
 
-    const pdfBuffer = await screenshotPagesToPdf(page);
+    const pdfBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
 
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_9.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_6.pdf"',
       'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-store'
     });
@@ -278,7 +254,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.9-screenshot-pdf-timeout-fix'
+      version: 'v15.1.6-pdf-buffer-fix'
     });
   } finally {
     if (browser) {
@@ -290,7 +266,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.9-screenshot-pdf-timeout-fix'
+  version: 'v15.1.6-pdf-buffer-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
