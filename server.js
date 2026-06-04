@@ -12,10 +12,9 @@ const OWNER_DASHBOARD_PASS = process.env.OWNER_DASHBOARD_PASS || 'change-me';
 const OWNER_DATA_API_URL = process.env.OWNER_DATA_API_URL || '';
 
 const PDF_WIDTH = 1280;
+const PDF_HEIGHT = 1800;
 const REPORT_WIDTH = 1220;
-const MIN_SAFE_PDF_HEIGHT = 1400;
-const MAX_SAFE_PDF_HEIGHT = 1800;
-const PAGE_EXTRA_PADDING = 120;
+const PAGE_SELECTOR = '.report-page';
 
 app.set('trust proxy', true);
 
@@ -106,10 +105,6 @@ function chromiumHeadlessValue() {
   return 'new';
 }
 
-function clampNumber(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
 async function launchPdfBrowser() {
   const executablePath = await resolveChromiumExecutablePath();
 
@@ -117,12 +112,160 @@ async function launchPdfBrowser() {
     args: chromiumArgs(),
     defaultViewport: {
       width: PDF_WIDTH,
-      height: MAX_SAFE_PDF_HEIGHT,
+      height: PDF_HEIGHT,
       deviceScaleFactor: 1
     },
     executablePath,
     headless: chromiumHeadlessValue()
   });
+}
+
+function clampPageNumber(value) {
+  const parsed = Number.parseInt(String(value || '1'), 10);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(5, parsed));
+}
+
+async function prepareReportPage(page, reportUrl) {
+  await page.setExtraHTTPHeaders({
+    Authorization: authHeaderValue()
+  });
+
+  await page.setViewport({
+    width: PDF_WIDTH,
+    height: PDF_HEIGHT,
+    deviceScaleFactor: 1
+  });
+
+  await page.goto(reportUrl, {
+    waitUntil: 'networkidle0',
+    timeout: 60000
+  });
+
+  await page.waitForFunction(() => {
+    const reportPages = document.querySelectorAll('.report-page');
+    const cards = document.querySelectorAll('#channelCards .channel-card');
+    const text = document.body ? document.body.innerText : '';
+    return reportPages.length >= 5 &&
+      cards.length >= 4 &&
+      text.includes('Meta') &&
+      text.includes('Google') &&
+      text.includes('Snapchat') &&
+      text.includes('TikTok');
+  }, { timeout: 45000 });
+}
+
+async function renderSinglePagePdf(page, requestedPageNumber) {
+  const safePageNumber = clampPageNumber(requestedPageNumber);
+  const pageIndex = safePageNumber - 1;
+
+  const info = await page.evaluate((selector, index) => {
+    const pages = Array.from(document.querySelectorAll(selector));
+
+    pages.forEach((el, i) => {
+      el.style.display = i === index ? 'block' : 'none';
+    });
+
+    const target = pages[index];
+
+    if (!target) {
+      return {
+        ok: false,
+        count: pages.length,
+        height: 0
+      };
+    }
+
+    target.scrollIntoView({ block: 'start', inline: 'nearest' });
+
+    const rect = target.getBoundingClientRect();
+
+    return {
+      ok: true,
+      count: pages.length,
+      height: Math.ceil(rect.height || target.scrollHeight || 0)
+    };
+  }, PAGE_SELECTOR, pageIndex);
+
+  if (!info.ok) {
+    throw new Error(`Requested page ${safePageNumber} not found. Available pages: ${info.count}`);
+  }
+
+  const calculatedHeight = Math.max(900, Math.min(1800, Number(info.height || 0) + 80));
+
+  await page.addStyleTag({
+    content: `
+      @page {
+        size: ${PDF_WIDTH}px ${calculatedHeight}px;
+        margin: 0;
+      }
+
+      html,
+      body {
+        width: ${PDF_WIDTH}px !important;
+        min-width: ${PDF_WIDTH}px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #07111F !important;
+        -webkit-font-smoothing: antialiased !important;
+        text-rendering: geometricPrecision !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .app-topbar {
+        display: none !important;
+      }
+
+      .report-shell {
+        width: ${REPORT_WIDTH}px !important;
+        max-width: none !important;
+        margin: 0 auto !important;
+        padding: 20px 0 !important;
+        gap: 0 !important;
+        display: block !important;
+      }
+
+      .report-page {
+        width: ${REPORT_WIDTH}px !important;
+        max-width: none !important;
+        margin: 0 auto !important;
+        page-break-after: auto !important;
+        break-after: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    `
+  });
+
+  const pdfData = await page.pdf({
+    width: `${PDF_WIDTH}px`,
+    height: `${calculatedHeight}px`,
+    printBackground: true,
+    preferCSSPageSize: true,
+    margin: {
+      top: '0px',
+      right: '0px',
+      bottom: '0px',
+      left: '0px'
+    }
+  });
+
+  const pdfBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+
+  return {
+    pdfBuffer,
+    pageNumber: safePageNumber,
+    pageHeight: calculatedHeight,
+    availablePages: info.count
+  };
 }
 
 app.use(basicAuth);
@@ -147,6 +290,12 @@ app.get('/api/dashboard-data', async (req, res) => {
   }
 });
 
+/*
+Stable full report endpoint:
+- Kept from v15.1.6 stable base.
+- Produces 5-page PDF using direct page.pdf().
+- This remains the safe full-report fallback.
+*/
 app.get('/api/report-pdf', async (req, res) => {
   let browser;
 
@@ -157,65 +306,21 @@ app.get('/api/report-pdf', async (req, res) => {
     browser = await launchPdfBrowser();
     const page = await browser.newPage();
 
-    await page.setExtraHTTPHeaders({
-      Authorization: authHeaderValue()
-    });
-
-    await page.setViewport({
-      width: PDF_WIDTH,
-      height: MAX_SAFE_PDF_HEIGHT,
-      deviceScaleFactor: 1
-    });
-
-    await page.goto(reportUrl, {
-      waitUntil: 'networkidle0',
-      timeout: 60000
-    });
-
-    await page.waitForFunction(() => {
-      const reportPages = document.querySelectorAll('.report-page');
-      const cards = document.querySelectorAll('#channelCards .channel-card');
-      const text = document.body ? document.body.innerText : '';
-      return reportPages.length >= 5 &&
-        cards.length >= 4 &&
-        text.includes('Meta') &&
-        text.includes('Google') &&
-        text.includes('Snapchat') &&
-        text.includes('TikTok');
-    }, { timeout: 45000 });
-
-    const measured = await page.evaluate(() => {
-      const pages = Array.from(document.querySelectorAll('.report-page'));
-      const heights = pages.map(el => Math.ceil(el.getBoundingClientRect().height || el.scrollHeight || 0));
-      return {
-        count: pages.length,
-        heights,
-        maxHeight: Math.max(...heights, 0)
-      };
-    });
-
-    const calculatedHeight = clampNumber(
-      Number(measured.maxHeight || 0) + PAGE_EXTRA_PADDING,
-      MIN_SAFE_PDF_HEIGHT,
-      MAX_SAFE_PDF_HEIGHT
-    );
+    await prepareReportPage(page, reportUrl);
 
     await page.addStyleTag({
       content: `
         @page {
-          size: ${PDF_WIDTH}px ${calculatedHeight}px;
+          size: ${PDF_WIDTH}px ${PDF_HEIGHT}px;
           margin: 0;
         }
 
         html,
         body {
           width: ${PDF_WIDTH}px !important;
-          min-width: ${PDF_WIDTH}px !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #07111F !important;
-          -webkit-font-smoothing: antialiased !important;
-          text-rendering: geometricPrecision !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
@@ -228,7 +333,7 @@ app.get('/api/report-pdf', async (req, res) => {
           width: ${REPORT_WIDTH}px !important;
           max-width: none !important;
           margin: 0 auto !important;
-          padding: 20px 0 !important;
+          padding: 24px 0 !important;
           gap: 0 !important;
           display: block !important;
         }
@@ -236,13 +341,13 @@ app.get('/api/report-pdf', async (req, res) => {
         .report-page {
           width: ${REPORT_WIDTH}px !important;
           max-width: none !important;
+          min-height: auto !important;
           margin: 0 auto !important;
           page-break-after: always !important;
           break-after: page !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
           box-shadow: none !important;
-          transform: none !important;
         }
 
         .report-page + .report-page {
@@ -263,7 +368,7 @@ app.get('/api/report-pdf', async (req, res) => {
 
     const pdfData = await page.pdf({
       width: `${PDF_WIDTH}px`,
-      height: `${calculatedHeight}px`,
+      height: `${PDF_HEIGHT}px`,
       printBackground: true,
       preferCSSPageSize: true,
       margin: {
@@ -279,11 +384,9 @@ app.get('/api/report-pdf', async (req, res) => {
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_10.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_11_full_stable.pdf"',
       'Content-Length': pdfBuffer.length,
-      'Cache-Control': 'no-store',
-      'X-Iconic-Pdf-Height': String(calculatedHeight),
-      'X-Iconic-Report-Pages': String(measured.count || 0)
+      'Cache-Control': 'no-store'
     });
 
     return res.end(pdfBuffer);
@@ -291,7 +394,56 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.10-safe-print-css-spacing-fix'
+      version: 'v15.1.11-single-page-capture-mode'
+    });
+  } finally {
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+  }
+});
+
+/*
+Single Page Capture Mode:
+Example:
+  /api/report-page-pdf?page=1
+  /api/report-page-pdf?page=2
+Purpose:
+- Test one report page at a time.
+- Helps tune spacing/height without stressing Render or changing frontend.
+*/
+app.get('/api/report-page-pdf', async (req, res) => {
+  let browser;
+
+  try {
+    const requestedPageNumber = clampPageNumber(req.query.page);
+    const baseUrl = getBaseUrl(req);
+    const reportUrl = `${baseUrl}/?snapshot=pdf&page=${requestedPageNumber}`;
+
+    browser = await launchPdfBrowser();
+    const page = await browser.newPage();
+
+    await prepareReportPage(page, reportUrl);
+
+    const result = await renderSinglePagePdf(page, requestedPageNumber);
+
+    res.status(200);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_11_page_${result.pageNumber}.pdf"`,
+      'Content-Length': result.pdfBuffer.length,
+      'Cache-Control': 'no-store',
+      'X-Iconic-Page-Number': String(result.pageNumber),
+      'X-Iconic-Pdf-Height': String(result.pageHeight),
+      'X-Iconic-Available-Pages': String(result.availablePages)
+    });
+
+    return res.end(result.pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message || String(error),
+      version: 'v15.1.11-single-page-capture-mode'
     });
   } finally {
     if (browser) {
@@ -303,7 +455,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.10-safe-print-css-spacing-fix'
+  version: 'v15.1.11-single-page-capture-mode'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
