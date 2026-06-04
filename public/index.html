@@ -1,6 +1,6 @@
 <!--
 Iconic AI CMO — Page 5 Standalone Prototype
-Version: v14.7.0-PAGE5-RECOMMENDATIONS-NEXT-STEPS-STATIC
+Version: v14.7.1-PAGE5-STATIC-POLISH
 Scope:
 - Page 5 only
 - Standalone HTML/CSS
@@ -187,7 +187,7 @@ Scope:
 
     .decision-board {
       display:grid;
-      grid-template-columns:.9fr 1.1fr;
+      grid-template-columns:.84fr 1.16fr;
       gap:14px;
       align-items:stretch;
     }
@@ -196,7 +196,7 @@ Scope:
       padding:20px;
       display:grid;
       align-content:center;
-      gap:16px;
+      gap:15px;
       border-color:var(--borderGold);
       background:
         radial-gradient(circle at 86% 10%,rgba(215,181,109,.13),transparent 34%),
@@ -204,24 +204,27 @@ Scope:
     }
 
     .decision-seal {
-      width:92px;
-      height:92px;
-      display:grid;
-      place-items:center;
-      border-radius:28px;
+      width:fit-content;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
       border:1px solid rgba(215,181,109,.44);
       background:
-        radial-gradient(circle at 30% 20%,rgba(215,181,109,.32),transparent 54%),
+        radial-gradient(circle at 30% 20%,rgba(215,181,109,.28),transparent 54%),
         rgba(215,181,109,.10);
       color:var(--gold);
-      font-size:34px;
-      font-weight:860;
-      box-shadow:0 14px 36px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.08);
+      padding:10px 14px;
+      font-size:13px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-weight:820;
+      box-shadow:0 12px 28px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.08);
     }
 
     .final-decision h2 {
       margin:0;
-      font-size:clamp(24px,2.8vw,34px);
+      font-size:clamp(23px,2.55vw,31px);
       line-height:1.08;
       letter-spacing:-.04em;
       font-weight:740;
@@ -230,7 +233,7 @@ Scope:
     .final-decision p {
       margin:0;
       color:var(--muted);
-      font-size:13px;
+      font-size:12.5px;
       line-height:1.55;
     }
 
@@ -259,7 +262,7 @@ Scope:
       grid-template-columns:36px minmax(0,1fr) auto;
       gap:12px;
       align-items:center;
-      padding:12px;
+      padding:11px 12px;
       border-radius:15px;
       background:rgba(255,255,255,.032);
     }
@@ -325,7 +328,7 @@ Scope:
     }
 
     .timeline-card {
-      min-height:145px;
+      min-height:134px;
       padding:18px;
       display:grid;
       gap:11px;
@@ -556,11 +559,11 @@ Scope:
 
         <section class="decision-board" aria-label="Final decision and priority actions">
           <article class="card final-decision">
-            <div class="decision-seal">GO</div>
+            <div class="decision-seal">HOLD / IMPROVE</div>
             <div>
               <span class="label">Final Weekly Decision</span>
-              <h2>Keep Meta active. Improve proof, replies, and tracking before scaling.</h2>
-              <p>This week is not a scaling week. It is a control-and-improve week: keep the stable engine active, improve customer handling, and prepare cleaner growth signals.</p>
+              <h2>Hold budget. Improve proof, replies, and tracking before scaling.</h2>
+              <p>This is a control-and-improve week: keep the stable Meta engine active, improve customer handling, and prepare cleaner growth signals.</p>
             </div>
           </article>
 
@@ -612,25 +615,25 @@ Scope:
           <article class="card timeline-card">
             <div class="timeline-icon" aria-hidden="true">24h</div>
             <h3>Immediate</h3>
-            <p>Keep campaigns running. Review cost/result and message quality before any budget move.</p>
+            <p>Keep campaigns running. Review cost/result before any budget move.</p>
           </article>
 
           <article class="card timeline-card">
             <div class="timeline-icon" aria-hidden="true">48h</div>
             <h3>Reply Upgrade</h3>
-            <p>Update WhatsApp/Messenger response language for price, privacy, and booking CTA.</p>
+            <p>Update price, privacy, and booking CTA replies.</p>
           </article>
 
           <article class="card timeline-card">
             <div class="timeline-icon" aria-hidden="true">3d</div>
             <h3>Proof Content</h3>
-            <p>Prepare proof-led post or reel angle focused on natural result and private consultation.</p>
+            <p>Prepare proof-led content about natural results and private consultation.</p>
           </article>
 
           <article class="card timeline-card">
             <div class="timeline-icon" aria-hidden="true">7d</div>
             <h3>Next Review</h3>
-            <p>Review Meta performance, competitor pressure, customer questions, and channel readiness.</p>
+            <p>Review Meta, competitors, customer questions, and channel readiness.</p>
           </article>
         </section>
 
