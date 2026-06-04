@@ -1,6 +1,9 @@
+const fs = require('fs');
 const express = require('express');
-const chromium = require('@sparticuz/chromium');
+const chromiumModule = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
+
+const chromium = chromiumModule.default || chromiumModule.chromium || chromiumModule;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,26 +42,76 @@ function authHeaderValue() {
   return `Basic ${token}`;
 }
 
+async function resolveChromiumExecutablePath() {
+  const candidates = [
+    chromium && chromium.executablePath,
+    chromiumModule && chromiumModule.executablePath
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+
+    if (typeof candidate === 'function') {
+      const resolved = await candidate.call(chromium);
+      if (resolved) return resolved;
+    }
+
+    if (typeof candidate === 'string') {
+      return candidate;
+    }
+
+    if (typeof candidate.then === 'function') {
+      const resolved = await candidate;
+      if (resolved) return resolved;
+    }
+  }
+
+  const systemCandidates = [
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium'
+  ];
+
+  const found = systemCandidates.find(filePath => fs.existsSync(filePath));
+  if (found) return found;
+
+  throw new Error(
+    `Chromium executable path not found. chromium keys: ${Object.keys(chromium || {}).join(', ') || 'none'}`
+  );
+}
+
+function chromiumArgs() {
+  const baseArgs = Array.isArray(chromium && chromium.args) ? chromium.args : [];
+
+  return [
+    ...baseArgs,
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--no-first-run',
+    '--no-zygote'
+  ];
+}
+
+function chromiumHeadlessValue() {
+  if (chromium && chromium.headless !== undefined) return chromium.headless;
+  return 'new';
+}
+
 async function launchPdfBrowser() {
-  const executablePath = await chromium.executablePath();
+  const executablePath = await resolveChromiumExecutablePath();
 
   return puppeteer.launch({
-    args: [
-      ...chromium.args,
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-first-run',
-      '--no-zygote'
-    ],
+    args: chromiumArgs(),
     defaultViewport: {
       width: 1280,
       height: 1800,
       deviceScaleFactor: 1
     },
     executablePath,
-    headless: chromium.headless
+    headless: chromiumHeadlessValue()
   });
 }
 
@@ -188,7 +241,7 @@ app.get('/api/report-pdf', async (req, res) => {
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_4.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_5.pdf"',
       'Cache-Control': 'no-store'
     });
 
@@ -197,7 +250,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.4-sparticuz-chromium'
+      version: 'v15.1.5-sparticuz-executable-path-fix'
     });
   } finally {
     if (browser) {
@@ -209,7 +262,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.4-sparticuz-chromium'
+  version: 'v15.1.5-sparticuz-executable-path-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
