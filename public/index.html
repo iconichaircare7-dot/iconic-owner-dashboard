@@ -1,10 +1,11 @@
 <!--
 Iconic AI CMO — Page 4 Standalone Prototype
-Version: v14.6.1-PAGE4-COMPETITOR-RADAR-REDESIGN
+Version: v14.6.2-PAGE4-FINAL-STATIC-POLISH-LOGO-BADGES
 Scope:
 - Page 4 only
 - Standalone HTML/CSS
-- Competitor Radar / War Room layout
+- Competitor Radar / Market War Room layout
+- Logo-style badges for Iconic and tracked competitors
 - Competitors locked:
   1) Advanced Hair Studio
   2) Yalla Hair - Hair Patch Fixing & Hair Replacement Centre
@@ -232,25 +233,68 @@ Scope:
       opacity:.7;
     }
 
+    .logo-badge {
+      display:grid;
+      place-items:center;
+      border-radius:14px;
+      font-weight:860;
+      letter-spacing:-.04em;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 10px 24px rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.08);
+    }
+
+    .logo-iconic {
+      background:
+        radial-gradient(circle at 28% 20%,rgba(215,181,109,.38),transparent 54%),
+        linear-gradient(145deg,rgba(215,181,109,.22),rgba(255,255,255,.03));
+      color:var(--gold);
+      border-color:rgba(215,181,109,.46);
+    }
+
+    .logo-yalla {
+      background:linear-gradient(145deg,rgba(249,112,102,.22),rgba(13,27,46,.92));
+      color:#FFD1CC;
+      border-color:rgba(249,112,102,.34);
+    }
+
+    .logo-advanced {
+      background:linear-gradient(145deg,rgba(253,176,34,.20),rgba(13,27,46,.92));
+      color:#FFD98A;
+      border-color:rgba(253,176,34,.32);
+    }
+
+    .logo-hairstudio {
+      background:linear-gradient(145deg,rgba(96,165,250,.22),rgba(13,27,46,.92));
+      color:#B9D7FF;
+      border-color:rgba(96,165,250,.34);
+    }
+
     .center-node {
       position:absolute;
       left:50%;
       top:50%;
       transform:translate(-50%,-50%);
-      width:90px;
-      height:90px;
+      width:104px;
+      height:104px;
       display:grid;
       place-items:center;
-      border-radius:28px;
+      gap:5px;
+      border-radius:30px;
       border:1px solid rgba(215,181,109,.46);
-      background:rgba(215,181,109,.12);
+      background:rgba(215,181,109,.11);
       box-shadow:0 0 30px rgba(215,181,109,.14), inset 0 1px 0 rgba(255,255,255,.08);
       text-align:center;
     }
 
+    .center-node .logo-badge {
+      width:38px;
+      height:38px;
+      font-size:24px;
+    }
+
     .center-node strong {
       color:var(--gold);
-      font-size:16px;
+      font-size:14px;
       font-weight:820;
       line-height:1.05;
     }
@@ -258,43 +302,41 @@ Scope:
     .competitor-node {
       position:absolute;
       display:grid;
-      gap:3px;
-      min-width:116px;
-      padding:9px 10px;
+      grid-template-columns:30px minmax(0,1fr);
+      gap:8px;
+      align-items:center;
+      min-width:134px;
+      padding:8px 10px;
       border-radius:16px;
-      background:rgba(13,27,46,.88);
+      background:rgba(13,27,46,.90);
       border:1px solid rgba(255,255,255,.09);
       box-shadow:0 10px 26px rgba(0,0,0,.22);
     }
 
+    .competitor-node .logo-badge {
+      width:28px;
+      height:28px;
+      font-size:12px;
+    }
+
     .competitor-node strong {
-      font-size:11px;
-      line-height:1.15;
+      display:block;
+      font-size:10.5px;
+      line-height:1.12;
       font-weight:760;
     }
 
     .competitor-node small {
+      display:block;
+      margin-top:2px;
       color:var(--muted);
-      font-size:9px;
-      line-height:1.18;
+      font-size:8.5px;
+      line-height:1.16;
     }
 
-    .node-high { right:22px; top:32px; border-color:rgba(249,112,102,.35); }
-    .node-medium { left:18px; bottom:32px; border-color:rgba(253,176,34,.30); }
-    .node-watch { right:38px; bottom:28px; border-color:rgba(96,165,250,.30); }
-
-    .threat-dot {
-      width:8px;
-      height:8px;
-      border-radius:50%;
-      display:inline-block;
-      margin-right:5px;
-      background:var(--info);
-    }
-
-    .threat-dot.high { background:var(--danger); }
-    .threat-dot.medium { background:var(--warning); }
-    .threat-dot.watch { background:var(--info); }
+    .node-high { right:20px; top:31px; border-color:rgba(249,112,102,.35); }
+    .node-medium { left:18px; bottom:30px; border-color:rgba(253,176,34,.30); }
+    .node-watch { right:34px; bottom:28px; border-color:rgba(96,165,250,.30); }
 
     .competitor-stack {
       display:grid;
@@ -302,10 +344,10 @@ Scope:
     }
 
     .competitor-card {
-      padding:16px;
+      padding:15px;
       display:grid;
       grid-template-columns:46px minmax(0,1fr);
-      gap:14px;
+      gap:13px;
       align-items:start;
     }
 
@@ -326,26 +368,49 @@ Scope:
     .threat-score.medium { color:var(--warning); background:rgba(253,176,34,.11); border-color:rgba(253,176,34,.24); }
     .threat-score.watch { color:var(--info); background:rgba(96,165,250,.11); border-color:rgba(96,165,250,.24); }
 
+    .competitor-title {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      margin-bottom:6px;
+    }
+
+    .competitor-title .logo-badge {
+      width:30px;
+      height:30px;
+      flex:0 0 30px;
+      font-size:12px;
+    }
+
     .competitor-card h3 {
       margin:0;
-      font-size:16px;
+      font-size:15px;
       line-height:1.1;
       font-weight:740;
       letter-spacing:-.025em;
     }
 
-    .competitor-card p {
-      margin:7px 0 0;
+    .competitor-card h3 small {
+      display:block;
+      margin-top:3px;
       color:var(--muted);
-      font-size:11.5px;
-      line-height:1.42;
+      font-size:10px;
+      font-weight:540;
+      letter-spacing:0;
+    }
+
+    .competitor-card p {
+      margin:0;
+      color:var(--muted);
+      font-size:11.2px;
+      line-height:1.40;
     }
 
     .signal-tags {
       display:flex;
       flex-wrap:wrap;
       gap:6px;
-      margin-top:10px;
+      margin-top:9px;
     }
 
     .tag {
@@ -611,21 +676,34 @@ Scope:
 
             <div class="radar-stage">
               <div class="radar-line" aria-hidden="true"></div>
-              <div class="center-node"><strong>ICONIC</strong></div>
+
+              <div class="center-node">
+                <span class="logo-badge logo-iconic">I</span>
+                <strong>ICONIC</strong>
+              </div>
 
               <div class="competitor-node node-high">
-                <strong><span class="threat-dot high"></span>Yalla Hair</strong>
-                <small>Highest immediate pressure</small>
+                <span class="logo-badge logo-yalla">YH</span>
+                <div>
+                  <strong>Yalla Hair</strong>
+                  <small>Highest pressure</small>
+                </div>
               </div>
 
               <div class="competitor-node node-medium">
-                <strong><span class="threat-dot medium"></span>Advanced Hair Studio</strong>
-                <small>Brand authority / trust</small>
+                <span class="logo-badge logo-advanced">AHS</span>
+                <div>
+                  <strong>Advanced Hair Studio</strong>
+                  <small>Brand authority</small>
+                </div>
               </div>
 
               <div class="competitor-node node-watch">
-                <strong><span class="threat-dot watch"></span>HairStudio Dubai</strong>
-                <small>Service visibility</small>
+                <span class="logo-badge logo-hairstudio">HS</span>
+                <div>
+                  <strong>HairStudio Dubai</strong>
+                  <small>Service visibility</small>
+                </div>
               </div>
             </div>
           </article>
@@ -634,8 +712,11 @@ Scope:
             <article class="card competitor-card">
               <div class="threat-score high">92</div>
               <div>
-                <h3>Yalla Hair - Hair Patch Fixing & Hair Replacement Centre</h3>
-                <p>Strongest current threat because of direct hair replacement messaging, visible social proof, and conversion-focused positioning.</p>
+                <div class="competitor-title">
+                  <span class="logo-badge logo-yalla">YH</span>
+                  <h3>Yalla Hair <small>Hair Patch Fixing & Hair Replacement Centre</small></h3>
+                </div>
+                <p>Strongest current threat because of direct messaging, visible social proof, and conversion-focused positioning.</p>
                 <div class="signal-tags">
                   <span class="tag high">High Threat</span>
                   <span class="tag gold">Social Proof</span>
@@ -647,8 +728,11 @@ Scope:
             <article class="card competitor-card">
               <div class="threat-score medium">76</div>
               <div>
-                <h3>Advanced Hair Studio</h3>
-                <p>Important brand competitor with established authority. Threat is strongest around trust, brand recognition, and professional perception.</p>
+                <div class="competitor-title">
+                  <span class="logo-badge logo-advanced">AHS</span>
+                  <h3>Advanced Hair Studio <small>Brand authority / trust competitor</small></h3>
+                </div>
+                <p>Established authority. Threat is strongest around brand recognition and professional perception.</p>
                 <div class="signal-tags">
                   <span class="tag medium">Brand Threat</span>
                   <span class="tag">Trust</span>
@@ -660,8 +744,11 @@ Scope:
             <article class="card competitor-card">
               <div class="threat-score watch">61</div>
               <div>
-                <h3>HairStudio Hair Fixing Dubai</h3>
-                <p>Tracked competitor for Dubai visibility and service relevance. Needs monitoring for offers, reels, and branch-based messaging.</p>
+                <div class="competitor-title">
+                  <span class="logo-badge logo-hairstudio">HS</span>
+                  <h3>HairStudio Hair Fixing Dubai <small>Dubai service visibility</small></h3>
+                </div>
+                <p>Tracked for Dubai visibility and service relevance. Watch offers, reels, and branch messaging.</p>
                 <div class="signal-tags">
                   <span class="tag">Watch</span>
                   <span class="tag">Dubai</span>
@@ -767,7 +854,7 @@ Scope:
             <span class="recommended">Recommended</span>
             <h3>AI Counter-Move</h3>
           </div>
-          <p>Strengthen Iconic’s private premium consultation message and add more proof-led content. Do not enter a discount war unless competitor pressure becomes high.</p>
+          <p>Strengthen private premium consultation and proof-led content. Avoid discount war unless market pressure becomes high.</p>
         </section>
       </div>
     </section>
