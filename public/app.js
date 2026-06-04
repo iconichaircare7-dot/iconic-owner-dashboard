@@ -1,10 +1,11 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.5-PREFER-REAL-KEYED-CHANNELS
+Version: v15.0.6-DIRECT-KEYED-CHANNEL-READER
 Scope:
 - Full replacement candidate for public/app.js only
-- Prioritizes data.channels keyed object over channelsSummary
-- Maps channels.meta / google / snapchat / tiktok correctly
+- Reads data.channels.meta / google / snapchat / tiktok directly by key
+- Does not use asArray() for Page 2 channel mapping
+- Does not infer Page 2 channel identity from row.name
 - Displays real spend / results / cost per result per channel
 - Keeps Page 4 approved competitors
 - No PDF / No delivery
@@ -526,6 +527,196 @@ function mergeChannelRows(rows = []) {
   return ['Meta', 'Google', 'Snapchat', 'TikTok'].map(key => grouped[key]);
 }
 
+function channelRowByKey_V1506(source, keys) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+
+  for (const key of keys) {
+    if (source[key] && typeof source[key] === 'object') return source[key];
+  }
+
+  const normalized = {};
+  Object.keys(source).forEach(key => {
+    normalized[String(key).toLowerCase().replace(/[\s_-]+/g, '')] = source[key];
+  });
+
+  for (const key of keys) {
+    const clean = String(key).toLowerCase().replace(/[\s_-]+/g, '');
+    if (normalized[clean] && typeof normalized[clean] === 'object') return normalized[clean];
+  }
+
+  return null;
+}
+
+function textValue_V1506(value, fallback = '') {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'object') return objectToText(value, fallback);
+  return String(value);
+}
+
+function prettyStatus_V1506(value, fallback = 'Pending') {
+  const raw = textValue_V1506(value, fallback);
+  const lower = String(raw).toLowerCase();
+
+  if (lower.includes('main engine')) return 'Main Engine';
+  if (lower.includes('strong traffic')) return 'Strong Traffic';
+  if (lower.includes('traffic driver')) return 'Traffic Driver';
+  if (lower.includes('watch')) return 'Watch';
+  if (lower.includes('strong')) return 'Strong';
+  if (lower.includes('testing')) return 'Testing';
+  if (lower.includes('pending')) return 'Pending';
+  if (lower.includes('not') || lower.includes('inactive')) return 'Not Active';
+
+  return raw || fallback;
+}
+
+function formatCtr_V1506(value, fallback = 'Stable') {
+  if (value === undefined || value === null || value === '') return fallback;
+
+  const n = Number(value);
+  if (Number.isFinite(n)) return `CTR ${n.toFixed(2)}%`;
+
+  return textValue_V1506(value, fallback);
+}
+
+function scoreForChannel_V1506(name, row) {
+  const spend = numberOrZero(row.spend);
+  const results = numberOrZero(row.results);
+  const cpr = numberOrZero(row.costPerResult || row.cost_per_result || row.cpr);
+  const status = String(textValue_V1506(row.status, '')).toLowerCase();
+
+  if (name === 'Meta') {
+    if (results > 0 && cpr > 0 && cpr <= 2) return 94;
+    if (results > 0) return 82;
+    return 70;
+  }
+
+  if (name === 'Google') {
+    if (status.includes('watch')) return 58;
+    if (results > 0) return 52;
+    return 22;
+  }
+
+  if (name === 'Snapchat') {
+    if (status.includes('traffic')) return 58;
+    if (results > 0) return 55;
+    return 30;
+  }
+
+  if (name === 'TikTok') {
+    if (status.includes('strong')) return 68;
+    if (results > 0) return 58;
+    return 8;
+  }
+
+  return 0;
+}
+
+function decisionForChannel_V1506(name, row) {
+  const apiDecision = textValue_V1506(row.decision || row.recommendation, '');
+  if (apiDecision) return apiDecision;
+
+  if (name === 'Meta') return 'Keep Meta as the main engine.';
+  if (name === 'Google') return 'Watch. Improve tracking before scaling.';
+  if (name === 'Snapchat') return 'Traffic driver. Monitor lead quality.';
+  if (name === 'TikTok') return 'Good traffic signal. Keep under observation.';
+
+  return 'Review before scaling.';
+}
+
+function mapDirectKeyedChannel_V1506(name, row) {
+  const fallback = emptyChannelTemplate(name);
+
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    return fallback;
+  }
+
+  const spend = numberOrZero(pick(row, ['spend', 'totalSpend', 'amountSpent'], 0));
+  const results = numberOrZero(pick(row, ['results', 'totalResults', 'conversions', 'clicks'], 0));
+
+  const apiCost = numberOrZero(pick(row, [
+    'costPerResult',
+    'cost_per_result',
+    'cpr',
+    'costPerConversion',
+    'cost_per_conversion'
+  ], 0));
+
+  const costPerResult =
+    apiCost > 0
+      ? apiCost
+      : spend > 0 && results > 0
+        ? spend / results
+        : undefined;
+
+  const resultType = textValue_V1506(pick(row, [
+    'resultType',
+    'result_type',
+    'metricType',
+    'objective',
+    'conversionType'
+  ], ''), '');
+
+  const normalizedRow = {
+    ...row,
+    spend,
+    results,
+    costPerResult
+  };
+
+  return {
+    ...fallback,
+    ...row,
+    name,
+    channel: name,
+    platform: resultType || fallback.platform,
+    status: prettyStatus_V1506(row.status || row.health || row.state, fallback.status),
+    spend,
+    results,
+    spendLabel: undefined,
+    resultsLabel: undefined,
+    costPerResult,
+    costPerResultLabel: costPerResult !== undefined ? undefined : fallback.costPerResultLabel,
+    ctr: formatCtr_V1506(pick(row, ['ctr', 'clickThroughRate', 'trend', 'statusDetail'], fallback.ctr), fallback.ctr),
+    score: Number(pick(row, ['score', 'healthScore'], 0)) || scoreForChannel_V1506(name, normalizedRow) || fallback.score,
+    decision: decisionForChannel_V1506(name, row) || fallback.decision
+  };
+}
+
+function buildChannelsFromKeyedObject_V1506(source) {
+  const keyedSource = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+
+  return [
+    mapDirectKeyedChannel_V1506(
+      'Meta',
+      channelRowByKey_V1506(keyedSource, ['meta', 'facebook', 'instagram', 'whatsapp'])
+    ),
+    mapDirectKeyedChannel_V1506(
+      'Google',
+      channelRowByKey_V1506(keyedSource, ['google', 'googleAds', 'google_ads', 'search', 'maps'])
+    ),
+    mapDirectKeyedChannel_V1506(
+      'Snapchat',
+      channelRowByKey_V1506(keyedSource, ['snapchat', 'snap'])
+    ),
+    mapDirectKeyedChannel_V1506(
+      'TikTok',
+      channelRowByKey_V1506(keyedSource, ['tiktok', 'tikTok', 'tik_tok', 'tik tok'])
+    )
+  ];
+}
+
+function hasDirectKeyedChannels_V1506(source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return false;
+
+  return [
+    ['meta', 'facebook', 'instagram', 'whatsapp'],
+    ['google', 'googleAds', 'google_ads', 'search', 'maps'],
+    ['snapchat', 'snap'],
+    ['tiktok', 'tikTok', 'tik_tok', 'tik tok']
+  ].some(keys => channelRowByKey_V1506(source, keys));
+}
+
+
 function normalizeCompetitorName(name) {
   const raw = String(objectToText(name, '')).trim();
   const lower = raw.toLowerCase();
@@ -596,12 +787,24 @@ function normalizeData(raw) {
   const data = raw || {};
   const report = data.report || data.reportContext || {};
   const executive = data.executive || data.executiveSnapshot || {};
-  const channelsRaw = data.channels || data.channelsSummary || data.channelSummary || [];
   const customerRaw = data.customerIntelligence || {};
   const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
 
-  const channels = mergeChannelRows(channelsRaw);
+  const keyedChannels =
+    data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)
+      ? data.channels
+      : {};
+
+  const channels = hasDirectKeyedChannels_V1506(keyedChannels)
+    ? buildChannelsFromKeyedObject_V1506(keyedChannels)
+    : mergeChannelRows(data.channelsSummary || data.channelSummary || []);
+
+  window.__ICONIC_DEBUG__ = {
+    version: 'v15.0.6-direct-keyed-channel-reader',
+    rawChannels: data.channels || null,
+    normalizedChannels: channels
+  };
 
   return {
     report,
