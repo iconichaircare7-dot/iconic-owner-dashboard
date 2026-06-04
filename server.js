@@ -11,10 +11,6 @@ const OWNER_DASHBOARD_USER = process.env.OWNER_DASHBOARD_USER || 'admin';
 const OWNER_DASHBOARD_PASS = process.env.OWNER_DASHBOARD_PASS || 'change-me';
 const OWNER_DATA_API_URL = process.env.OWNER_DATA_API_URL || '';
 
-const PDF_WIDTH = 1280;
-const PDF_HEIGHT = 1050;
-const REPORT_WIDTH = 1220;
-
 app.set('trust proxy', true);
 
 function basicAuth(req, res, next) {
@@ -110,8 +106,8 @@ async function launchPdfBrowser() {
   return puppeteer.launch({
     args: chromiumArgs(),
     defaultViewport: {
-      width: PDF_WIDTH,
-      height: PDF_HEIGHT,
+      width: 1280,
+      height: 1800,
       deviceScaleFactor: 1
     },
     executablePath,
@@ -156,8 +152,8 @@ app.get('/api/report-pdf', async (req, res) => {
     });
 
     await page.setViewport({
-      width: PDF_WIDTH,
-      height: PDF_HEIGHT,
+      width: 1280,
+      height: 1800,
       deviceScaleFactor: 1
     });
 
@@ -175,14 +171,13 @@ app.get('/api/report-pdf', async (req, res) => {
     await page.addStyleTag({
       content: `
         @page {
-          size: ${PDF_WIDTH}px ${PDF_HEIGHT}px;
+          size: 1280px 1800px;
           margin: 0;
         }
 
         html,
         body {
-          width: ${PDF_WIDTH}px !important;
-          min-width: ${PDF_WIDTH}px !important;
+          width: 1280px !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #07111F !important;
@@ -195,19 +190,18 @@ app.get('/api/report-pdf', async (req, res) => {
         }
 
         .report-shell {
-          width: ${REPORT_WIDTH}px !important;
+          width: 1220px !important;
           max-width: none !important;
           margin: 0 auto !important;
-          padding: 16px 0 !important;
+          padding: 24px 0 !important;
           gap: 0 !important;
           display: block !important;
         }
 
         .report-page {
-          width: ${REPORT_WIDTH}px !important;
+          width: 1220px !important;
           max-width: none !important;
-          min-height: 0 !important;
-          height: auto !important;
+          min-height: auto !important;
           margin: 0 auto !important;
           page-break-after: always !important;
           break-after: page !important;
@@ -233,8 +227,8 @@ app.get('/api/report-pdf', async (req, res) => {
     });
 
     const pdfData = await page.pdf({
-      width: `${PDF_WIDTH}px`,
-      height: `${PDF_HEIGHT}px`,
+      width: '1280px',
+      height: '1800px',
       printBackground: true,
       preferCSSPageSize: true,
       margin: {
@@ -250,7 +244,7 @@ app.get('/api/report-pdf', async (req, res) => {
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_7.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_6.pdf"',
       'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-store'
     });
@@ -260,7 +254,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.7-pdf-page-height-fix'
+      version: 'v15.1.6-pdf-buffer-fix'
     });
   } finally {
     if (browser) {
@@ -272,7 +266,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.7-pdf-page-height-fix'
+  version: 'v15.1.6-pdf-buffer-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
