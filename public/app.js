@@ -1,10 +1,12 @@
 /*
 Iconic AI CMO — Clean Dynamic Web Report Base
-Version: v15.0.1-CLEAN-DYNAMIC-WEB-REPORT-BASE
+Version: v15.0.2-APP-DATA-MAPPING-FIX
 Scope:
-- Full replacement candidate for public/app.js
-- Dynamic Web Report only
-- Fetches /api/dashboard-data
+- Full replacement candidate for public/app.js only
+- Fixes Page 1 main risk display
+- Fixes Page 3 object/string mapping
+- Fixes customer questions mapping
+- Locks Page 4 approved competitors
 - No PDF / No delivery
 */
 
@@ -16,32 +18,84 @@ const money = new Intl.NumberFormat('en-AE', {
 
 const number = new Intl.NumberFormat('en-AE');
 
+const APPROVED_COMPETITORS = [
+  'Yalla Hair',
+  'Advanced Hair Studio',
+  'Modern Hair Fixing Studio'
+];
+
 function $(id) {
   return document.getElementById(id);
 }
 
 function safe(value, fallback = '-') {
-  return value === undefined || value === null || value === '' ? fallback : value;
+  if (value === undefined || value === null || value === '') return fallback;
+  if (Array.isArray(value)) return value.length ? value : fallback;
+  if (typeof value === 'object') return objectToText(value, fallback);
+  return value;
+}
+
+function objectToText(value, fallback = '-') {
+  if (!value || typeof value !== 'object') return fallback;
+
+  const keys = [
+    'title',
+    'label',
+    'name',
+    'value',
+    'text',
+    'summary',
+    'status',
+    'level',
+    'sentiment',
+    'intent',
+    'main',
+    'description'
+  ];
+
+  for (const key of keys) {
+    if (value[key] !== undefined && value[key] !== null && value[key] !== '') {
+      if (typeof value[key] === 'object') continue;
+      return String(value[key]);
+    }
+  }
+
+  return fallback;
+}
+
+function pick(obj, keys, fallback = undefined) {
+  if (!obj || typeof obj !== 'object') return fallback;
+
+  for (const key of keys) {
+    if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+      return obj[key];
+    }
+  }
+
+  return fallback;
 }
 
 function asArray(value) {
-  return Array.isArray(value) ? value : [];
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  return Object.values(value).filter(Boolean);
 }
 
 function setText(id, value, fallback = '-') {
   const el = $(id);
   if (!el) return;
-  el.textContent = safe(value, fallback);
+  el.textContent = String(safe(value, fallback));
 }
 
 function setHTML(id, value, fallback = '-') {
   const el = $(id);
   if (!el) return;
-  el.innerHTML = safe(value, fallback);
+  el.innerHTML = String(safe(value, fallback));
 }
 
 function clampText(value, max = 90, fallback = '-') {
-  const text = String(safe(value, fallback)).trim();
+  const text = String(safe(value, fallback)).replace(/\s+/g, ' ').trim();
+  if (!text || text === '-') return fallback;
   if (text.length <= max) return text;
   return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
 }
@@ -73,7 +127,7 @@ const PLATFORM_ICONS = {
 };
 
 function platformKey(name = '') {
-  const n = String(name).toLowerCase();
+  const n = String(objectToText(name, name)).toLowerCase();
   if (n.includes('google')) return 'google';
   if (n.includes('snap')) return 'snapchat';
   if (n.includes('tiktok') || n.includes('tik')) return 'tiktok';
@@ -84,13 +138,189 @@ function iconFor(name) {
   return PLATFORM_ICONS[platformKey(name)] || PLATFORM_ICONS.meta;
 }
 
+function normalizeMainRisk(value) {
+  const raw = String(safe(value, 'Low')).trim();
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('no major') || lower.includes('no critical') || lower === 'stable') {
+    return { label: 'Low', detail: raw };
+  }
+
+  if (lower.includes('high')) return { label: 'High', detail: raw };
+  if (lower.includes('medium')) return { label: 'Medium', detail: raw };
+  if (lower.includes('low')) return { label: 'Low', detail: raw };
+
+  return { label: raw.length > 12 ? 'Low' : raw, detail: raw.length > 12 ? raw : 'Stable' };
+}
+
+function normalizeQuestion(item) {
+  if (typeof item === 'string') {
+    return { q: item, note: 'Use guided consultation reply.', tag: 'Signal' };
+  }
+
+  if (!item || typeof item !== 'object') {
+    return { q: 'Customer question needs review.', note: 'Check message source.', tag: 'Signal' };
+  }
+
+  const q = pick(item, [
+    'q',
+    'question',
+    'title',
+    'text',
+    'message',
+    'topic',
+    'label',
+    'customerQuestion'
+  ], 'Customer question needs review.');
+
+  const note = pick(item, [
+    'note',
+    'detail',
+    'summary',
+    'answer',
+    'recommendation',
+    'action',
+    'insight',
+    'description'
+  ], 'Use guided consultation reply.');
+
+  const tag = pick(item, [
+    'tag',
+    'category',
+    'intent',
+    'type',
+    'signal',
+    'status'
+  ], 'Signal');
+
+  return {
+    q: objectToText(q, 'Customer question needs review.'),
+    note: objectToText(note, 'Use guided consultation reply.'),
+    tag: objectToText(tag, 'Signal')
+  };
+}
+
+function normalizeCustomer(rawCustomer = {}) {
+  const customer = rawCustomer || {};
+
+  const sentimentRaw = pick(customer, [
+    'sentiment',
+    'sentimentLabel',
+    'overallSentiment',
+    'sentimentSummary'
+  ], 'Positive');
+
+  const topQuestionsRaw =
+    pick(customer, ['topQuestions', 'questions', 'customerQuestions', 'faq', 'topCustomerQuestions'], []);
+
+  const topQuestions = asArray(topQuestionsRaw).map(normalizeQuestion);
+
+  return {
+    score: pick(customer, ['score', 'customerScore', 'intelligenceScore'], 82),
+    title: pick(customer, ['title', 'insightTitle', 'headline'], 'Strong buying signal. Price questions need better handling.'),
+    summary: pick(customer, ['summary', 'insight', 'text'], 'Customers show interest in consultation, natural results, and booking. Price clarity remains the main objection.'),
+    buyingIntent: objectToText(pick(customer, ['buyingIntent', 'intent', 'intentLevel'], 'High'), 'High'),
+    sentiment: objectToText(sentimentRaw, 'Positive'),
+    mainObjection: objectToText(pick(customer, ['mainObjection', 'objection', 'topObjection'], 'Price'), 'Price'),
+    topQuestions,
+    intentMix: asArray(pick(customer, ['intentMix', 'sentimentMix', 'conversationMix'], [])),
+    repeatedObjection: objectToText(pick(customer, ['repeatedObjection'], 'Price needs stronger framing.'), 'Price needs stronger framing.'),
+    conversionSignal: objectToText(pick(customer, ['conversionSignal'], 'Booking questions are valuable.'), 'Booking questions are valuable.'),
+    replyRisk: objectToText(pick(customer, ['replyRisk'], 'Weak replies can lose warm leads.'), 'Weak replies can lose warm leads.'),
+    aiReplyAction: objectToText(pick(customer, ['aiReplyAction', 'replyAction', 'recommendedAction'], 'Update replies to handle price with value, privacy, natural result, and direct consultation CTA.'), 'Update replies to handle price with value, privacy, natural result, and direct consultation CTA.')
+  };
+}
+
+function normalizeChannel(raw = {}) {
+  return {
+    name: objectToText(pick(raw, ['name', 'channel', 'platformName'], 'Meta'), 'Meta'),
+    platform: objectToText(pick(raw, ['platform', 'detail', 'subtitle'], ''), ''),
+    status: objectToText(pick(raw, ['status', 'health', 'state'], 'Pending'), 'Pending'),
+    spend: pick(raw, ['spend', 'totalSpend'], undefined),
+    spendLabel: pick(raw, ['spendLabel'], undefined),
+    results: pick(raw, ['results', 'totalResults'], undefined),
+    resultsLabel: pick(raw, ['resultsLabel'], undefined),
+    costPerResult: pick(raw, ['costPerResult', 'cpr'], undefined),
+    costPerResultLabel: pick(raw, ['costPerResultLabel', 'cprLabel'], undefined),
+    ctr: objectToText(pick(raw, ['ctr', 'trend', 'statusDetail'], 'Stable'), 'Stable'),
+    score: Number(pick(raw, ['score', 'healthScore'], 0)) || 0,
+    decision: objectToText(pick(raw, ['decision', 'recommendation'], 'Review before scaling.'), 'Review before scaling.')
+  };
+}
+
+function normalizeCompetitorName(name) {
+  const raw = String(objectToText(name, '')).trim();
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('advanced')) return 'Advanced Hair Studio';
+  if (lower.includes('modern')) return 'Modern Hair Fixing Studio';
+  if (lower.includes('yalla')) return 'Yalla Hair';
+
+  return raw;
+}
+
+function sanitizeCompetitors(apiCompetitors = []) {
+  const byName = new Map();
+
+  asArray(apiCompetitors).forEach(item => {
+    if (!item || typeof item !== 'object') return;
+    const fixedName = normalizeCompetitorName(pick(item, ['name', 'competitor', 'title'], ''));
+    if (!APPROVED_COMPETITORS.includes(fixedName)) return;
+
+    byName.set(fixedName, {
+      ...item,
+      name: fixedName
+    });
+  });
+
+  const fallback = {
+    'Yalla Hair': {
+      name: 'Yalla Hair',
+      sub: 'Hair Patch Fixing & Hair Replacement Centre',
+      score: 92,
+      level: 'high',
+      description: 'Strongest current threat because of direct messaging, visible social proof, and conversion-focused positioning.',
+      tags: ['High Threat', 'Social Proof', 'Direct Offer']
+    },
+    'Advanced Hair Studio': {
+      name: 'Advanced Hair Studio',
+      sub: 'Brand authority / trust competitor',
+      score: 76,
+      level: 'medium',
+      description: 'Established authority. Threat is strongest around brand recognition and professional perception.',
+      tags: ['Brand Threat', 'Trust', 'Authority']
+    },
+    'Modern Hair Fixing Studio': {
+      name: 'Modern Hair Fixing Studio',
+      sub: 'Regional hair fixing competitor',
+      score: 61,
+      level: 'watch',
+      description: 'Tracked for hair fixing visibility and regional competitor messaging. Watch offers, reels, and consultation angles.',
+      tags: ['Watch', 'Regional', 'Service Signal']
+    }
+  };
+
+  return APPROVED_COMPETITORS.map(name => {
+    const apiItem = byName.get(name) || {};
+    return {
+      ...fallback[name],
+      ...apiItem,
+      name,
+      score: Number(pick(apiItem, ['score', 'threatScore'], fallback[name].score)) || fallback[name].score,
+      sub: objectToText(pick(apiItem, ['sub', 'subtitle', 'positioning'], fallback[name].sub), fallback[name].sub),
+      description: objectToText(pick(apiItem, ['description', 'summary', 'insight'], fallback[name].description), fallback[name].description),
+      tags: asArray(pick(apiItem, ['tags'], fallback[name].tags)).length ? asArray(pick(apiItem, ['tags'], fallback[name].tags)) : fallback[name].tags
+    };
+  });
+}
+
 function normalizeData(raw) {
   const data = raw || {};
   const report = data.report || data.reportContext || {};
   const executive = data.executive || data.executiveSnapshot || {};
-  const channels = data.channelsSummary || data.channels || data.channelSummary || [];
-  const customer = data.customerIntelligence || {};
-  const competitor = data.competitorIntelligence || {};
+  const channelsRaw = data.channelsSummary || data.channels || data.channelSummary || [];
+  const customerRaw = data.customerIntelligence || {};
+  const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
 
   const fallbackChannels = [
@@ -103,9 +333,12 @@ function normalizeData(raw) {
   return {
     report,
     executive,
-    channels: asArray(channels).length ? channels : fallbackChannels,
-    customer,
-    competitor,
+    channels: asArray(channelsRaw).length ? asArray(channelsRaw).map(normalizeChannel) : fallbackChannels,
+    customer: normalizeCustomer(customerRaw),
+    competitor: {
+      ...competitorRaw,
+      competitors: sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
+    },
     recommendations,
     generatedAt: data.generatedAt || report.generatedAt
   };
@@ -120,8 +353,7 @@ async function loadDashboard() {
       throw new Error(data.error || 'Dashboard API failed');
     }
 
-    const normalized = normalizeData(data);
-    renderReport(normalized);
+    renderReport(normalizeData(data));
   } catch (error) {
     const box = $('errorBox');
     if (box) {
@@ -152,8 +384,10 @@ function renderPage1(data) {
   setText('totalResults', number.format(Number(executive.totalResults || 0)));
   setText('bestChannel', clampText(executive.bestChannel || 'Meta', 24));
   setText('bestChannelDetail', clampText(executive.bestChannelDetail || 'Strong performance', 42));
-  setText('mainRisk', clampText(executive.mainRisk || 'Low', 24));
-  setText('mainRiskDetail', clampText(executive.mainRiskDetail || 'No critical risk detected', 42));
+
+  const risk = normalizeMainRisk(executive.mainRisk || executive.risk || 'Low');
+  setText('mainRisk', risk.label);
+  setText('mainRiskDetail', risk.detail);
 
   setText('decisionTitle', clampText(executive.decisionTitle || executive.title || 'Keep Meta active. No budget increase this week.', 82));
   setText('decisionLine1', clampText(executive.decisionLine1 || 'Dubai and Abu Dhabi remain stable, with Meta leading performance.', 120));
@@ -168,7 +402,7 @@ function renderPage1(data) {
 
   const health = $('page1ChannelHealth');
   if (health) {
-    health.innerHTML = data.channels.slice(0, 4).map(channel => `
+    health.innerHTML = channels.slice(0, 4).map(channel => `
       <div class="health-row">
         <div class="health-name">${iconFor(channel.name)}<strong>${clampText(channel.name, 18)}</strong></div>
         <small>${clampText(channel.status || 'Pending', 18)}</small>
@@ -234,18 +468,18 @@ function renderPage2(data) {
 }
 
 function renderPage3(data) {
-  const customer = data.customer || data.customerIntelligence || data.customer;
+  const customer = data.customer;
 
   setText('customerScore', customer.score || 82);
-  setText('customerInsightTitle', clampText(customer.title || 'Strong buying signal. Price questions need better handling.', 80));
-  setText('customerInsightText', clampText(customer.summary || 'Customers show interest in consultation, natural results, and booking. Price clarity remains the main objection.', 140));
-  setText('buyingIntent', clampText(customer.buyingIntent || 'High', 18));
-  setText('customerSentiment', clampText(customer.sentiment || 'Positive', 18));
-  setText('mainObjection', clampText(customer.mainObjection || 'Price', 18));
-  setText('repeatedObjection', clampText(customer.repeatedObjection || 'Price needs stronger framing.', 58));
-  setText('conversionSignal', clampText(customer.conversionSignal || 'Booking questions are valuable.', 58));
-  setText('replyRisk', clampText(customer.replyRisk || 'Weak replies can lose warm leads.', 58));
-  setText('aiReplyAction', clampText(customer.aiReplyAction || 'Update replies to handle price with value, privacy, natural result, and direct consultation CTA.', 150));
+  setText('customerInsightTitle', clampText(customer.title, 80));
+  setText('customerInsightText', clampText(customer.summary, 140));
+  setText('buyingIntent', clampText(customer.buyingIntent, 18));
+  setText('customerSentiment', clampText(customer.sentiment, 18));
+  setText('mainObjection', clampText(customer.mainObjection, 18));
+  setText('repeatedObjection', clampText(customer.repeatedObjection, 58));
+  setText('conversionSignal', clampText(customer.conversionSignal, 58));
+  setText('replyRisk', clampText(customer.replyRisk, 58));
+  setText('aiReplyAction', clampText(customer.aiReplyAction, 150));
 
   const fallbackQuestions = [
     { q: 'How much does hair replacement cost?', note: 'Use price range + value + consultation CTA.', tag: 'High Intent' },
@@ -254,7 +488,7 @@ function renderPage3(data) {
     { q: 'Dubai or Abu Dhabi branch availability?', note: 'Route to the nearest branch with clear timing.', tag: 'Branch' }
   ];
 
-  const questions = asArray(customer.topQuestions).length ? customer.topQuestions : fallbackQuestions;
+  const questions = customer.topQuestions.length ? customer.topQuestions : fallbackQuestions;
   const list = $('topQuestions');
   if (list) {
     list.innerHTML = questions.slice(0, 4).map((item, index) => `
@@ -276,30 +510,27 @@ function renderPage3(data) {
     { label: 'Low Quality / Noise', value: 3, color: 'var(--inactive)' }
   ];
 
-  renderBars('intentMix', asArray(customer.intentMix).length ? customer.intentMix : fallbackMix);
+  renderBars('intentMix', customer.intentMix.length ? customer.intentMix : fallbackMix);
 }
 
 function renderPage4(data) {
-  const competitor = data.competitor || data.competitorIntelligence || {};
+  const competitor = data.competitor;
 
-  setText('radarClosestThreat', `Closest threat: ${clampText(competitor.topThreat || 'Yalla Hair', 26)}`);
+  const topThreat = normalizeCompetitorName(competitor.topThreat || 'Yalla Hair');
+  const safeTopThreat = APPROVED_COMPETITORS.includes(topThreat) ? topThreat : 'Yalla Hair';
+
+  setText('radarClosestThreat', `Closest threat: ${clampText(safeTopThreat, 26)}`);
   setText('radarIconicEdge', `Iconic edge: ${clampText(competitor.iconicEdge || 'privacy + premium consultation', 42)}`);
-  setText('topThreat', clampText(competitor.topThreat || 'Yalla Hair', 28));
+  setText('topThreat', clampText(safeTopThreat, 28));
   setText('iconicEdge', clampText(competitor.iconicEdge || 'Privacy', 22));
   setText('competitorRisk', clampText(competitor.riskLevel || 'Medium', 18));
   setText('competitorResponse', clampText(competitor.response || 'Defend', 18));
   setText('counterMove', clampText(competitor.counterMove || 'Strengthen private premium consultation and proof-led content. Avoid discount war unless market pressure becomes high.', 155));
 
-  const fallbackCompetitors = [
-    { name: 'Yalla Hair', sub: 'Hair Patch Fixing & Hair Replacement Centre', score: 92, level: 'high', description: 'Strongest current threat because of direct messaging, visible social proof, and conversion-focused positioning.', tags: ['High Threat', 'Social Proof', 'Direct Offer'] },
-    { name: 'Advanced Hair Studio', sub: 'Brand authority / trust competitor', score: 76, level: 'medium', description: 'Established authority. Threat is strongest around brand recognition and professional perception.', tags: ['Brand Threat', 'Trust', 'Authority'] },
-    { name: 'Modern Hair Fixing Studio', sub: 'Regional hair fixing competitor', score: 61, level: 'watch', description: 'Tracked for hair fixing visibility and regional competitor messaging. Watch offers, reels, and consultation angles.', tags: ['Watch', 'Regional', 'Service Signal'] }
-  ];
-
-  const competitors = asArray(competitor.competitors).length ? competitor.competitors : fallbackCompetitors;
+  const competitors = competitor.competitors;
   const box = $('competitorCards');
   if (box) {
-    box.innerHTML = competitors.slice(0, 3).map(item => `
+    box.innerHTML = competitors.map(item => `
       <article class="card competitor-card">
         <div class="threat-score ${item.level || scoreLevel(item.score)}">${item.score || 0}</div>
         <div>
