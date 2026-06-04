@@ -1,6 +1,6 @@
 {
   "name": "iconic-owner-dashboard",
-  "version": "15.1.8",
+  "version": "15.1.12",
   "description": "Iconic AI CMO Owner Web Dashboard",
   "main": "server.js",
   "scripts": {
