@@ -18,6 +18,10 @@ const PAGE_SELECTOR = '.report-page';
 
 app.set('trust proxy', true);
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function basicAuth(req, res, next) {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Basic ')) {
@@ -136,7 +140,7 @@ async function screenshotPagesToPdf(page) {
       el.scrollIntoView({ block: 'start', inline: 'nearest' });
     });
 
-    await page.waitForTimeout(250);
+    await sleep(250);
 
     const box = await handle.boundingBox();
 
@@ -257,12 +261,14 @@ app.get('/api/report-pdf', async (req, res) => {
       `
     });
 
+    await sleep(500);
+
     const pdfBuffer = await screenshotPagesToPdf(page);
 
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_8.pdf"',
+      'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_9.pdf"',
       'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-store'
     });
@@ -272,7 +278,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.8-screenshot-to-pdf-snapshot'
+      version: 'v15.1.9-screenshot-pdf-timeout-fix'
     });
   } finally {
     if (browser) {
@@ -284,7 +290,7 @@ app.get('/api/report-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.8-screenshot-to-pdf-snapshot'
+  version: 'v15.1.9-screenshot-pdf-timeout-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
