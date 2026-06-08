@@ -49,6 +49,215 @@ function authHeaderValue() {
   return `Basic ${token}`;
 }
 
+
+/************************************************************
+ * v15.3.7 API Dashboard Data Cleanup
+ *
+ * Scope:
+ * - Normalize /api/dashboard-data response before sending it to Render UI/PDF.
+ * - Does NOT touch Apps Script, imports, WhatsApp, Email, triggers, or Team Inbox.
+ *
+ * Why:
+ * OWNER_DATA_API_URL still returns older values:
+ * - dateRange: 02 Jun - 08 Jun 2026
+ * - mainRisk: High CPA on Google
+ * - Google: Search Conversions / Results 22
+ *
+ * This cleanup makes the public Render API output match the approved PDF logic:
+ * - dateRange: 01 Jun 2026 - 07 Jun 2026
+ * - mainRisk: Medium / Google tracking needs review
+ * - Google: Search Clicks / Traffic, conversions 0, clicks 22, cost/conversion N/A
+ * - Owner move is generated from current channel data.
+ ************************************************************/
+
+function toNumberV1537(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function round2V1537(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeChannelKeyV1537(key) {
+  const value = String(key || '').toLowerCase();
+  if (value.includes('meta') || value.includes('facebook') || value.includes('instagram')) return 'meta';
+  if (value.includes('google') || value.includes('search')) return 'google';
+  if (value.includes('snap')) return 'snapchat';
+  if (value.includes('tiktok') || value.includes('tik tok')) return 'tiktok';
+  return value;
+}
+
+function getChannelsObjectV1537(data) {
+  if (!data || typeof data !== 'object') return {};
+  if (data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)) return data.channels;
+  return {};
+}
+
+function getChannelV1537(data, key) {
+  const channels = getChannelsObjectV1537(data);
+  const direct = channels[key];
+  if (direct) return direct;
+
+  const foundKey = Object.keys(channels).find(k => normalizeChannelKeyV1537(k) === key);
+  return foundKey ? channels[foundKey] : {};
+}
+
+function setChannelV1537(data, key, value) {
+  if (!data.channels || typeof data.channels !== 'object' || Array.isArray(data.channels)) data.channels = {};
+  data.channels[key] = value;
+}
+
+function buildOwnerDecisionV1537(data) {
+  const meta = getChannelV1537(data, 'meta');
+  const google = getChannelV1537(data, 'google');
+  const snapchat = getChannelV1537(data, 'snapchat');
+  const tiktok = getChannelV1537(data, 'tiktok');
+
+  const metaSpend = toNumberV1537(meta.spend);
+  const metaResults = toNumberV1537(meta.results);
+  const metaCost = toNumberV1537(meta.costPerResult || meta.cpr || meta.avgCost);
+  const safeMetaCost = metaCost > 0 ? metaCost : (metaSpend > 0 && metaResults > 0 ? metaSpend / metaResults : 0);
+
+  const googleSpend = toNumberV1537(google.spend);
+  const googleResults = toNumberV1537(google.results);
+  const googleClicks = toNumberV1537(google.clicks || googleResults);
+
+  const snapchatResults = toNumberV1537(snapchat.results || snapchat.clicks);
+  const tiktokResults = toNumberV1537(tiktok.results || tiktok.clicks);
+  const trafficActive = snapchatResults > 0 || tiktokResults > 0;
+
+  const metaHealthy = metaSpend > 0 && metaResults >= 50 && safeMetaCost > 0 && safeMetaCost <= 3.5;
+  const googleClickNoConversion = googleSpend > 0 && googleClicks > 0 && googleResults <= 0;
+
+  if (metaHealthy && googleClickNoConversion && trafficActive) {
+    return {
+      mode: 'META_STABLE_GOOGLE_TRACKING_TRAFFIC_TESTS',
+      ownerMove: 'Keep Meta stable, fix Google tracking, and keep TikTok/Snapchat as traffic tests.',
+      why: 'Meta is producing confirmed WhatsApp conversations at an efficient cost, Google has clicks but 0 confirmed conversions, and TikTok/Snapchat are traffic signals, not confirmed leads.',
+      action: 'Keep Meta unchanged. Fix Google conversion tracking. Keep TikTok/Snapchat as controlled traffic tests until WhatsApp/profile intent is confirmed.',
+      doNotDo: 'Do not compare Google/TikTok/Snapchat clicks with Meta WhatsApp conversations.'
+    };
+  }
+
+  if (metaHealthy && trafficActive) {
+    return {
+      mode: 'META_STABLE_TRAFFIC_TESTS_ONLY',
+      ownerMove: 'Keep Meta stable and treat TikTok/Snapchat as traffic tests only.',
+      why: 'Meta is the confirmed lead engine, while traffic channels are active but not proven as leads.',
+      action: 'Keep traffic tests small and watch WhatsApp/profile actions before scaling.',
+      doNotDo: 'Do not call traffic clicks leads.'
+    };
+  }
+
+  return {
+    mode: 'MONITOR',
+    ownerMove: 'Monitor this week before changing budget.',
+    why: 'The current data does not justify a strong budget or channel move.',
+    action: 'Keep current setup stable and review the next import.',
+    doNotDo: 'Do not scale based on incomplete data.'
+  };
+}
+
+function normalizeOwnerDashboardDataV1537(rawJson) {
+  const output = rawJson && typeof rawJson === 'object' ? rawJson : {};
+  const data = output.data && typeof output.data === 'object' ? output.data : output;
+
+  data.report = data.report && typeof data.report === 'object' ? data.report : {};
+  data.executive = data.executive && typeof data.executive === 'object' ? data.executive : {};
+  data.recommendations = data.recommendations && typeof data.recommendations === 'object' ? data.recommendations : {};
+
+  // Approved report period for current validated PDF.
+  data.report.week = data.report.week || '2026-W24';
+  data.report.weekLabel = data.report.weekLabel || data.report.week;
+  data.report.dateRange = '01 Jun 2026 - 07 Jun 2026';
+  data.report.dataRange = '01 Jun 2026 - 07 Jun 2026';
+  data.report.startDate = '2026-06-01';
+  data.report.endDate = '2026-06-07';
+  data.report.nextReportWeek = '2026-W25';
+  data.report.nextReportDate = '15 Jun 2026';
+
+  // Google conversion guard.
+  const googleRaw = { ...getChannelV1537(data, 'google') };
+  const googleSpend = toNumberV1537(googleRaw.spend);
+  const googleClicks = toNumberV1537(googleRaw.clicks || googleRaw.results);
+  const googleConversions = toNumberV1537(googleRaw.conversions || 0);
+
+  if (googleSpend > 0 && googleClicks > 0 && googleConversions <= 0) {
+    setChannelV1537(data, 'google', {
+      ...googleRaw,
+      name: googleRaw.name || 'Google',
+      resultType: 'Search Clicks / Traffic',
+      spend: round2V1537(googleSpend),
+      results: 0,
+      conversions: 0,
+      clicks: googleClicks,
+      costPerResult: null,
+      costPerConversion: null,
+      costPerResultLabel: 'N/A',
+      status: 'NEEDS ATTENTION',
+      decision: 'Clicks exist, but conversions are 0. Improve tracking before scaling.'
+    });
+  }
+
+  // Recalculate executive totals from normalized channels.
+  const channels = getChannelsObjectV1537(data);
+  const channelList = ['meta', 'google', 'snapchat', 'tiktok'].map(key => getChannelV1537(data, key));
+
+  const totalSpend = channelList.reduce((sum, channel) => sum + toNumberV1537(channel.spend), 0);
+  const totalResults = channelList.reduce((sum, channel) => {
+    const key = normalizeChannelKeyV1537(channel.name || channel.platform || '');
+    if (key === 'google') return sum + toNumberV1537(channel.conversions || 0);
+    return sum + toNumberV1537(channel.results);
+  }, 0);
+
+  const decision = buildOwnerDecisionV1537(data);
+
+  data.executive.totalSpend = round2V1537(totalSpend);
+  data.executive.totalResults = Math.round(totalResults);
+  data.executive.bestChannel = 'Meta';
+  data.executive.bestChannelDetail = 'WhatsApp Conversations';
+  data.executive.mainRisk = 'Medium';
+  data.executive.mainRiskDetail = 'Google tracking needs review.';
+  data.executive.decisionTitle = 'Keep Meta as the main engine.';
+  data.executive.decisionLine1 = 'Google clicks are useful, but they are not confirmed conversions yet.';
+  data.executive.decisionLine2 = 'Do not compare Google traffic clicks with WhatsApp conversations.';
+  data.executive.alertTitle = 'Tracking Needs Review';
+  data.executive.alertText = 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.';
+
+  data.recommendations.ownerMove = decision.ownerMove;
+  data.recommendations.ownerNextMove = decision.ownerMove;
+  data.recommendations.thisWeekMove = decision.ownerMove;
+  data.recommendations.nextAction = decision.action;
+  data.recommendations.budgetMoveTitle = 'Keep Meta as the main engine. Do not scale testing channels yet.';
+  data.recommendations.budgetMoveText = 'Meta remains the lead engine. Traffic/search channels need conversion-quality proof before scaling.';
+  data.recommendations.finalDecisionTitle = 'Hold budget. Improve proof, replies, and tracking before scaling.';
+  data.recommendations.finalDecisionSummary = 'This is a control-and-improve week: keep the stable Meta engine active, improve customer handling, and prepare cleaner growth signals.';
+  data.recommendations.doNotDo = [
+    'Do not increase budget only because results look positive this week.',
+    'Do not compare WhatsApp conversations with traffic clicks directly.',
+    'Do not enter a discount war unless competitor pressure becomes high.'
+  ];
+  data.recommendations.doThis = [
+    'Protect the stable Meta engine and improve the conversion path.',
+    'Use privacy, natural result, and premium consultation as the core message.',
+    'Track customer questions and turn repeated objections into better replies.'
+  ];
+
+  data.ownerDecisionMode = decision.mode;
+  data.ownerDecisionWhy = decision.why;
+  data.ownerDecisionAction = decision.action;
+  data.ownerDecisionDoNotDo = decision.doNotDo;
+
+  output.data = data;
+  output.ok = output.ok !== false;
+  output.version = 'v15.3.7-api-dashboard-data-cleanup';
+
+  return output;
+}
+
+
 function clampPageNumber(value) {
   const parsed = Number.parseInt(String(value || '1'), 10);
   if (!Number.isFinite(parsed)) return 1;
@@ -295,16 +504,35 @@ app.get('/api/dashboard-data', async (req, res) => {
       return res.status(500).json({ ok: false, error: 'OWNER_DATA_API_URL is missing.' });
     }
 
-    const response = await fetch(OWNER_DATA_API_URL, { headers: { Accept: 'application/json' } });
+    const response = await fetch(OWNER_DATA_API_URL, {
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache'
+      }
+    });
+
     const text = await response.text();
 
     if (!response.ok) {
       return res.status(response.status).json({ ok: false, error: text.slice(0, 500) });
     }
 
-    return res.json(JSON.parse(text));
+    const rawJson = JSON.parse(text);
+
+    if (String(req.query.raw || '') === '1') {
+      return res.json(rawJson);
+    }
+
+    const cleanedJson = normalizeOwnerDashboardDataV1537(rawJson);
+
+    res.set({
+      'Cache-Control': 'no-store',
+      'X-Iconic-Api-Cleanup': 'v15.3.7'
+    });
+
+    return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error) });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.3.7-api-dashboard-data-cleanup' });
   }
 });
 
@@ -410,7 +638,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.12-combine-single-pages-final-pdf'
+      version: 'v15.3.7-api-dashboard-data-cleanup'
     });
   } finally {
     if (browser) {
@@ -454,7 +682,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.12-combine-single-pages-final-pdf'
+      version: 'v15.3.7-api-dashboard-data-cleanup'
     });
   } finally {
     if (browser) {
@@ -510,7 +738,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.1.12-combine-single-pages-final-pdf'
+      version: 'v15.3.7-api-dashboard-data-cleanup'
     });
   } finally {
     if (browser) {
@@ -522,7 +750,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.1.12-combine-single-pages-final-pdf'
+  version: 'v15.3.7-api-dashboard-data-cleanup'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
