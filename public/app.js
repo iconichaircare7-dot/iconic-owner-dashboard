@@ -1156,24 +1156,16 @@ function competitorLogo(name = '') {
 
 loadDashboard();
 /*
-Iconic Owner Dashboard — v15.2.7 Render PDF Data Binding Cleanup
-FILE: public/app.js
-HOW TO USE:
-1) Open public/app.js.
-2) Paste this whole block at the VERY END of the file.
-3) Save/deploy.
+Iconic Owner Dashboard — v15.2.7 Full File Patch
 Scope:
-- Render/PDF data binding only.
-- No Apps Script.
-- No WhatsApp.
-- No Email.
-- No triggers.
-- No Team Inbox.
+- Render/PDF data binding cleanup only.
+- No Apps Script, WhatsApp, Email, triggers, Team Inbox, or tokens.
 Fixes:
-- Weekly date range uses last complete week from generatedAt/report date.
-- Google is not counted as Search Conversions when conversions = 0 and clicks exist.
-- Page 1 risk alert no longer says "No Critical Risk" when Main Risk is High.
-- Page 5 Next Report no longer falls back to Week 23.
+- Robust dashboard payload unwrapping.
+- Google clicks are not displayed as conversions when conversions are 0.
+- Page 1 risk alert matches Main Risk.
+- Page 5 Next Report no longer uses stale Week 23 fallback.
+- Defines safe checklist rendering to prevent renderChecklist/renderRules errors.
 */
 
 function pad2_V1527_(n) {
@@ -1210,13 +1202,43 @@ function getIsoWeek_V1527_(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-function buildReportPeriodFromGeneratedAt_V1527_(generatedAt) {
-  const base = asDate_V1527_(generatedAt) || new Date();
+function parseDateRange_V1527_(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
 
-  // Weekly owner report is expected to run Monday morning.
-  // Use the last complete Monday-Sunday period ending the day before generation.
+  const isoMatches = text.match(/\d{4}-\d{2}-\d{2}/g);
+  if (isoMatches && isoMatches.length >= 2) {
+    const start = asDate_V1527_(isoMatches[0]);
+    const end = asDate_V1527_(isoMatches[1]);
+    if (start && end) return { start, end };
+  }
+
+  const readableMatches = text.match(/\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}/g);
+  if (readableMatches && readableMatches.length >= 2) {
+    const start = asDate_V1527_(readableMatches[0]);
+    const end = asDate_V1527_(readableMatches[1]);
+    if (start && end) return { start, end };
+  }
+
+  return null;
+}
+
+function buildReportPeriod_V1527_(report, generatedAt) {
+  const explicit = parseDateRange_V1527_(report && (report.dateRange || report.period || report.label));
+  if (explicit) {
+    return {
+      start: explicit.start,
+      end: explicit.end,
+      startIso: isoDate_V1527_(explicit.start),
+      endIso: isoDate_V1527_(explicit.end),
+      label: `${formatDateShort_V1527_(explicit.start)} - ${formatDateShort_V1527_(explicit.end)}`,
+      week: `2026-W${pad2_V1527_(getIsoWeek_V1527_(explicit.end))}`
+    };
+  }
+
+  const base = asDate_V1527_(generatedAt) || new Date();
   const end = addDays_V1527_(base, -1);
-  const day = end.getDay(); // 0 Sun, 1 Mon...
+  const day = end.getDay();
   const daysSinceSunday = day === 0 ? 0 : day;
   const sunday = addDays_V1527_(end, -daysSinceSunday);
   const start = addDays_V1527_(sunday, -6);
@@ -1250,6 +1272,45 @@ function getChannelMetric_V1527_(row, keys, fallback = 0) {
   return fallback;
 }
 
+function unwrapDashboardPayload_V1527_(raw) {
+  const candidates = [];
+
+  function addCandidate(value) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) candidates.push(value);
+  }
+
+  addCandidate(raw);
+  addCandidate(raw && raw.data);
+  addCandidate(raw && raw.data && raw.data.data);
+  addCandidate(raw && raw.payload);
+  addCandidate(raw && raw.dashboardData);
+  addCandidate(raw && raw.ownerDashboardData);
+
+  let best = raw || {};
+  let bestScore = -1;
+
+  candidates.forEach(candidate => {
+    let score = 0;
+    if (candidate.report || candidate.reportContext) score += 4;
+    if (candidate.executive || candidate.executiveSnapshot) score += 4;
+    if (candidate.channels || candidate.channelData || candidate.channelsSummary || candidate.channelSummary) score += 5;
+    if (candidate.customerIntelligence) score += 2;
+    if (candidate.competitorIntelligence) score += 2;
+    if (candidate.recommendations || candidate.nextSteps || candidate.finalRecommendations) score += 2;
+
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  });
+
+  return best || {};
+}
+
+function channelSourceFromData_V1527_(data) {
+  return data.channels || data.channelData || data.channelsSummary || data.channelSummary || [];
+}
+
 function mapDirectKeyedChannel_V1506(name, row) {
   const fallback = emptyChannelTemplate(name);
 
@@ -1257,7 +1318,7 @@ function mapDirectKeyedChannel_V1506(name, row) {
     return fallback;
   }
 
-  let spend = getChannelMetric_V1527_(row, ['spend', 'totalSpend', 'amountSpent'], 0);
+  const spend = getChannelMetric_V1527_(row, ['spend', 'totalSpend', 'amountSpent'], 0);
   let results = getChannelMetric_V1527_(row, ['results', 'totalResults', 'conversions'], 0);
   const clicks = getChannelMetric_V1527_(row, ['clicks', 'totalClicks'], 0);
   const conversions = getChannelMetric_V1527_(row, ['conversions', 'totalConversions'], results);
@@ -1284,13 +1345,11 @@ function mapDirectKeyedChannel_V1506(name, row) {
   let decision = decisionForChannel_V1506(name, row);
 
   if (name === 'Google') {
-    // Critical v15.2.7 rule:
-    // If Google has clicks but zero conversions, do NOT show clicks as conversions.
     if (conversions <= 0 && clicks > 0) {
       results = 0;
       resultType = 'Search Clicks / Traffic';
       resultsLabel = `Conv 0 | Clicks ${number.format(clicks)}`;
-      costPerResult = undefined;
+      costPerResult = 0;
       costPerResultLabel = 'N/A';
       status = 'Needs Attention';
       decision = 'Clicks exist, but conversions are 0. Improve tracking before scaling.';
@@ -1302,7 +1361,7 @@ function mapDirectKeyedChannel_V1506(name, row) {
     } else {
       resultType = 'Search Traffic';
       results = 0;
-      costPerResult = undefined;
+      costPerResult = 0;
       costPerResultLabel = 'N/A';
     }
   }
@@ -1354,45 +1413,46 @@ function mapDirectKeyedChannel_V1506(name, row) {
 }
 
 function normalizeData(raw) {
-  const data = raw && raw.data && typeof raw.data === 'object' ? raw.data : (raw || {});
+  const data = unwrapDashboardPayload_V1527_(raw);
   const report = data.report || data.reportContext || {};
   const executive = data.executive || data.executiveSnapshot || {};
   const customerRaw = data.customerIntelligence || {};
   const competitorRaw = data.competitorIntelligence || {};
   const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
+  const source = channelSourceFromData_V1527_(data);
 
   const keyedChannels =
-    data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)
-      ? data.channels
+    source && typeof source === 'object' && !Array.isArray(source)
+      ? source
       : {};
 
   const channels = hasDirectKeyedChannels_V1506(keyedChannels)
     ? buildChannelsFromKeyedObject_V1506(keyedChannels)
-    : mergeChannelRows(data.channelsSummary || data.channelSummary || []);
+    : mergeChannelRows(source || []);
 
   const generatedAt = data.generatedAt || report.generatedAt || new Date().toISOString();
-  const derivedPeriod = buildReportPeriodFromGeneratedAt_V1527_(generatedAt);
+  const period = buildReportPeriod_V1527_(report, generatedAt);
 
   const totalSpend = channels.reduce((sum, channel) => sum + numberFromAny_V1527_(channel.spend, 0), 0);
   const totalResults = channels.reduce((sum, channel) => sum + numberFromAny_V1527_(channel.results, 0), 0);
-
-  const patchedReport = {
-    ...report,
-    week: report.week || report.weekLabel || derivedPeriod.week,
-    weekLabel: report.weekLabel || report.week || derivedPeriod.week,
-    dateRange: derivedPeriod.label,
-    startDate: derivedPeriod.startIso,
-    endDate: derivedPeriod.endIso
-  };
 
   const google = channels.find(channel => channel.name === 'Google');
   const googleHasClickNoConversion =
     google && numberFromAny_V1527_(google.clicks, 0) > 0 && numberFromAny_V1527_(google.results, 0) <= 0;
 
+  const patchedReport = {
+    ...report,
+    week: report.week || report.weekLabel || period.week,
+    weekLabel: report.weekLabel || report.week || period.week,
+    dateRange: period.label,
+    startDate: period.startIso,
+    endDate: period.endIso
+  };
+
   const patchedExecutive = {
     ...executive,
-    totalSpend,
-    totalResults,
+    totalSpend: totalSpend || numberFromAny_V1527_(executive.totalSpend, 0),
+    totalResults: totalResults || numberFromAny_V1527_(executive.totalResults, 0),
     mainRisk: googleHasClickNoConversion ? 'High' : (executive.mainRisk || executive.risk || 'Low'),
     risk: googleHasClickNoConversion ? 'High' : (executive.risk || executive.mainRisk || 'Low'),
     bestChannel: executive.bestChannel || 'Meta',
@@ -1409,8 +1469,10 @@ function normalizeData(raw) {
   }
 
   window.__ICONIC_DEBUG__ = {
-    version: 'v15.2.7-render-pdf-data-binding-cleanup',
-    rawChannels: data.channels || null,
+    version: 'v15.2.7-full-file-render-pdf-data-binding-cleanup',
+    rawPayload: raw || null,
+    normalizedRoot: data,
+    rawChannels: source || null,
     normalizedChannels: channels,
     reportPeriod: patchedReport
   };
@@ -1426,7 +1488,7 @@ function normalizeData(raw) {
     },
     recommendations: {
       ...recommendations,
-      nextReportDate: recommendations.nextReportDate || nextWeeklyReviewText_V1527_(derivedPeriod)
+      nextReportDate: recommendations.nextReportDate || nextWeeklyReviewText_V1527_(period)
     },
     generatedAt
   };
@@ -1454,30 +1516,22 @@ function renderPage1(data) {
 
   const isHighRisk = String(risk.label || '').toLowerCase().includes('high');
 
-  setText(
-    'alertTitle',
-    clampText(
-      isHighRisk
-        ? (executive.alertTitle || 'Tracking Risk Detected')
-        : (executive.alertTitle || 'No Critical Risk Detected'),
-      42
-    )
-  );
+  setText('alertTitle', clampText(
+    isHighRisk
+      ? (executive.alertTitle || 'Tracking Risk Detected')
+      : (executive.alertTitle || 'No Critical Risk Detected'),
+    42
+  ));
 
-  setText(
-    'alertText',
-    clampText(
-      isHighRisk
-        ? (executive.alertText || executive.mainRiskDetail || 'Risk requires review before scaling.')
-        : (executive.alertText || 'Performance is stable. No urgent action required.'),
-      120
-    )
-  );
+  setText('alertText', clampText(
+    isHighRisk
+      ? (executive.alertText || executive.mainRiskDetail || 'Risk requires review before scaling.')
+      : (executive.alertText || 'Performance is stable. No urgent action required.'),
+    120
+  ));
 
   const alertCard = $('alertCard');
-  if (alertCard) {
-    alertCard.classList.toggle('risk-alert', isHighRisk);
-  }
+  if (alertCard) alertCard.classList.toggle('risk-alert', isHighRisk);
 
   setText('customerSignal', clampText(customer.summary || 'Most customer questions this week are about price, consultation, and booking availability.', 130));
   setText('competitorSignal', clampText(competitor.summary || 'Competitor activity is stable. No aggressive offer detected this week.', 130));
@@ -1551,6 +1605,15 @@ function renderPage2(data) {
   setText('budgetMoveText', clampText(data.recommendations.budgetMoveText || 'Meta remains the lead engine. Traffic/search channels need conversion-quality proof before scaling.', 150));
 }
 
+function renderSafeChecklist_V1527_(id, items, icon) {
+  const box = $(id);
+  if (!box) return;
+
+  box.innerHTML = asArray(items).slice(0, 3).map(item => `
+    <div class="rule-item"><span class="rule-dot">${icon}</span><span>${clampText(item.text || item, 110)}</span></div>
+  `).join('');
+}
+
 function renderPage5(data) {
   const r = data.recommendations || {};
 
@@ -1601,16 +1664,15 @@ function renderPage5(data) {
     `).join('');
   }
 
-  renderChecklist('doList', asArray(r.doThis).length ? r.doThis : [
+  renderSafeChecklist_V1527_('doList', asArray(r.doThis).length ? r.doThis : [
     'Protect the stable Meta engine and improve the conversion path.',
     'Use privacy, natural result, and premium consultation as the core message.',
     'Track customer questions and turn repeated objections into better replies.'
   ], '✓');
 
-  renderChecklist('doNotList', asArray(r.doNotDo).length ? r.doNotDo : [
+  renderSafeChecklist_V1527_('doNotList', asArray(r.doNotDo).length ? r.doNotDo : [
     'Do not increase budget only because results look positive this week.',
     'Do not compare WhatsApp conversations with traffic clicks directly.',
     'Do not enter a discount war unless competitor pressure becomes high.'
   ], '!');
 }
-
