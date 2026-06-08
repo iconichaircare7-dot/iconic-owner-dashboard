@@ -1438,8 +1438,8 @@ channels-grid,
 }
 
 /*
-Iconic Owner Dashboard — v15.2.8 visual support
-Scope: high-risk alert + Page 5 checklist visibility.
+Iconic Owner Dashboard — v15.2.7 visual support
+Scope: high-risk alert display only.
 */
 
 .alert-card.risk-alert {
@@ -1455,60 +1455,175 @@ Scope: high-risk alert + Page 5 checklist visibility.
   color: #F5F7FA;
 }
 
-.rule-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
+
+/*
+Iconic Owner Dashboard — v15.5.2 Render Visual Billing Risk Card
+FILE: public/style.css
+Scope: visual-only Billing Risk card for Page 1 / PDF render.
+*/
+.billing-risk-card-v1552 {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 205, 112, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(23, 35, 57, 0.94), rgba(8, 17, 32, 0.98));
+  border: 1px solid rgba(255, 205, 112, 0.28);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
+  color: #f6efe0;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
-.rule-item {
+.billing-risk-card-v1552.critical {
+  border-color: rgba(255, 111, 97, 0.76);
+  box-shadow: 0 18px 58px rgba(255, 83, 73, 0.15), 0 18px 52px rgba(0, 0, 0, 0.34);
+}
+
+.billing-risk-card-v1552.watch {
+  border-color: rgba(255, 205, 112, 0.62);
+}
+
+.billing-risk-main-v1552 {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: start;
-  color: var(--softText);
-  font-size: 12px;
-  line-height: 1.35;
 }
 
-.rule-item span {
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
+.billing-risk-main-v1552 h3 {
+  margin: 6px 0 8px;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.billing-risk-main-v1552 p {
+  margin: 0;
+  color: rgba(246, 239, 224, 0.78);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.billing-risk-badge-v1552 {
+  min-width: 104px;
+  padding: 10px 12px;
   border-radius: 999px;
-  background: rgba(215,181,109,.12);
-  color: var(--gold);
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  background: rgba(255, 205, 112, 0.14);
+  border: 1px solid rgba(255, 205, 112, 0.35);
+}
+
+.billing-risk-badge-v1552.critical {
+  background: rgba(255, 83, 73, 0.17);
+  border-color: rgba(255, 111, 97, 0.72);
+  color: #ffd0ca;
+}
+
+.billing-risk-highlight-v1552 {
+  margin-top: 14px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.billing-risk-highlight-v1552 strong,
+.billing-risk-owner-action-v1552 strong {
+  color: #f5c76f;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-risk-highlight-v1552 span,
+.billing-risk-owner-action-v1552 span {
+  color: rgba(246, 239, 224, 0.86);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.billing-risk-platforms-v1552 {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.billing-risk-platform-row-v1552 {
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.052);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  min-width: 0;
+}
+
+.billing-risk-platform-row-v1552 strong,
+.billing-risk-platform-row-v1552 span,
+.billing-risk-platform-row-v1552 small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.billing-risk-platform-row-v1552 strong {
+  font-size: 13px;
+}
+
+.billing-risk-platform-row-v1552 span {
+  margin-top: 5px;
+  font-size: 12px;
   font-weight: 800;
 }
 
-.rule-item p {
-  margin: 0;
+.billing-risk-platform-row-v1552 small {
+  margin-top: 3px;
+  color: rgba(246, 239, 224, 0.66);
+  font-size: 11px;
 }
 
-.do-card,
-.dont-card {
-  min-height: 126px;
-  padding: 16px;
+.billing-risk-platform-row-v1552.critical {
+  border-color: rgba(255, 111, 97, 0.54);
+  background: rgba(255, 83, 73, 0.105);
 }
 
-.risk-grid {
-  align-items: stretch;
+.billing-risk-platform-row-v1552.watch {
+  border-color: rgba(255, 205, 112, 0.30);
 }
 
-/*
-Iconic Owner Dashboard — v15.3.0 medium risk visual support
-*/
-
-.alert-card.medium-alert {
-  border-color: rgba(253, 176, 34, 0.55);
-  background: linear-gradient(135deg, rgba(253, 176, 34, 0.13), rgba(13, 27, 46, 0.94));
+.billing-risk-owner-action-v1552 {
+  margin-top: 14px;
+  padding-top: 14px;
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
 }
 
-.alert-card.medium-alert strong {
-  color: #FDB022;
+@media (max-width: 900px) {
+  .billing-risk-main-v1552,
+  .billing-risk-highlight-v1552,
+  .billing-risk-owner-action-v1552 {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-risk-platforms-v1552 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.alert-card.medium-alert span {
-  color: #F5F7FA;
+@media print {
+  .billing-risk-card-v1552 {
+    margin-top: 14px !important;
+    box-shadow: none !important;
+  }
 }
