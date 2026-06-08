@@ -1602,3 +1602,315 @@ function renderPage5(data) {
     'Do not enter a discount war unless competitor pressure becomes high.'
   ], '!');
 }
+
+/*
+Iconic Owner Dashboard — v15.2.9 Date Range Lock + Week Parser Fix
+FULL FILE PATCH appended safely to public/app.js
+Scope:
+- Fix report date range lock for current approved test/report window.
+- Fix week parser so 2026-W24 -> current week 24, next week 25.
+- Preserve v15.2.8 Google conversion guard.
+- No Apps Script, no WhatsApp, no Email, no triggers, no Team Inbox.
+*/
+
+function parseWeekNumber_V1529_(value) {
+  const text = String(value || '');
+
+  const explicit =
+    text.match(/\b\d{4}-W0?(\d{1,2})\b/i) ||
+    text.match(/\bW0?(\d{1,2})\b/i) ||
+    text.match(/\bWeek\s*0?(\d{1,2})\b/i);
+
+  if (explicit) return Number(explicit[1]);
+  return 0;
+}
+
+function normalizeDateRange_V1529_() {
+  return '01 Jun 2026 - 07 Jun 2026';
+}
+
+function nextReportText_V1529_(report) {
+  const week = parseWeekNumber_V1529_(report && (report.week || report.weekLabel || '2026-W24'));
+  if (week > 0) return `Week ${week + 1} Review<br>Monday 10:00 AM`;
+  return 'Week 25 Review<br>Monday 10:00 AM';
+}
+
+function numberFromAny_V1529_(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function getMetric_V1529_(row, keys, fallback = 0) {
+  if (!row || typeof row !== 'object') return fallback;
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && row[key] !== '') {
+      return numberFromAny_V1529_(row[key], fallback);
+    }
+  }
+  return fallback;
+}
+
+function rowText_V1529_(row, keys, fallback = '') {
+  if (!row || typeof row !== 'object') return fallback;
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && row[key] !== '') return String(row[key]);
+  }
+  return fallback;
+}
+
+function isGoogleClickOnly_V1529_(row, resultType, results, clicks, conversions, status, decision) {
+  const joined = [
+    resultType,
+    rowText_V1529_(row, ['platform', 'detail', 'subtitle'], ''),
+    status,
+    decision,
+    rowText_V1529_(row, ['note', 'notes', 'comment'], '')
+  ].join(' ').toLowerCase();
+
+  if (conversions > 0) return false;
+  if (clicks > 0) return true;
+
+  if (
+    results > 0 &&
+    (
+      joined.includes('search conversion') ||
+      joined.includes('needs attention') ||
+      joined.includes('tracking') ||
+      joined.includes('watch')
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function mapDirectKeyedChannel_V1506(name, row) {
+  const fallback = emptyChannelTemplate(name);
+
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    return fallback;
+  }
+
+  const spend = getMetric_V1529_(row, ['spend', 'totalSpend', 'amountSpent'], 0);
+  let results = getMetric_V1529_(row, ['results', 'totalResults'], 0);
+  let clicks = getMetric_V1529_(row, ['clicks', 'totalClicks'], 0);
+  let conversions = getMetric_V1529_(row, ['conversions', 'totalConversions'], 0);
+
+  let resultType = textValue_V1506(pick(row, [
+    'resultType',
+    'result_type',
+    'metricType',
+    'objective',
+    'conversionType',
+    'platform',
+    'detail',
+    'subtitle'
+  ], ''), '');
+
+  let status = prettyStatus_V1506(row.status || row.health || row.state, fallback.status);
+  let decision = decisionForChannel_V1506(name, row);
+
+  let costPerResult = getMetric_V1529_(row, [
+    'costPerResult',
+    'cost_per_result',
+    'cpr',
+    'costPerConversion',
+    'cost_per_conversion'
+  ], 0);
+
+  let resultsLabel;
+  let costPerResultLabel;
+
+  if (name === 'Google') {
+    const clickOnly = isGoogleClickOnly_V1529_(row, resultType, results, clicks, conversions, status, decision);
+
+    if (clickOnly) {
+      if (clicks <= 0) clicks = results;
+      conversions = 0;
+      results = 0;
+      resultType = 'Search Clicks / Traffic';
+      resultsLabel = `Conv 0 | Clicks ${number.format(clicks)}`;
+      costPerResult = undefined;
+      costPerResultLabel = 'N/A';
+      status = 'Needs Attention';
+      decision = 'Clicks exist, but conversions are 0. Improve tracking before scaling.';
+    } else if (conversions > 0) {
+      results = conversions;
+      resultType = 'Search Conversions';
+      costPerResult = spend > 0 && results > 0 ? spend / results : costPerResult;
+      status = status || 'Watch';
+    } else {
+      results = 0;
+      resultType = 'Search Traffic';
+      resultsLabel = clicks > 0 ? `Conv 0 | Clicks ${number.format(clicks)}` : 'Conv 0';
+      costPerResult = undefined;
+      costPerResultLabel = 'N/A';
+    }
+  }
+
+  if (name === 'Snapchat') {
+    resultType = resultType || 'Traffic Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'TikTok') {
+    resultType = resultType || 'Destination Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'Meta') {
+    resultType = resultType || 'WhatsApp Conversations';
+  }
+
+  if ((!costPerResult || costPerResult <= 0) && spend > 0 && results > 0) {
+    costPerResult = spend / results;
+  }
+
+  const normalizedRow = { ...row, spend, results, clicks, conversions, costPerResult };
+
+  return {
+    ...fallback,
+    ...row,
+    name,
+    channel: name,
+    platform: resultType || fallback.platform,
+    status,
+    spend,
+    results,
+    clicks,
+    conversions,
+    spendLabel: undefined,
+    resultsLabel,
+    costPerResult: costPerResult > 0 ? costPerResult : undefined,
+    costPerResultLabel: costPerResult > 0 ? undefined : (costPerResultLabel || fallback.costPerResultLabel),
+    ctr: formatCtr_V1506(pick(row, ['ctr', 'clickThroughRate', 'trend', 'statusDetail'], fallback.ctr), fallback.ctr),
+    score: Number(pick(row, ['score', 'healthScore'], 0)) || scoreForChannel_V1506(name, normalizedRow) || fallback.score,
+    decision
+  };
+}
+
+function normalizeData(raw) {
+  const data = raw && raw.data && typeof raw.data === 'object' ? raw.data : (raw || {});
+  const report = data.report || data.reportContext || {};
+  const executive = data.executive || data.executiveSnapshot || {};
+  const customerRaw = data.customerIntelligence || {};
+  const competitorRaw = data.competitorIntelligence || {};
+  const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
+
+  const keyedChannels =
+    data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)
+      ? data.channels
+      : {};
+
+  const channels = hasDirectKeyedChannels_V1506(keyedChannels)
+    ? buildChannelsFromKeyedObject_V1506(keyedChannels)
+    : mergeChannelRows(data.channelsSummary || data.channelSummary || []);
+
+  const generatedAt = data.generatedAt || report.generatedAt || new Date().toISOString();
+
+  const totalSpend = channels.reduce((sum, channel) => sum + numberFromAny_V1529_(channel.spend, 0), 0);
+  const totalResults = channels.reduce((sum, channel) => sum + numberFromAny_V1529_(channel.results, 0), 0);
+
+  const reportWeek = report.week || report.weekLabel || '2026-W24';
+
+  const patchedReport = {
+    ...report,
+    week: reportWeek,
+    weekLabel: reportWeek,
+    dateRange: normalizeDateRange_V1529_(),
+    startDate: '2026-06-01',
+    endDate: '2026-06-07'
+  };
+
+  const google = channels.find(channel => channel.name === 'Google');
+  const googleHasClickNoConversion =
+    google && numberFromAny_V1529_(google.clicks, 0) > 0 && numberFromAny_V1529_(google.results, 0) <= 0;
+
+  const patchedExecutive = {
+    ...executive,
+    totalSpend,
+    totalResults,
+    mainRisk: googleHasClickNoConversion ? 'High' : (executive.mainRisk || executive.risk || 'Low'),
+    risk: googleHasClickNoConversion ? 'High' : (executive.risk || executive.mainRisk || 'Low'),
+    bestChannel: executive.bestChannel || 'Meta',
+    bestChannelDetail: executive.bestChannelDetail || 'WhatsApp Conversations'
+  };
+
+  if (googleHasClickNoConversion) {
+    patchedExecutive.mainRiskDetail = 'Google conversions are 0.';
+    patchedExecutive.alertTitle = 'Tracking Risk Detected';
+    patchedExecutive.alertText = 'Google generated clicks, but no confirmed conversions. Treat it as traffic until tracking is fixed.';
+    patchedExecutive.decisionTitle = executive.decisionTitle || 'Keep Meta as the main engine.';
+    patchedExecutive.decisionLine1 = 'Review Google because clicks are not confirmed conversions.';
+    patchedExecutive.decisionLine2 = 'Do not compare traffic clicks with WhatsApp conversations.';
+  }
+
+  window.__ICONIC_DEBUG__ = {
+    version: 'v15.2.9-date-range-lock-week-parser-fix',
+    rawChannels: data.channels || null,
+    normalizedChannels: channels,
+    report: patchedReport
+  };
+
+  return {
+    report: patchedReport,
+    executive: patchedExecutive,
+    channels,
+    customer: normalizeCustomer(customerRaw),
+    competitor: {
+      ...competitorRaw,
+      competitors: sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
+    },
+    recommendations: {
+      ...recommendations,
+      nextReportDate: nextReportText_V1529_(patchedReport)
+    },
+    generatedAt
+  };
+}
+
+function renderPage5(data) {
+  const r = data.recommendations || {};
+
+  setText('finalDecisionBadge', clampText(r.badge || 'HOLD / IMPROVE', 18));
+  setText('finalDecisionTitle', clampText(r.finalDecisionTitle || r.title || 'Hold budget. Improve proof, replies, and tracking before scaling.', 85));
+  setText('finalDecisionSummary', clampText(r.finalDecisionSummary || r.summary || 'This is a control-and-improve week: keep the stable Meta engine active, improve customer handling, and prepare cleaner growth signals.', 165));
+  setText('ownerNextMove', clampText(r.ownerNextMove || 'Hold budget steady, strengthen replies and proof content, then review again after the next weekly refresh.', 145));
+  setHTML('nextReportDate', r.nextReportDate || nextReportText_V1529_(data.report));
+
+  const fallbackActions = [
+    { title: 'Keep Dubai and Abu Dhabi Meta campaigns active.', note: 'No budget increase until cost/result stays stable after the next refresh.', tag: 'Keep Active', tone: 'green' },
+    { title: 'Update price replies with value + consultation CTA.', note: 'Do not answer price alone. Mention privacy, natural result, and free consultation.', tag: 'Reply Upgrade', tone: 'gold' },
+    { title: 'Add proof-led content against competitor pressure.', note: 'Use transformation proof, consultation trust, and premium private handling.', tag: 'Content', tone: '' },
+    { title: 'Do not scale traffic/search channels yet.', note: 'Testing channels need conversion tracking and lead-quality confirmation first.', tag: 'Hold', tone: 'warn' }
+  ];
+
+  const actions = asArray(r.priorityActions).length ? r.priorityActions : fallbackActions;
+  const actionBox = $('priorityActions');
+  if (actionBox) {
+    actionBox.innerHTML = actions.slice(0, 4).map((item, i) => `
+      <div class="priority-row">
+        <span class="step-num">${i + 1}</span>
+        <div>
+          <strong>${clampText(item.title, 64)}</strong>
+          <small>${clampText(item.note || item.description, 88)}</small>
+        </div>
+        <span class="owner-tag ${item.tone || ''}">${clampText(item.tag || 'Action', 16)}</span>
+      </div>
+    `).join('');
+  }
+
+  renderChecklist('doThisList', asArray(r.doThis).length ? r.doThis : [
+    'Protect the stable Meta engine and improve the conversion path.',
+    'Use privacy, natural result, and premium consultation as the core message.',
+    'Track customer questions and turn repeated objections into better replies.'
+  ], '✓');
+
+  renderChecklist('doNotDoList', asArray(r.doNotDo).length ? r.doNotDo : [
+    'Do not increase budget only because results look positive this week.',
+    'Do not compare WhatsApp conversations with traffic clicks directly.',
+    'Do not enter a discount war unless competitor pressure becomes high.'
+  ], '!');
+}
