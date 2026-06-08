@@ -1436,3 +1436,26 @@ channels-grid,
     white-space: normal;
   }
 }
+/*
+Iconic Owner Dashboard — v15.2.7 small visual support
+FILE: public/style.css
+HOW TO USE:
+1) Open public/style.css.
+2) Paste this block at the VERY END.
+Scope:
+- Visual support only for high-risk alert.
+- Safe if class does not exist elsewhere.
+*/
+
+.alert-card.risk-alert {
+  border-color: rgba(249, 112, 102, 0.55);
+  background: linear-gradient(135deg, rgba(249, 112, 102, 0.14), rgba(13, 27, 46, 0.94));
+}
+
+.alert-card.risk-alert strong {
+  color: #F97066;
+}
+
+.alert-card.risk-alert span {
+  color: #F5F7FA;
+}
