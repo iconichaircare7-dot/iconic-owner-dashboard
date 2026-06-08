@@ -80,6 +80,113 @@ function round2V1537(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
 
+
+/************************************************************
+ * v15.4.0 Dynamic Report Period Restore
+ *
+ * Scope:
+ * - Removes hardcoded report dates from Render /api/dashboard-data cleanup.
+ * - Calculates the latest completed Monday-Sunday reporting period.
+ * - If generated on Sunday, uses the current Monday-Sunday period.
+ * - If generated Monday-Saturday, uses the previous completed Sunday as period end.
+ * - Week label uses the Monday after the report week, matching the approved W24 for 01-07 Jun 2026.
+ *
+ * No Apps Script.
+ * No Email.
+ * No WhatsApp.
+ * No triggers.
+ * No Team Inbox / 811 / tokens.
+ ************************************************************/
+
+function parseOwnerGeneratedAtV1540(value) {
+  if (!value) return new Date();
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+
+  const text = String(value || '').trim();
+
+  // Handles values like: "08 Jun 2026 - 16:52 GMT+4"
+  const custom = text.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/);
+  if (custom) {
+    const months = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const day = Number(custom[1]);
+    const month = months[String(custom[2]).toLowerCase()];
+    const year = Number(custom[3]);
+    if (month !== undefined && year > 2000 && day >= 1 && day <= 31) {
+      return new Date(year, month, day, 12, 0, 0);
+    }
+  }
+
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+
+  return new Date();
+}
+
+function addDaysV1540(date, days) {
+  const d = new Date(date.getTime());
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function pad2V1540(value) {
+  return String(value).padStart(2, '0');
+}
+
+function isoDateV1540(date) {
+  return `${date.getFullYear()}-${pad2V1540(date.getMonth() + 1)}-${pad2V1540(date.getDate())}`;
+}
+
+function formatOwnerDateV1540(date) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${pad2V1540(date.getDate())} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function isoWeekV1540(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function buildDynamicReportPeriodV1540(source) {
+  const generatedAt =
+    (source && source.generatedAt) ||
+    (source && source.report && source.report.generatedAt) ||
+    new Date();
+
+  const base = parseOwnerGeneratedAtV1540(generatedAt);
+
+  // Sunday = 0. If generated Sunday, report week ends today.
+  // If generated Monday-Saturday, use previous Sunday as completed week end.
+  const day = base.getDay();
+  const daysBackToSunday = day === 0 ? 0 : day;
+  const end = addDaysV1540(base, -daysBackToSunday);
+  const start = addDaysV1540(end, -6);
+
+  const nextReportDate = addDaysV1540(end, 8); // next Monday
+  const weekAnchor = addDaysV1540(end, 1); // Monday after the week; matches W24 for 01-07 Jun 2026
+  const nextWeekAnchor = nextReportDate;
+
+  return {
+    start,
+    end,
+    startDate: isoDateV1540(start),
+    endDate: isoDateV1540(end),
+    dateRange: `${formatOwnerDateV1540(start)} - ${formatOwnerDateV1540(end)}`,
+    week: `${weekAnchor.getFullYear()}-W${pad2V1540(isoWeekV1540(weekAnchor))}`,
+    weekLabel: `${weekAnchor.getFullYear()}-W${pad2V1540(isoWeekV1540(weekAnchor))}`,
+    nextReportDate: isoDateV1540(nextReportDate),
+    nextReportDisplayDate: formatOwnerDateV1540(nextReportDate),
+    nextReportWeek: `${nextWeekAnchor.getFullYear()}-W${pad2V1540(isoWeekV1540(nextWeekAnchor))}`
+  };
+}
+
+
 function normalizeChannelKeyV1537(key) {
   const value = String(key || '').toLowerCase();
   if (value.includes('meta') || value.includes('facebook') || value.includes('instagram')) return 'meta';
@@ -170,15 +277,16 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   data.recommendations = data.recommendations && typeof data.recommendations === 'object' ? { ...data.recommendations } : {};
   data.channels = data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels) ? { ...data.channels } : {};
 
-  // Approved report period for current validated PDF.
-  data.report.week = data.report.week || '2026-W24';
-  data.report.weekLabel = data.report.weekLabel || data.report.week;
-  data.report.dateRange = '01 Jun 2026 - 07 Jun 2026';
-  data.report.dataRange = '01 Jun 2026 - 07 Jun 2026';
-  data.report.startDate = '2026-06-01';
-  data.report.endDate = '2026-06-07';
-  data.report.nextReportWeek = '2026-W25';
-  data.report.nextReportDate = '15 Jun 2026';
+  // Dynamic report period.
+  const reportPeriod = buildDynamicReportPeriodV1540(root);
+  data.report.week = reportPeriod.week;
+  data.report.weekLabel = reportPeriod.weekLabel;
+  data.report.dateRange = reportPeriod.dateRange;
+  data.report.dataRange = reportPeriod.dateRange;
+  data.report.startDate = reportPeriod.startDate;
+  data.report.endDate = reportPeriod.endDate;
+  data.report.nextReportWeek = reportPeriod.nextReportWeek;
+  data.report.nextReportDate = reportPeriod.nextReportDisplayDate;
 
   // Google conversion guard.
   const googleRaw = { ...getChannelV1537(data, 'google') };
@@ -258,7 +366,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.3.8-api-dashboard-data-no-circular-fix',
+      version: 'v15.4.0-dynamic-report-period-restore',
       data
     };
   }
@@ -266,7 +374,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+    version: 'v15.4.0-dynamic-report-period-restore'
   };
 }
 
@@ -540,12 +648,12 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     res.set({
       'Cache-Control': 'no-store',
-      'X-Iconic-Api-Cleanup': 'v15.3.8'
+      'X-Iconic-Api-Cleanup': 'v15.4.0'
     });
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.3.8-api-dashboard-data-no-circular-fix' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.4.0-dynamic-report-period-restore' });
   }
 });
 
@@ -651,7 +759,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+      version: 'v15.4.0-dynamic-report-period-restore'
     });
   } finally {
     if (browser) {
@@ -695,7 +803,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+      version: 'v15.4.0-dynamic-report-period-restore'
     });
   } finally {
     if (browser) {
@@ -751,7 +859,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+      version: 'v15.4.0-dynamic-report-period-restore'
     });
   } finally {
     if (browser) {
@@ -763,7 +871,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+  version: 'v15.4.0-dynamic-report-period-restore'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
