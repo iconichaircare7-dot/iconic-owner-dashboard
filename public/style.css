@@ -1495,3 +1495,20 @@ Scope: high-risk alert + Page 5 checklist visibility.
 .risk-grid {
   align-items: stretch;
 }
+
+/*
+Iconic Owner Dashboard — v15.3.0 medium risk visual support
+*/
+
+.alert-card.medium-alert {
+  border-color: rgba(253, 176, 34, 0.55);
+  background: linear-gradient(135deg, rgba(253, 176, 34, 0.13), rgba(13, 27, 46, 0.94));
+}
+
+.alert-card.medium-alert strong {
+  color: #FDB022;
+}
+
+.alert-card.medium-alert span {
+  color: #F5F7FA;
+}
