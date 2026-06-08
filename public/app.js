@@ -1155,3 +1155,462 @@ function competitorLogo(name = '') {
 }
 
 loadDashboard();
+/*
+Iconic Owner Dashboard — v15.2.7 Render PDF Data Binding Cleanup
+FILE: public/app.js
+HOW TO USE:
+1) Open public/app.js.
+2) Paste this whole block at the VERY END of the file.
+3) Save/deploy.
+Scope:
+- Render/PDF data binding only.
+- No Apps Script.
+- No WhatsApp.
+- No Email.
+- No triggers.
+- No Team Inbox.
+Fixes:
+- Weekly date range uses last complete week from generatedAt/report date.
+- Google is not counted as Search Conversions when conversions = 0 and clicks exist.
+- Page 1 risk alert no longer says "No Critical Risk" when Main Risk is High.
+- Page 5 Next Report no longer falls back to Week 23.
+*/
+
+function pad2_V1527_(n) {
+  return String(n).padStart(2, '0');
+}
+
+function asDate_V1527_(value) {
+  if (!value) return null;
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateShort_V1527_(date) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${pad2_V1527_(date.getDate())} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function isoDate_V1527_(date) {
+  return `${date.getFullYear()}-${pad2_V1527_(date.getMonth() + 1)}-${pad2_V1527_(date.getDate())}`;
+}
+
+function addDays_V1527_(date, days) {
+  const d = new Date(date.getTime());
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function getIsoWeek_V1527_(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function buildReportPeriodFromGeneratedAt_V1527_(generatedAt) {
+  const base = asDate_V1527_(generatedAt) || new Date();
+
+  // Weekly owner report is expected to run Monday morning.
+  // Use the last complete Monday-Sunday period ending the day before generation.
+  const end = addDays_V1527_(base, -1);
+  const day = end.getDay(); // 0 Sun, 1 Mon...
+  const daysSinceSunday = day === 0 ? 0 : day;
+  const sunday = addDays_V1527_(end, -daysSinceSunday);
+  const start = addDays_V1527_(sunday, -6);
+
+  return {
+    start,
+    end: sunday,
+    startIso: isoDate_V1527_(start),
+    endIso: isoDate_V1527_(sunday),
+    label: `${formatDateShort_V1527_(start)} - ${formatDateShort_V1527_(sunday)}`,
+    week: `2026-W${pad2_V1527_(getIsoWeek_V1527_(sunday))}`
+  };
+}
+
+function nextWeeklyReviewText_V1527_(period) {
+  const nextEnd = addDays_V1527_(period.end, 7);
+  return `Week ${getIsoWeek_V1527_(nextEnd)} Review<br>Monday 10:00 AM`;
+}
+
+function numberFromAny_V1527_(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function getChannelMetric_V1527_(row, keys, fallback = 0) {
+  if (!row || typeof row !== 'object') return fallback;
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null && row[key] !== '') return numberFromAny_V1527_(row[key], fallback);
+  }
+  return fallback;
+}
+
+function mapDirectKeyedChannel_V1506(name, row) {
+  const fallback = emptyChannelTemplate(name);
+
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    return fallback;
+  }
+
+  let spend = getChannelMetric_V1527_(row, ['spend', 'totalSpend', 'amountSpent'], 0);
+  let results = getChannelMetric_V1527_(row, ['results', 'totalResults', 'conversions'], 0);
+  const clicks = getChannelMetric_V1527_(row, ['clicks', 'totalClicks'], 0);
+  const conversions = getChannelMetric_V1527_(row, ['conversions', 'totalConversions'], results);
+
+  let resultType = textValue_V1506(pick(row, [
+    'resultType',
+    'result_type',
+    'metricType',
+    'objective',
+    'conversionType'
+  ], ''), '');
+
+  let costPerResult = getChannelMetric_V1527_(row, [
+    'costPerResult',
+    'cost_per_result',
+    'cpr',
+    'costPerConversion',
+    'cost_per_conversion'
+  ], 0);
+
+  let resultsLabel;
+  let costPerResultLabel;
+  let status = prettyStatus_V1506(row.status || row.health || row.state, fallback.status);
+  let decision = decisionForChannel_V1506(name, row);
+
+  if (name === 'Google') {
+    // Critical v15.2.7 rule:
+    // If Google has clicks but zero conversions, do NOT show clicks as conversions.
+    if (conversions <= 0 && clicks > 0) {
+      results = 0;
+      resultType = 'Search Clicks / Traffic';
+      resultsLabel = `Conv 0 | Clicks ${number.format(clicks)}`;
+      costPerResult = undefined;
+      costPerResultLabel = 'N/A';
+      status = 'Needs Attention';
+      decision = 'Clicks exist, but conversions are 0. Improve tracking before scaling.';
+    } else if (conversions > 0) {
+      results = conversions;
+      resultType = 'Search Conversions';
+      costPerResult = spend > 0 && results > 0 ? spend / results : costPerResult;
+      status = status || 'Watch';
+    } else {
+      resultType = 'Search Traffic';
+      results = 0;
+      costPerResult = undefined;
+      costPerResultLabel = 'N/A';
+    }
+  }
+
+  if (name === 'Snapchat') {
+    resultType = resultType || 'Traffic Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'TikTok') {
+    resultType = resultType || 'Destination Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'Meta') {
+    resultType = resultType || 'WhatsApp Conversations';
+  }
+
+  if (costPerResult <= 0 && spend > 0 && results > 0) {
+    costPerResult = spend / results;
+  }
+
+  const normalizedRow = {
+    ...row,
+    spend,
+    results,
+    costPerResult
+  };
+
+  return {
+    ...fallback,
+    ...row,
+    name,
+    channel: name,
+    platform: resultType || fallback.platform,
+    status,
+    spend,
+    results,
+    clicks,
+    conversions,
+    spendLabel: undefined,
+    resultsLabel,
+    costPerResult: costPerResult > 0 ? costPerResult : undefined,
+    costPerResultLabel: costPerResult > 0 ? undefined : (costPerResultLabel || fallback.costPerResultLabel),
+    ctr: formatCtr_V1506(pick(row, ['ctr', 'clickThroughRate', 'trend', 'statusDetail'], fallback.ctr), fallback.ctr),
+    score: Number(pick(row, ['score', 'healthScore'], 0)) || scoreForChannel_V1506(name, normalizedRow) || fallback.score,
+    decision
+  };
+}
+
+function normalizeData(raw) {
+  const data = raw && raw.data && typeof raw.data === 'object' ? raw.data : (raw || {});
+  const report = data.report || data.reportContext || {};
+  const executive = data.executive || data.executiveSnapshot || {};
+  const customerRaw = data.customerIntelligence || {};
+  const competitorRaw = data.competitorIntelligence || {};
+  const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
+
+  const keyedChannels =
+    data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)
+      ? data.channels
+      : {};
+
+  const channels = hasDirectKeyedChannels_V1506(keyedChannels)
+    ? buildChannelsFromKeyedObject_V1506(keyedChannels)
+    : mergeChannelRows(data.channelsSummary || data.channelSummary || []);
+
+  const generatedAt = data.generatedAt || report.generatedAt || new Date().toISOString();
+  const derivedPeriod = buildReportPeriodFromGeneratedAt_V1527_(generatedAt);
+
+  const totalSpend = channels.reduce((sum, channel) => sum + numberFromAny_V1527_(channel.spend, 0), 0);
+  const totalResults = channels.reduce((sum, channel) => sum + numberFromAny_V1527_(channel.results, 0), 0);
+
+  const patchedReport = {
+    ...report,
+    week: report.week || report.weekLabel || derivedPeriod.week,
+    weekLabel: report.weekLabel || report.week || derivedPeriod.week,
+    dateRange: derivedPeriod.label,
+    startDate: derivedPeriod.startIso,
+    endDate: derivedPeriod.endIso
+  };
+
+  const google = channels.find(channel => channel.name === 'Google');
+  const googleHasClickNoConversion =
+    google && numberFromAny_V1527_(google.clicks, 0) > 0 && numberFromAny_V1527_(google.results, 0) <= 0;
+
+  const patchedExecutive = {
+    ...executive,
+    totalSpend,
+    totalResults,
+    mainRisk: googleHasClickNoConversion ? 'High' : (executive.mainRisk || executive.risk || 'Low'),
+    risk: googleHasClickNoConversion ? 'High' : (executive.risk || executive.mainRisk || 'Low'),
+    bestChannel: executive.bestChannel || 'Meta',
+    bestChannelDetail: executive.bestChannelDetail || 'WhatsApp Conversations'
+  };
+
+  if (googleHasClickNoConversion) {
+    patchedExecutive.mainRiskDetail = 'Google clicks exist, but conversions are 0.';
+    patchedExecutive.alertTitle = 'Tracking Risk Detected';
+    patchedExecutive.alertText = 'Google generated search clicks but no confirmed conversions. Treat it as traffic until tracking is fixed.';
+    patchedExecutive.decisionTitle = executive.decisionTitle || 'Keep Meta as the main engine.';
+    patchedExecutive.decisionLine1 = 'Review Google because clicks are not confirmed conversions.';
+    patchedExecutive.decisionLine2 = 'Do not compare traffic clicks with WhatsApp conversations.';
+  }
+
+  window.__ICONIC_DEBUG__ = {
+    version: 'v15.2.7-render-pdf-data-binding-cleanup',
+    rawChannels: data.channels || null,
+    normalizedChannels: channels,
+    reportPeriod: patchedReport
+  };
+
+  return {
+    report: patchedReport,
+    executive: patchedExecutive,
+    channels,
+    customer: normalizeCustomer(customerRaw),
+    competitor: {
+      ...competitorRaw,
+      competitors: sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
+    },
+    recommendations: {
+      ...recommendations,
+      nextReportDate: recommendations.nextReportDate || nextWeeklyReviewText_V1527_(derivedPeriod)
+    },
+    generatedAt
+  };
+}
+
+function renderPage1(data) {
+  const { report, executive, customer, competitor, channels } = data;
+
+  setText('reportWeek', report.week || report.weekLabel || 'Week');
+  setText('dateRange', report.dateRange || 'Date range');
+  setText('generatedAt', normalizeGeneratedAt(data.generatedAt));
+
+  setText('totalSpend', fm(executive.totalSpend || 0));
+  setText('totalResults', number.format(Number(executive.totalResults || 0)));
+  setText('bestChannel', clampText(executive.bestChannel || 'Meta', 24));
+  setText('bestChannelDetail', clampText(executive.bestChannelDetail || 'Strong performance', 42));
+
+  const risk = normalizeMainRisk(executive.mainRisk || executive.risk || 'Low');
+  setText('mainRisk', risk.label);
+  setText('mainRiskDetail', clampText(executive.mainRiskDetail || risk.detail, 64));
+
+  setText('decisionTitle', clampText(executive.decisionTitle || executive.title || 'Keep Meta active. No budget increase this week.', 82));
+  setText('decisionLine1', clampText(executive.decisionLine1 || 'Dubai and Abu Dhabi remain stable, with Meta leading performance.', 120));
+  setText('decisionLine2', clampText(executive.decisionLine2 || 'Do not increase spend until cost/result stays stable for the next refresh.', 120));
+
+  const isHighRisk = String(risk.label || '').toLowerCase().includes('high');
+
+  setText(
+    'alertTitle',
+    clampText(
+      isHighRisk
+        ? (executive.alertTitle || 'Tracking Risk Detected')
+        : (executive.alertTitle || 'No Critical Risk Detected'),
+      42
+    )
+  );
+
+  setText(
+    'alertText',
+    clampText(
+      isHighRisk
+        ? (executive.alertText || executive.mainRiskDetail || 'Risk requires review before scaling.')
+        : (executive.alertText || 'Performance is stable. No urgent action required.'),
+      120
+    )
+  );
+
+  const alertCard = $('alertCard');
+  if (alertCard) {
+    alertCard.classList.toggle('risk-alert', isHighRisk);
+  }
+
+  setText('customerSignal', clampText(customer.summary || 'Most customer questions this week are about price, consultation, and booking availability.', 130));
+  setText('competitorSignal', clampText(competitor.summary || 'Competitor activity is stable. No aggressive offer detected this week.', 130));
+  setText('nextAction', clampText(data.recommendations.ownerNextMove || data.recommendations.nextAction || 'Monitor Abu Dhabi VIP before scaling budget.', 160));
+
+  const health = $('page1ChannelHealth');
+  if (health) {
+    health.innerHTML = channels.slice(0, 4).map(channel => `
+      <div class="health-row">
+        <div class="health-name">${iconFor(channel.name)}<strong>${clampText(channel.name, 18)}</strong></div>
+        <small>${clampText(channel.status || 'Pending', 18)}</small>
+      </div>
+    `).join('');
+  }
+}
+
+function renderPage2(data) {
+  const channels = data.channels.slice(0, 4);
+
+  const scoreGrid = $('channelScoreGrid');
+  if (scoreGrid) {
+    scoreGrid.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const label = score ? `${score}/100` : safe(channel.status, 'Pending');
+      const color = score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)';
+      return `
+        <div class="mini-score">
+          <span class="label">${clampText(channel.name, 18)}</span>
+          <strong>${label}</strong>
+          <div class="bar"><span style="--w:${Math.min(100, Math.max(0, score || 12))}%;--c:${color}"></span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const cards = $('channelCards');
+  if (cards) {
+    cards.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const statusClass = statusToClass(channel.status);
+      const spend = channel.spendLabel || (channel.spend !== undefined ? fm(channel.spend) : 'Not active');
+      const results = channel.resultsLabel || safe(channel.results, 'Pending');
+      const cpr = channel.costPerResultLabel || (channel.costPerResult !== undefined ? fm(channel.costPerResult) : 'No data');
+
+      return `
+        <article class="card channel-card">
+          <div class="channel-head">
+            <div class="channel-name">
+              ${iconFor(channel.name)}
+              <div><strong>${clampText(channel.name, 18)}</strong><small>${clampText(channel.platform || '', 30)}</small></div>
+            </div>
+            <span class="status ${statusClass}">${clampText(channel.status || 'Pending', 16)}</span>
+          </div>
+
+          <div class="score-circle" style="--score:${Math.max(0, Math.min(100, score))};--scoreColor:${score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)'}"><strong>${score || 0}</strong></div>
+
+          <div class="metric-list">
+            <div class="metric-row"><span>Spend</span><b>${spend}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Conversions / Clicks' : 'Results'}</span><b>${results}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Cost / Conversion' : 'Cost / Result'}</span><b>${cpr}</b></div>
+            <div class="metric-row"><span>CTR / Status</span><b>${clampText(channel.ctr || channel.trend || 'Stable', 18)}</b></div>
+          </div>
+
+          <div class="channel-decision">Decision: ${clampText(channel.decision || 'Review before scaling.', 72)}</div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  setText('budgetMoveTitle', clampText(data.recommendations.budgetMoveTitle || 'Keep Meta as the main engine. Do not scale testing channels yet.', 84));
+  setText('budgetMoveText', clampText(data.recommendations.budgetMoveText || 'Meta remains the lead engine. Traffic/search channels need conversion-quality proof before scaling.', 150));
+}
+
+function renderPage5(data) {
+  const r = data.recommendations || {};
+
+  setText('finalDecisionBadge', clampText(r.badge || 'HOLD / IMPROVE', 18));
+  setText('finalDecisionTitle', clampText(r.finalDecisionTitle || r.title || 'Hold budget. Improve proof, replies, and tracking before scaling.', 85));
+  setText('finalDecisionSummary', clampText(r.finalDecisionSummary || r.summary || 'This is a control-and-improve week: keep the stable Meta engine active, improve customer handling, and prepare cleaner growth signals.', 165));
+  setText('ownerNextMove', clampText(r.ownerNextMove || 'Hold budget steady, strengthen replies and proof content, then review again after the next weekly refresh.', 145));
+  setHTML('nextReportDate', r.nextReportDate || 'Next weekly review<br>Monday 10:00 AM');
+
+  const fallbackActions = [
+    { title: 'Keep Dubai and Abu Dhabi Meta campaigns active.', note: 'No budget increase until cost/result stays stable after the next refresh.', tag: 'Keep Active', tone: 'green' },
+    { title: 'Update price replies with value + consultation CTA.', note: 'Do not answer price alone. Mention privacy, natural result, and free consultation.', tag: 'Reply Upgrade', tone: 'gold' },
+    { title: 'Add proof-led content against competitor pressure.', note: 'Use transformation proof, consultation trust, and premium private handling.', tag: 'Content', tone: '' },
+    { title: 'Do not scale traffic/search channels yet.', note: 'Testing channels need conversion tracking and lead-quality confirmation first.', tag: 'Hold', tone: 'warn' }
+  ];
+
+  const actions = asArray(r.priorityActions).length ? r.priorityActions : fallbackActions;
+  const actionBox = $('priorityActions');
+  if (actionBox) {
+    actionBox.innerHTML = actions.slice(0, 4).map((item, i) => `
+      <div class="priority-row">
+        <span class="step-num">${i + 1}</span>
+        <div>
+          <strong>${clampText(item.title, 64)}</strong>
+          <small>${clampText(item.note || item.description, 88)}</small>
+        </div>
+        <span class="owner-tag ${item.tone || ''}">${clampText(item.tag || 'Action', 16)}</span>
+      </div>
+    `).join('');
+  }
+
+  const fallbackTimeline = [
+    { icon: '24h', title: 'Immediate', text: 'Keep campaigns running. Review cost/result before any budget move.' },
+    { icon: '48h', title: 'Reply Upgrade', text: 'Update price, privacy, and booking CTA replies.' },
+    { icon: '3d', title: 'Proof Content', text: 'Prepare proof-led content about natural results and private consultation.' },
+    { icon: '7d', title: 'Next Review', text: 'Review Meta, competitors, customer questions, and channel readiness.' }
+  ];
+
+  const timeline = asArray(r.timeline).length ? r.timeline : fallbackTimeline;
+  const timelineBox = $('timeline');
+  if (timelineBox) {
+    timelineBox.innerHTML = timeline.slice(0, 4).map(item => `
+      <article class="card timeline-card">
+        <span>${clampText(item.icon || item.when || '•', 8)}</span>
+        <h3>${clampText(item.title, 32)}</h3>
+        <p>${clampText(item.text || item.note, 78)}</p>
+      </article>
+    `).join('');
+  }
+
+  renderChecklist('doList', asArray(r.doThis).length ? r.doThis : [
+    'Protect the stable Meta engine and improve the conversion path.',
+    'Use privacy, natural result, and premium consultation as the core message.',
+    'Track customer questions and turn repeated objections into better replies.'
+  ], '✓');
+
+  renderChecklist('doNotList', asArray(r.doNotDo).length ? r.doNotDo : [
+    'Do not increase budget only because results look positive this week.',
+    'Do not compare WhatsApp conversations with traffic clicks directly.',
+    'Do not enter a discount war unless competitor pressure becomes high.'
+  ], '!');
+}
+
