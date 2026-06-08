@@ -2071,3 +2071,194 @@ function renderPage1(data) {
     `).join('');
   }
 }
+
+
+/*
+Iconic Owner Dashboard — v15.5.2 Render Visual Billing Risk Card
+FILE: public/app.js
+Scope:
+- Render visual layer only.
+- Adds a compact Billing Risk card to Page 1 when /api/dashboard-data exposes billingRiskSync/billingRisk.
+- Uses existing Render /api/dashboard-data; no Apps Script changes.
+- No server.js changes.
+- No WhatsApp.
+- No Email.
+- No triggers.
+- No Team Inbox / 811.
+*/
+(function iconicBillingRiskVisualV1552() {
+  const VERSION = 'v15.5.2-render-visual-billing-risk-card';
+
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function oneLine(value, fallback) {
+    const text = String(value || fallback || '').replace(/\s+/g, ' ').trim();
+    return text;
+  }
+
+  function short(value, limit, fallback) {
+    const text = oneLine(value, fallback);
+    if (!limit || text.length <= limit) return text;
+    return text.slice(0, Math.max(0, limit - 1)).trim() + '…';
+  }
+
+  function statusClass(status) {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('critical')) return 'critical';
+    if (s.includes('mismatch')) return 'mismatch';
+    if (s.includes('watch')) return 'watch';
+    if (s.includes('ok')) return 'ok';
+    return 'watch';
+  }
+
+  function readBillingPayload(data) {
+    const root = data && typeof data === 'object' ? data : {};
+    const sync = root.billingRiskSync || root.ownerReportDataSync || root.ownerReportDataSyncV1549 || {};
+    const billingRisk = root.billingRisk || sync.billingRisk || {};
+    const platforms = root.billingPlatformStatuses || sync.platformStatuses || [];
+    const warning = root.billingRiskOwnerWarning || sync.ownerWarning || billingRisk.ownerWarning || '';
+    const action = root.billingRiskOwnerAction || sync.ownerAction || '';
+    const worstStatus = billingRisk.worstStatus || sync.worstStatus || root.billingRiskStatus || '';
+
+    return {
+      ok: !!(sync.ok || billingRisk.worstStatus || platforms.length),
+      version: sync.version || VERSION,
+      worstStatus: worstStatus || 'Watch',
+      warning,
+      action,
+      platforms: Array.isArray(platforms) ? platforms : []
+    };
+  }
+
+  function pickSnapchat(platforms) {
+    return (platforms || []).find(item => String(item.platform || '').toLowerCase().includes('snap')) || null;
+  }
+
+  function buildPlatformRows(platforms) {
+    const ordered = ['Meta', 'Google', 'Snapchat', 'TikTok'];
+    const rows = ordered.map(name => {
+      const found = (platforms || []).find(item => String(item.platform || '').toLowerCase() === name.toLowerCase());
+      return found || { platform: name, status: 'Watch', actualBilling: '0', billingRows: 0 };
+    });
+
+    return rows.map(row => {
+      const status = row.status || row.unallocatedStatus || row.billingStatus || 'Watch';
+      return `
+        <div class="billing-risk-platform-row-v1552 ${statusClass(status)}">
+          <strong>${esc(row.platform || 'Platform')}</strong>
+          <span>${esc(status)}</span>
+          <small>${esc(row.actualBilling || row.billingDisplay || '0')}</small>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function buildCard(data) {
+    const payload = readBillingPayload(data);
+    if (!payload.ok) return '';
+
+    const snapchat = pickSnapchat(payload.platforms);
+    const status = payload.worstStatus || 'Watch';
+    const cssStatus = statusClass(status);
+    const warning = short(payload.warning, 190, 'Billing risk needs review. Actual platform charges may not match campaign performance spend.');
+    const action = short(payload.action, 165, 'Do not treat billing charges as current campaign performance spend until billing reconciliation is reviewed.');
+
+    const snapLine = snapchat
+      ? `${snapchat.actualBilling || snapchat.billingDisplay || '0'} actual billing vs AED ${snapchat.campaignSpend || '0'} campaign spend`
+      : 'No Snapchat billing row available yet.';
+
+    return `
+      <section id="billingRiskCardV1552" class="billing-risk-card-v1552 ${cssStatus}" data-version="${esc(VERSION)}">
+        <div class="billing-risk-main-v1552">
+          <div>
+            <span class="label">Billing Reconciliation Risk</span>
+            <h3>Billing Risk: ${esc(status)}</h3>
+            <p>${esc(warning)}</p>
+          </div>
+          <div class="billing-risk-badge-v1552 ${cssStatus}">${esc(status)}</div>
+        </div>
+
+        <div class="billing-risk-highlight-v1552">
+          <strong>Snapchat Check</strong>
+          <span>${esc(short(snapLine, 95))}</span>
+        </div>
+
+        <div class="billing-risk-platforms-v1552">
+          ${buildPlatformRows(payload.platforms)}
+        </div>
+
+        <div class="billing-risk-owner-action-v1552">
+          <strong>Owner Action</strong>
+          <span>${esc(action)}</span>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderCard(data) {
+    const html = buildCard(data);
+    const existing = document.getElementById('billingRiskCardV1552');
+    if (!html) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (existing) {
+      existing.outerHTML = html;
+      return;
+    }
+
+    const alertCard = document.getElementById('alertCard');
+    if (alertCard && alertCard.parentNode) {
+      alertCard.insertAdjacentHTML('afterend', html);
+      return;
+    }
+
+    const page1Content = document.querySelector('#page1 .page-content');
+    if (page1Content) {
+      page1Content.insertAdjacentHTML('beforeend', html);
+    }
+  }
+
+  async function fetchAndRender() {
+    try {
+      const response = await fetch('/api/dashboard-data?visualBillingRisk=1&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || json.ok === false) return;
+      renderCard(json);
+      window.__ICONIC_BILLING_RISK_VISUAL__ = {
+        ok: true,
+        version: VERSION,
+        billingRiskSyncOk: !!(json.billingRiskSync && json.billingRiskSync.ok),
+        worstStatus: json.billingRisk && json.billingRisk.worstStatus
+      };
+    } catch (error) {
+      window.__ICONIC_BILLING_RISK_VISUAL__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    }
+  }
+
+  function start() {
+    setTimeout(fetchAndRender, 450);
+    setTimeout(fetchAndRender, 1800);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
