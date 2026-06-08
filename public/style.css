@@ -1438,8 +1438,8 @@ channels-grid,
 }
 
 /*
-Iconic Owner Dashboard — v15.2.7 visual support
-Scope: high-risk alert display only.
+Iconic Owner Dashboard — v15.2.8 visual support
+Scope: high-risk alert + Page 5 checklist visibility.
 */
 
 .alert-card.risk-alert {
@@ -1453,4 +1453,45 @@ Scope: high-risk alert display only.
 
 .alert-card.risk-alert span {
   color: #F5F7FA;
+}
+
+.rule-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rule-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--softText);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.rule-item span {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(215,181,109,.12);
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.rule-item p {
+  margin: 0;
+}
+
+.do-card,
+.dont-card {
+  min-height: 126px;
+  padding: 16px;
+}
+
+.risk-grid {
+  align-items: stretch;
 }
