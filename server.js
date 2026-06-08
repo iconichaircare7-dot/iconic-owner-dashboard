@@ -161,12 +161,14 @@ function buildOwnerDecisionV1537(data) {
 }
 
 function normalizeOwnerDashboardDataV1537(rawJson) {
-  const output = rawJson && typeof rawJson === 'object' ? rawJson : {};
-  const data = output.data && typeof output.data === 'object' ? output.data : output;
+  const root = rawJson && typeof rawJson === 'object' ? rawJson : {};
+  const hasNestedData = !!(root.data && typeof root.data === 'object' && !Array.isArray(root.data));
+  const data = hasNestedData ? { ...root.data } : { ...root };
 
-  data.report = data.report && typeof data.report === 'object' ? data.report : {};
-  data.executive = data.executive && typeof data.executive === 'object' ? data.executive : {};
-  data.recommendations = data.recommendations && typeof data.recommendations === 'object' ? data.recommendations : {};
+  data.report = data.report && typeof data.report === 'object' ? { ...data.report } : {};
+  data.executive = data.executive && typeof data.executive === 'object' ? { ...data.executive } : {};
+  data.recommendations = data.recommendations && typeof data.recommendations === 'object' ? { ...data.recommendations } : {};
+  data.channels = data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels) ? { ...data.channels } : {};
 
   // Approved report period for current validated PDF.
   data.report.week = data.report.week || '2026-W24';
@@ -202,7 +204,6 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   }
 
   // Recalculate executive totals from normalized channels.
-  const channels = getChannelsObjectV1537(data);
   const channelList = ['meta', 'google', 'snapchat', 'tiktok'].map(key => getChannelV1537(data, key));
 
   const totalSpend = channelList.reduce((sum, channel) => sum + toNumberV1537(channel.spend), 0);
@@ -250,11 +251,23 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   data.ownerDecisionAction = decision.action;
   data.ownerDecisionDoNotDo = decision.doNotDo;
 
-  output.data = data;
-  output.ok = output.ok !== false;
-  output.version = 'v15.3.7-api-dashboard-data-cleanup';
+  // Avoid circular JSON:
+  // If upstream response had { ok, data }, preserve that shape.
+  // If upstream response was already the root dashboard object, return root-level dashboard object.
+  if (hasNestedData) {
+    return {
+      ...root,
+      ok: root.ok !== false,
+      version: 'v15.3.8-api-dashboard-data-no-circular-fix',
+      data
+    };
+  }
 
-  return output;
+  return {
+    ...data,
+    ok: root.ok !== false,
+    version: 'v15.3.8-api-dashboard-data-no-circular-fix'
+  };
 }
 
 
@@ -527,12 +540,12 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     res.set({
       'Cache-Control': 'no-store',
-      'X-Iconic-Api-Cleanup': 'v15.3.7'
+      'X-Iconic-Api-Cleanup': 'v15.3.8'
     });
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.3.7-api-dashboard-data-cleanup' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.3.8-api-dashboard-data-no-circular-fix' });
   }
 });
 
@@ -638,7 +651,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.7-api-dashboard-data-cleanup'
+      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
     });
   } finally {
     if (browser) {
@@ -682,7 +695,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.7-api-dashboard-data-cleanup'
+      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
     });
   } finally {
     if (browser) {
@@ -738,7 +751,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.3.7-api-dashboard-data-cleanup'
+      version: 'v15.3.8-api-dashboard-data-no-circular-fix'
     });
   } finally {
     if (browser) {
@@ -750,7 +763,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.3.7-api-dashboard-data-cleanup'
+  version: 'v15.3.8-api-dashboard-data-no-circular-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
