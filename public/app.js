@@ -2074,11 +2074,12 @@ function renderPage1(data) {
 
 
 /*
-Iconic Owner Dashboard — v15.5.2 Render Visual Billing Risk Card
+Iconic Owner Dashboard — v15.5.3 Snapchat Spend Currency Fix
 FILE: public/app.js
 Scope:
 - Render visual layer only.
 - Adds a compact Billing Risk card to Page 1 when /api/dashboard-data exposes billingRiskSync/billingRisk.
+- Fixes Snapchat campaign spend currency display: Snapchat spend is USD when upstream billing/platform currency is USD, not AED.
 - Uses existing Render /api/dashboard-data; no Apps Script changes.
 - No server.js changes.
 - No WhatsApp.
@@ -2087,7 +2088,7 @@ Scope:
 - No Team Inbox / 811.
 */
 (function iconicBillingRiskVisualV1552() {
-  const VERSION = 'v15.5.2-render-visual-billing-risk-card';
+  const VERSION = 'v15.5.3-snapchat-spend-currency-fix';
 
   function esc(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -2160,6 +2161,22 @@ Scope:
     }).join('');
   }
 
+  function normalizeCurrency(value, fallback) {
+    const raw = String(value || '').trim();
+    if (!raw || raw.toLowerCase().includes('blank')) return fallback || 'AED';
+    if (raw.indexOf('/') !== -1) {
+      const first = raw.split('/')[0].trim();
+      return first || fallback || 'AED';
+    }
+    return raw.toUpperCase();
+  }
+
+  function formatPlatformAmount(amount, currency) {
+    const n = Number(amount || 0);
+    const clean = Number.isFinite(n) ? (Math.round(n * 100) / 100).toString() : String(amount || '0');
+    return `${normalizeCurrency(currency, 'AED')} ${clean}`;
+  }
+
   function buildCard(data) {
     const payload = readBillingPayload(data);
     if (!payload.ok) return '';
@@ -2170,8 +2187,16 @@ Scope:
     const warning = short(payload.warning, 190, 'Billing risk needs review. Actual platform charges may not match campaign performance spend.');
     const action = short(payload.action, 165, 'Do not treat billing charges as current campaign performance spend until billing reconciliation is reviewed.');
 
+    const snapchatCampaignCurrency = snapchat
+      ? normalizeCurrency(snapchat.campaignCurrency || snapchat.spendCurrency || snapchat.currency, 'USD')
+      : 'USD';
+
+    const snapchatCampaignSpend = snapchat
+      ? formatPlatformAmount(snapchat.campaignSpend || 0, snapchatCampaignCurrency)
+      : '';
+
     const snapLine = snapchat
-      ? `${snapchat.actualBilling || snapchat.billingDisplay || '0'} actual billing vs AED ${snapchat.campaignSpend || '0'} campaign spend`
+      ? `${snapchat.actualBilling || snapchat.billingDisplay || '0'} actual billing vs ${snapchatCampaignSpend} campaign spend`
       : 'No Snapchat billing row available yet.';
 
     return `
@@ -2254,6 +2279,118 @@ Scope:
   function start() {
     setTimeout(fetchAndRender, 450);
     setTimeout(fetchAndRender, 1800);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
+
+
+/*
+Iconic Owner Dashboard — v15.5.3 Snapchat Spend Currency Safety Patch
+Scope:
+- Visual-only patch.
+- Corrects any remaining cached/legacy text that says Snapchat campaign spend is AED.
+- Does not change API data, Apps Script, Render server.js, Email, WhatsApp, triggers, Team Inbox, or 811.
+*/
+(function iconicSnapchatCurrencySafetyPatchV1553() {
+  const VERSION = 'v15.5.3-snapchat-currency-safety-patch';
+
+  function normalizeCurrency(value, fallback) {
+    const raw = String(value || '').trim();
+    if (!raw || raw.toLowerCase().includes('blank')) return fallback || 'USD';
+    if (raw.indexOf('/') !== -1) {
+      const first = raw.split('/')[0].trim();
+      return first || fallback || 'USD';
+    }
+    return raw.toUpperCase();
+  }
+
+  function formatAmount(amount, currency) {
+    const n = Number(amount || 0);
+    const clean = Number.isFinite(n) ? (Math.round(n * 100) / 100).toString() : String(amount || '0');
+    return `${normalizeCurrency(currency, 'USD')} ${clean}`;
+  }
+
+  function findSnapchatStatus(json) {
+    const sync = json && (json.billingRiskSync || json.ownerReportDataSync || json.ownerReportDataSyncV1549 || {});
+    const platforms = (json && json.billingPlatformStatuses) || sync.platformStatuses || [];
+    return (platforms || []).find(item => String(item.platform || '').toLowerCase().includes('snap')) || null;
+  }
+
+  function replaceLegacyText(root, oldText, newText) {
+    if (!root || !oldText || !newText || oldText === newText) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      if (node.nodeValue && node.nodeValue.includes(oldText)) {
+        node.nodeValue = node.nodeValue.split(oldText).join(newText);
+      }
+    });
+  }
+
+  function updateSnapchatChannelCard(campaignSpendLabel, costLabel) {
+    const cards = Array.from(document.querySelectorAll('.channel-card, article, .card'));
+    const snapCard = cards.find(card => /snapchat/i.test(card.textContent || ''));
+    if (!snapCard) return;
+
+    const rows = Array.from(snapCard.querySelectorAll('.metric-row'));
+    rows.forEach(row => {
+      const label = (row.querySelector('span') || {}).textContent || '';
+      const value = row.querySelector('b');
+      if (!value) return;
+      if (/spend/i.test(label)) value.textContent = campaignSpendLabel;
+      if (/cost\s*\/\s*result/i.test(label) && costLabel) value.textContent = costLabel;
+    });
+  }
+
+  async function run() {
+    try {
+      const response = await fetch('/api/dashboard-data?currencyFix=1553&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return;
+
+      const snap = findSnapchatStatus(json);
+      if (!snap) return;
+
+      const currency = normalizeCurrency(snap.campaignCurrency || snap.spendCurrency || snap.currency, 'USD');
+      const campaignSpend = snap.campaignSpend || (json.channels && json.channels.snapchat && json.channels.snapchat.spend) || 0;
+      const campaignSpendLabel = formatAmount(campaignSpend, currency);
+      const cpr = json.channels && json.channels.snapchat ? json.channels.snapchat.costPerResult : undefined;
+      const costLabel = cpr !== undefined && cpr !== null ? formatAmount(cpr, currency) : '';
+
+      replaceLegacyText(document.body, `AED ${campaignSpend}`, campaignSpendLabel);
+      replaceLegacyText(document.body, `AED ${Number(campaignSpend).toFixed(2)}`, campaignSpendLabel);
+      replaceLegacyText(document.body, `AED ${Math.round(Number(campaignSpend) * 100) / 100}`, campaignSpendLabel);
+
+      updateSnapchatChannelCard(campaignSpendLabel, costLabel);
+
+      window.__ICONIC_SNAPCHAT_CURRENCY_FIX__ = {
+        ok: true,
+        version: VERSION,
+        snapchatCampaignSpend: campaignSpendLabel,
+        snapchatActualBilling: snap.actualBilling || snap.billingDisplay || '0'
+      };
+    } catch (error) {
+      window.__ICONIC_SNAPCHAT_CURRENCY_FIX__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    }
+  }
+
+  function start() {
+    setTimeout(run, 500);
+    setTimeout(run, 1900);
+    setTimeout(run, 3500);
   }
 
   if (document.readyState === 'loading') {
