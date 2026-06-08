@@ -267,6 +267,306 @@ function buildOwnerDecisionV1537(data) {
   };
 }
 
+
+
+/************************************************************
+ * v15.5.0 Render Billing Risk Sync
+ *
+ * Scope:
+ * - Reads billing-risk payload from upstream Apps Script dashboard data when available.
+ * - Normalizes it into /api/dashboard-data as:
+ *   data.billingRisk
+ *   data.billingRiskSync
+ *   data.billingPlatformStatuses
+ *   data.recommendations.billingRiskWarning
+ *   data.recommendations.billingRiskOwnerAction
+ * - If risk is Critical/Mismatch, surfaces it in the executive alert fields so
+ *   the existing Render report/PDF can show the risk without changing performance numbers.
+ *
+ * No Apps Script.
+ * No Email.
+ * No WhatsApp.
+ * No triggers.
+ * No Team Inbox / 811 / tokens.
+ ************************************************************/
+
+function normalizeStatusV1550(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'critical') return 'Critical';
+  if (text === 'mismatch') return 'Mismatch';
+  if (text === 'watch' || text === 'warning') return 'Watch';
+  if (text === 'ready') return 'OK';
+  if (text === 'ok' || text === 'good' || text === 'stable') return 'OK';
+  return value ? String(value).trim() : 'OK';
+}
+
+function statusLevelV1550(status) {
+  const normalized = normalizeStatusV1550(status);
+  if (normalized === 'Critical') return 3;
+  if (normalized === 'Mismatch') return 2;
+  if (normalized === 'Watch') return 1;
+  return 0;
+}
+
+function worstStatusV1550(statuses) {
+  let worst = 'OK';
+  let worstLevel = 0;
+  (statuses || []).forEach(status => {
+    const normalized = normalizeStatusV1550(status);
+    const level = statusLevelV1550(normalized);
+    if (level > worstLevel) {
+      worst = normalized;
+      worstLevel = level;
+    }
+  });
+  return worst;
+}
+
+function pickObjectV1550(...items) {
+  for (const item of items) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) return item;
+  }
+  return null;
+}
+
+function pickArrayV1550(...items) {
+  for (const item of items) {
+    if (Array.isArray(item)) return item;
+  }
+  return [];
+}
+
+function cleanTextV1550(value, fallback = '') {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text || fallback;
+}
+
+function readDashboardMetricV1550(source, metricName) {
+  const target = String(metricName || '').trim().toLowerCase();
+  if (!source || !target) return '';
+
+  const directCandidates = [
+    source.dashboard,
+    source.ownerDashboard,
+    source.aiCmoDashboard,
+    source.aiCMODashboard,
+    source.metrics,
+    source.kpis
+  ];
+
+  for (const candidate of directCandidates) {
+    if (!candidate) continue;
+
+    if (typeof candidate === 'object' && !Array.isArray(candidate)) {
+      for (const key of Object.keys(candidate)) {
+        if (String(key || '').trim().toLowerCase() === target) return candidate[key];
+      }
+    }
+
+    if (Array.isArray(candidate)) {
+      for (const row of candidate) {
+        if (Array.isArray(row) && String(row[0] || '').trim().toLowerCase() === target) return row[1];
+        if (row && typeof row === 'object') {
+          const label = String(row.metric || row.label || row.name || row.key || '').trim().toLowerCase();
+          if (label === target) return row.value || row.text || row.result || '';
+        }
+      }
+    }
+  }
+
+  return '';
+}
+
+function normalizePlatformStatusesV1550(items) {
+  return (items || []).map(item => {
+    const platform = cleanTextV1550(item.platform || item.name || item.channel, 'Unknown');
+    const billingStatus = normalizeStatusV1550(item.billingStatus || item.status || item.billingRiskStatus || 'OK');
+    const unallocatedStatus = normalizeStatusV1550(item.unallocatedStatus || item.unallocatedBillingStatus || billingStatus);
+    const worstStatus = worstStatusV1550([billingStatus, unallocatedStatus]);
+
+    return {
+      platform,
+      campaignSpend: item.campaignSpend !== undefined ? item.campaignSpend : item.spend,
+      actualBilling: item.actualBilling !== undefined ? item.actualBilling : (item.billingDisplay || item.billingCharges || '0'),
+      billingStatus,
+      unallocatedStatus,
+      status: worstStatus,
+      billingRows: Number(item.billingRows || 0),
+      ignoredRows: Number(item.ignoredRows || 0),
+      currency: cleanTextV1550(item.currency || item.currencies || 'AED / blank'),
+      note: cleanTextV1550(item.note || item.notes || item.reason || '')
+    };
+  });
+}
+
+function normalizeBillingRiskSyncV1550(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+
+  const risk = pickObjectV1550(payload.billingRisk, payload.risk, payload.billingRiskStatus) || {};
+  const platformStatuses = normalizePlatformStatusesV1550(
+    pickArrayV1550(payload.platformStatuses, payload.platforms, payload.checks, risk.platformStatuses)
+  );
+
+  const platformWorst = worstStatusV1550(platformStatuses.map(item => item.status));
+  const worstStatus = normalizeStatusV1550(
+    risk.worstStatus ||
+    payload.worstStatus ||
+    payload.billingWorstStatus ||
+    payload.unallocatedWorstStatus ||
+    platformWorst
+  );
+
+  const ownerWarning = cleanTextV1550(
+    risk.ownerWarning ||
+    payload.ownerWarning ||
+    payload.warning ||
+    payload.billingRiskWarning ||
+    'Billing risk data is available. Review actual billing charges before treating billing as performance spend.'
+  );
+
+  const ownerAction = cleanTextV1550(
+    payload.ownerAction ||
+    payload.billingRiskOwnerAction ||
+    risk.ownerAction ||
+    'Review billing charges, currency, threshold payments, old balances, delayed charges, tax/VAT, refunds, payment retries, and previous campaign charges.'
+  );
+
+  return {
+    ok: payload.ok !== false,
+    version: payload.version || 'v15.5.0-render-billing-risk-sync',
+    generatedAt: payload.generatedAt || '',
+    period: payload.period || {},
+    billingRisk: {
+      worstStatus,
+      billingWorstStatus: normalizeStatusV1550(risk.billingWorstStatus || payload.billingWorstStatus || worstStatus),
+      unallocatedWorstStatus: normalizeStatusV1550(risk.unallocatedWorstStatus || payload.unallocatedWorstStatus || worstStatus),
+      hasCritical: !!(risk.hasCritical || payload.hasCritical || worstStatus === 'Critical'),
+      hasMismatch: !!(risk.hasMismatch || payload.hasMismatch || worstStatus === 'Mismatch'),
+      hasWatch: !!(risk.hasWatch || payload.hasWatch || worstStatus === 'Watch'),
+      ownerWarning
+    },
+    ownerWarning,
+    ownerAction,
+    platformStatuses,
+    unallocatedSummary: payload.unallocatedSummary || {},
+    actualBillingSummary: payload.actualBillingSummary || {},
+    renderSyncNote: 'Render v15.5.0 consumed billing risk from upstream owner data. Campaign performance numbers remain unchanged.'
+  };
+}
+
+function extractBillingRiskSyncV1550(root, data) {
+  const candidates = [
+    data && data.ownerReportDataSync,
+    data && data.ownerReportDataSyncV1549,
+    data && data.billingRiskSync,
+    data && data.billingSync,
+    root && root.ownerReportDataSync,
+    root && root.ownerReportDataSyncV1549,
+    root && root.billingRiskSync,
+    root && root.billingSync,
+    root && root.data && root.data.ownerReportDataSync,
+    root && root.data && root.data.billingRiskSync
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeBillingRiskSyncV1550(candidate);
+    if (normalized) return normalized;
+  }
+
+  const directRisk = pickObjectV1550(
+    data && data.billingRisk,
+    root && root.billingRisk,
+    root && root.data && root.data.billingRisk
+  );
+
+  if (directRisk) {
+    return normalizeBillingRiskSyncV1550({
+      ok: true,
+      version: 'v15.5.0-direct-billing-risk-normalized',
+      billingRisk: directRisk,
+      ownerWarning: directRisk.ownerWarning || directRisk.warning,
+      ownerAction: directRisk.ownerAction || directRisk.action,
+      platformStatuses: pickArrayV1550(data && data.billingPlatformStatuses, root && root.billingPlatformStatuses)
+    });
+  }
+
+  const dashboardStatus = readDashboardMetricV1550(data, 'Billing Risk Status') || readDashboardMetricV1550(root, 'Billing Risk Status');
+  const dashboardWarning = readDashboardMetricV1550(data, 'Billing Risk Warning') || readDashboardMetricV1550(root, 'Billing Risk Warning');
+  const dashboardAction = readDashboardMetricV1550(data, 'Billing Risk Owner Action') || readDashboardMetricV1550(root, 'Billing Risk Owner Action');
+
+  if (dashboardStatus || dashboardWarning || dashboardAction) {
+    return normalizeBillingRiskSyncV1550({
+      ok: true,
+      version: 'v15.5.0-dashboard-metric-billing-risk-sync',
+      billingRisk: {
+        worstStatus: dashboardStatus || 'Watch',
+        ownerWarning: dashboardWarning || ''
+      },
+      ownerWarning: dashboardWarning || '',
+      ownerAction: dashboardAction || ''
+    });
+  }
+
+  return null;
+}
+
+function applyBillingRiskSyncV1550(root, data) {
+  const sync = extractBillingRiskSyncV1550(root, data);
+
+  if (!sync) {
+    data.billingRiskSync = {
+      ok: false,
+      version: 'v15.5.0-render-billing-risk-sync',
+      status: 'Not available from upstream OWNER_DATA_API_URL yet',
+      note: 'Apps Script must expose ownerReportDataSync or billingRisk in ownerDashboardData before Render can display billing risk.'
+    };
+    return data;
+  }
+
+  const risk = sync.billingRisk || {};
+  const worstStatus = normalizeStatusV1550(risk.worstStatus || 'OK');
+  const ownerWarning = cleanTextV1550(sync.ownerWarning || risk.ownerWarning || 'Billing risk detected.');
+  const ownerAction = cleanTextV1550(sync.ownerAction || 'Review billing before using billing as performance spend.');
+
+  data.billingRisk = {
+    worstStatus,
+    billingWorstStatus: normalizeStatusV1550(risk.billingWorstStatus || worstStatus),
+    unallocatedWorstStatus: normalizeStatusV1550(risk.unallocatedWorstStatus || worstStatus),
+    hasCritical: !!(risk.hasCritical || worstStatus === 'Critical'),
+    hasMismatch: !!(risk.hasMismatch || worstStatus === 'Mismatch'),
+    hasWatch: !!(risk.hasWatch || worstStatus === 'Watch'),
+    ownerWarning
+  };
+
+  data.billingRiskSync = sync;
+  data.billingPlatformStatuses = sync.platformStatuses || [];
+  data.billingRiskOwnerWarning = ownerWarning;
+  data.billingRiskOwnerAction = ownerAction;
+
+  data.recommendations = data.recommendations && typeof data.recommendations === 'object' ? { ...data.recommendations } : {};
+  data.recommendations.billingRiskStatus = worstStatus;
+  data.recommendations.billingRiskWarning = ownerWarning;
+  data.recommendations.billingRiskOwnerAction = ownerAction;
+
+  data.executive = data.executive && typeof data.executive === 'object' ? { ...data.executive } : {};
+  data.executive.billingRiskStatus = worstStatus;
+  data.executive.billingRiskWarning = ownerWarning;
+  data.executive.billingRiskOwnerAction = ownerAction;
+
+  if (statusLevelV1550(worstStatus) >= 2) {
+    data.executive.mainRisk = worstStatus;
+    data.executive.mainRiskDetail = ownerWarning;
+    data.executive.alertTitle = worstStatus === 'Critical' ? 'Critical Billing Risk' : 'Billing Mismatch Detected';
+    data.executive.alertText = ownerWarning;
+    data.recommendations.finalDecisionTitle = worstStatus === 'Critical'
+      ? 'Stop using billing as performance spend until reconciliation is reviewed.'
+      : 'Review billing mismatch before making budget decisions.';
+    data.recommendations.finalDecisionSummary = ownerAction;
+  }
+
+  return data;
+}
+
 function normalizeOwnerDashboardDataV1537(rawJson) {
   const root = rawJson && typeof rawJson === 'object' ? rawJson : {};
   const hasNestedData = !!(root.data && typeof root.data === 'object' && !Array.isArray(root.data));
@@ -359,6 +659,9 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   data.ownerDecisionAction = decision.action;
   data.ownerDecisionDoNotDo = decision.doNotDo;
 
+  // v15.5.0: consume upstream billing risk sync if Apps Script exposes it.
+  applyBillingRiskSyncV1550(root, data);
+
   // Avoid circular JSON:
   // If upstream response had { ok, data }, preserve that shape.
   // If upstream response was already the root dashboard object, return root-level dashboard object.
@@ -366,7 +669,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.4.0-dynamic-report-period-restore',
+      version: 'v15.5.0-render-billing-risk-sync',
       data
     };
   }
@@ -374,7 +677,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.4.0-dynamic-report-period-restore'
+    version: 'v15.5.0-render-billing-risk-sync'
   };
 }
 
@@ -648,12 +951,12 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     res.set({
       'Cache-Control': 'no-store',
-      'X-Iconic-Api-Cleanup': 'v15.4.0'
+      'X-Iconic-Api-Cleanup': 'v15.5.0'
     });
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.4.0-dynamic-report-period-restore' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.5.0-render-billing-risk-sync' });
   }
 });
 
@@ -759,7 +1062,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.4.0-dynamic-report-period-restore'
+      version: 'v15.5.0-render-billing-risk-sync'
     });
   } finally {
     if (browser) {
@@ -803,7 +1106,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.4.0-dynamic-report-period-restore'
+      version: 'v15.5.0-render-billing-risk-sync'
     });
   } finally {
     if (browser) {
@@ -859,7 +1162,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.4.0-dynamic-report-period-restore'
+      version: 'v15.5.0-render-billing-risk-sync'
     });
   } finally {
     if (browser) {
@@ -871,7 +1174,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.4.0-dynamic-report-period-restore'
+  version: 'v15.5.0-render-billing-risk-sync'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
