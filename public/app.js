@@ -2074,7 +2074,7 @@ function renderPage1(data) {
 
 
 /*
-Iconic Owner Dashboard — v15.5.3 Snapchat Spend Currency Fix
+Iconic Owner Dashboard — v15.5.4 Snapchat Channel Card Currency Fix
 FILE: public/app.js
 Scope:
 - Render visual layer only.
@@ -2088,7 +2088,7 @@ Scope:
 - No Team Inbox / 811.
 */
 (function iconicBillingRiskVisualV1552() {
-  const VERSION = 'v15.5.3-snapchat-spend-currency-fix';
+  const VERSION = 'v15.5.4-snapchat-channel-card-currency-fix';
 
   function esc(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -2391,6 +2391,204 @@ Scope:
     setTimeout(run, 500);
     setTimeout(run, 1900);
     setTimeout(run, 3500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
+
+
+/*
+Iconic Owner Dashboard — v15.5.4 Snapchat Channel Card Currency Fix
+Scope:
+- Visual-only patch for Render dashboard.
+- Fixes Snapchat Channel Health card spend and cost/result labels from AED to USD.
+- Keeps Billing Risk card using USD for Snapchat spend.
+- Does not modify server.js, Apps Script, Email, WhatsApp, triggers, Team Inbox, 811, or tokens.
+*/
+(function iconicSnapchatChannelCardCurrencyFixV1554() {
+  const VERSION = 'v15.5.4-snapchat-channel-card-currency-fix';
+
+  function normalizeCurrency(value, fallback) {
+    const raw = String(value || '').trim();
+    if (!raw || /blank/i.test(raw)) return fallback || 'USD';
+    if (raw.indexOf('/') !== -1) {
+      const first = raw.split('/')[0].trim();
+      return first || fallback || 'USD';
+    }
+    return raw.toUpperCase();
+  }
+
+  function cleanAmount(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return String(value || '0');
+    return (Math.round(n * 100) / 100).toString();
+  }
+
+  function amountLabel(value, currency) {
+    return `${normalizeCurrency(currency, 'USD')} ${cleanAmount(value)}`;
+  }
+
+  function getDataSync(json) {
+    return (
+      (json && json.billingRiskSync) ||
+      (json && json.ownerReportDataSync) ||
+      (json && json.ownerReportDataSyncV1549) ||
+      {}
+    );
+  }
+
+  function findSnapchatBillingStatus(json) {
+    const sync = getDataSync(json);
+    const platforms =
+      (json && json.billingPlatformStatuses) ||
+      sync.platformStatuses ||
+      [];
+    return (platforms || []).find(item => String(item.platform || '').toLowerCase().includes('snap')) || null;
+  }
+
+  function getSnapchatNumbers(json) {
+    const channel = json && json.channels && json.channels.snapchat ? json.channels.snapchat : {};
+    const billing = findSnapchatBillingStatus(json) || {};
+    const currency = normalizeCurrency(
+      billing.campaignCurrency || billing.spendCurrency || billing.currency,
+      'USD'
+    );
+
+    return {
+      currency,
+      spend: billing.campaignSpend !== undefined ? billing.campaignSpend : channel.spend,
+      costPerResult: channel.costPerResult,
+      actualBilling: billing.actualBilling || billing.billingDisplay || ''
+    };
+  }
+
+  function replaceTextEverywhere(oldText, newText) {
+    if (!oldText || !newText || oldText === newText) return;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      if (node.nodeValue && node.nodeValue.indexOf(oldText) !== -1) {
+        node.nodeValue = node.nodeValue.split(oldText).join(newText);
+      }
+    });
+  }
+
+  function getLikelySnapchatCard() {
+    const candidates = Array.from(document.querySelectorAll('article, section, .card, .channel-card, [class*="card"], [class*="channel"]'));
+    return candidates
+      .filter(el => /snapchat/i.test(el.textContent || ''))
+      .sort((a, b) => (a.textContent || '').length - (b.textContent || '').length)[0] || null;
+  }
+
+  function replaceCurrencyNearLabel(card, labelRegex, newValue) {
+    if (!card || !newValue) return false;
+
+    const textNodes = [];
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+    for (let i = 0; i < textNodes.length; i++) {
+      const txt = String(textNodes[i].nodeValue || '');
+      if (!labelRegex.test(txt)) continue;
+
+      // Look ahead a few text nodes for the rendered value.
+      for (let j = i + 1; j < Math.min(i + 8, textNodes.length); j++) {
+        const v = String(textNodes[j].nodeValue || '').trim();
+        if (/^(AED|USD)\s*\d+(\.\d+)?$/i.test(v)) {
+          textNodes[j].nodeValue = newValue;
+          return true;
+        }
+        // Some layouts split currency and number in separate text nodes.
+        if (/^(AED|USD)$/i.test(v) && textNodes[j + 1]) {
+          const next = String(textNodes[j + 1].nodeValue || '').trim();
+          if (/^\d+(\.\d+)?$/i.test(next)) {
+            textNodes[j].nodeValue = newValue;
+            textNodes[j + 1].nodeValue = '';
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  function patchSnapchatChannelCard(numbers) {
+    const spendLabel = amountLabel(numbers.spend, numbers.currency);
+    const costLabel = numbers.costPerResult !== null && numbers.costPerResult !== undefined
+      ? amountLabel(numbers.costPerResult, numbers.currency)
+      : '';
+
+    const snapCard = getLikelySnapchatCard();
+
+    // Generic page-wide replacements for the exact problematic values.
+    replaceTextEverywhere(`AED ${cleanAmount(numbers.spend)}`, spendLabel);
+    replaceTextEverywhere(`AED ${Number(numbers.spend || 0).toFixed(2)}`, spendLabel);
+    if (costLabel) {
+      replaceTextEverywhere(`AED ${cleanAmount(numbers.costPerResult)}`, costLabel);
+      replaceTextEverywhere(`AED ${Number(numbers.costPerResult || 0).toFixed(2)}`, costLabel);
+    }
+
+    // Targeted card patch for layouts that split labels and values.
+    if (snapCard) {
+      replaceCurrencyNearLabel(snapCard, /spend/i, spendLabel);
+      if (costLabel) replaceCurrencyNearLabel(snapCard, /cost\s*\/?\s*result/i, costLabel);
+    }
+
+    // Also fix Billing Risk snapshot copy if any old text remains.
+    replaceTextEverywhere(
+      `${numbers.actualBilling || '260 USD'} actual billing vs AED ${cleanAmount(numbers.spend)} campaign spend`,
+      `${numbers.actualBilling || '260 USD'} actual billing vs ${spendLabel} campaign spend`
+    );
+
+    return {
+      spendLabel,
+      costLabel,
+      snapCardFound: !!snapCard
+    };
+  }
+
+  async function run() {
+    try {
+      const response = await fetch('/api/dashboard-data?snapCurrencyFix=1554&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return;
+
+      const numbers = getSnapchatNumbers(json);
+      const result = patchSnapchatChannelCard(numbers);
+
+      window.__ICONIC_SNAPCHAT_CHANNEL_CURRENCY_FIX__ = {
+        ok: true,
+        version: VERSION,
+        currency: numbers.currency,
+        campaignSpend: result.spendLabel,
+        costPerResult: result.costLabel,
+        snapCardFound: result.snapCardFound
+      };
+    } catch (error) {
+      window.__ICONIC_SNAPCHAT_CHANNEL_CURRENCY_FIX__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    }
+  }
+
+  function start() {
+    // Run multiple times because app render can happen after initial DOMContentLoaded.
+    setTimeout(run, 300);
+    setTimeout(run, 900);
+    setTimeout(run, 1800);
+    setTimeout(run, 3200);
+    setTimeout(run, 5200);
   }
 
   if (document.readyState === 'loading') {
