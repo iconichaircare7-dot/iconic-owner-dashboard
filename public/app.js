@@ -2074,7 +2074,7 @@ function renderPage1(data) {
 
 
 /*
-Iconic Owner Dashboard — v15.5.4 Snapchat Channel Card Currency Fix
+Iconic Owner Dashboard — v15.5.5 Direct Channel Currency Formatter Fix
 FILE: public/app.js
 Scope:
 - Render visual layer only.
@@ -2088,7 +2088,7 @@ Scope:
 - No Team Inbox / 811.
 */
 (function iconicBillingRiskVisualV1552() {
-  const VERSION = 'v15.5.4-snapchat-channel-card-currency-fix';
+  const VERSION = 'v15.5.5-direct-channel-currency-formatter-fix';
 
   function esc(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -2402,7 +2402,7 @@ Scope:
 
 
 /*
-Iconic Owner Dashboard — v15.5.4 Snapchat Channel Card Currency Fix
+Iconic Owner Dashboard — v15.5.5 Direct Channel Currency Formatter Fix
 Scope:
 - Visual-only patch for Render dashboard.
 - Fixes Snapchat Channel Health card spend and cost/result labels from AED to USD.
@@ -2410,7 +2410,7 @@ Scope:
 - Does not modify server.js, Apps Script, Email, WhatsApp, triggers, Team Inbox, 811, or tokens.
 */
 (function iconicSnapchatChannelCardCurrencyFixV1554() {
-  const VERSION = 'v15.5.4-snapchat-channel-card-currency-fix';
+  const VERSION = 'v15.5.5-direct-channel-currency-formatter-fix';
 
   function normalizeCurrency(value, fallback) {
     const raw = String(value || '').trim();
@@ -2589,6 +2589,186 @@ Scope:
     setTimeout(run, 1800);
     setTimeout(run, 3200);
     setTimeout(run, 5200);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
+
+
+/*
+Iconic Owner Dashboard — v15.5.5 Direct Channel Currency Formatter Fix
+Purpose:
+- Directly fixes Snapchat Channel Health card if the old renderer still prints AED.
+- This is visual-only and does not change the underlying API numbers.
+- No server.js, Apps Script, Email, WhatsApp, triggers, Team Inbox, 811, or token changes.
+*/
+(function iconicDirectChannelCurrencyFormatterFixV1555() {
+  const VERSION = 'v15.5.5-direct-channel-currency-formatter-fix';
+
+  function text(el) {
+    return (el && el.textContent ? el.textContent : '').trim();
+  }
+
+  function normalizeCurrency(value, fallback) {
+    const raw = String(value || '').trim();
+    if (!raw || /blank/i.test(raw)) return fallback || 'USD';
+    if (raw.includes('/')) return (raw.split('/')[0].trim() || fallback || 'USD').toUpperCase();
+    return raw.toUpperCase();
+  }
+
+  function fmt(value, currency) {
+    const n = Number(value || 0);
+    const clean = Number.isFinite(n) ? (Math.round(n * 100) / 100).toString() : String(value || '0');
+    return `${normalizeCurrency(currency, 'USD')} ${clean}`;
+  }
+
+  function getSnapCurrencyAndValues(json) {
+    const channel = json && json.channels && json.channels.snapchat ? json.channels.snapchat : {};
+    const sync = (json && (json.billingRiskSync || json.ownerReportDataSync || json.ownerReportDataSyncV1549)) || {};
+    const platforms = (json && json.billingPlatformStatuses) || sync.platformStatuses || [];
+    const snapStatus = (platforms || []).find(p => /snap/i.test(String(p.platform || ''))) || {};
+    const currency = normalizeCurrency(snapStatus.campaignCurrency || snapStatus.spendCurrency || snapStatus.currency, 'USD');
+
+    return {
+      currency,
+      spend: snapStatus.campaignSpend !== undefined ? snapStatus.campaignSpend : channel.spend,
+      costPerResult: channel.costPerResult,
+      results: channel.results
+    };
+  }
+
+  function findSnapchatCards() {
+    const all = Array.from(document.querySelectorAll('section, article, div, .card, [class*="card"], [class*="channel"]'));
+    return all.filter(el => {
+      const t = text(el);
+      return /Snapchat/i.test(t) && /Traffic Clicks/i.test(t) && /Cost\s*\/\s*Result/i.test(t);
+    }).sort((a, b) => text(a).length - text(b).length);
+  }
+
+  function setValueAfterLabel(card, labelRegex, value) {
+    if (!card || !value) return false;
+
+    const candidates = Array.from(card.querySelectorAll('div, span, b, strong, p, li'));
+    for (const el of candidates) {
+      const t = text(el);
+      if (!labelRegex.test(t)) continue;
+
+      // Case 1: label and value are siblings in same row.
+      const row = el.closest('div') || el.parentElement;
+      if (row) {
+        const valueEls = Array.from(row.querySelectorAll('b, strong, span, div')).filter(x => x !== el);
+        for (const v of valueEls.reverse()) {
+          const vt = text(v);
+          if (/^(AED|USD)\s*\d+(\.\d+)?$/i.test(vt) || /^\d+(\.\d+)?$/i.test(vt)) {
+            v.textContent = value;
+            return true;
+          }
+        }
+      }
+
+      // Case 2: next siblings.
+      let sib = el.nextElementSibling;
+      let steps = 0;
+      while (sib && steps < 5) {
+        const st = text(sib);
+        if (/^(AED|USD)\s*\d+(\.\d+)?$/i.test(st) || /^\d+(\.\d+)?$/i.test(st)) {
+          sib.textContent = value;
+          return true;
+        }
+        sib = sib.nextElementSibling;
+        steps++;
+      }
+    }
+
+    // Case 3: fallback text-node replacement inside card only.
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    for (let i = 0; i < nodes.length; i++) {
+      if (!labelRegex.test(String(nodes[i].nodeValue || ''))) continue;
+      for (let j = i + 1; j < Math.min(i + 10, nodes.length); j++) {
+        const vt = String(nodes[j].nodeValue || '').trim();
+        if (/^(AED|USD)\s*\d+(\.\d+)?$/i.test(vt) || /^\d+(\.\d+)?$/i.test(vt)) {
+          nodes[j].nodeValue = value;
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  function directReplaceInside(card, oldValue, newValue) {
+    if (!card || !oldValue || !newValue) return;
+    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n => {
+      if (n.nodeValue && n.nodeValue.includes(oldValue)) {
+        n.nodeValue = n.nodeValue.split(oldValue).join(newValue);
+      }
+    });
+  }
+
+  function patch(json) {
+    const values = getSnapCurrencyAndValues(json);
+    const spendLabel = fmt(values.spend, values.currency);
+    const costLabel = values.costPerResult !== undefined && values.costPerResult !== null ? fmt(values.costPerResult, values.currency) : '';
+
+    const cards = findSnapchatCards();
+    const card = cards[0];
+    if (!card) return { ok: false, reason: 'Snapchat card not found', spendLabel, costLabel };
+
+    setValueAfterLabel(card, /^Spend$/i, spendLabel);
+    if (costLabel) setValueAfterLabel(card, /^Cost\s*\/\s*Result$/i, costLabel);
+
+    // Absolute fallback for the exact current issue.
+    directReplaceInside(card, `AED ${Number(values.spend || 0).toFixed(2)}`, spendLabel);
+    directReplaceInside(card, `AED ${Math.round(Number(values.spend || 0) * 100) / 100}`, spendLabel);
+    if (costLabel) {
+      directReplaceInside(card, `AED ${Number(values.costPerResult || 0).toFixed(2)}`, costLabel);
+      directReplaceInside(card, `AED ${Math.round(Number(values.costPerResult || 0) * 100) / 100}`, costLabel);
+    }
+
+    card.setAttribute('data-snapchat-currency-fixed', VERSION);
+
+    return {
+      ok: true,
+      spendLabel,
+      costLabel,
+      cardText: text(card).slice(0, 300)
+    };
+  }
+
+  async function run() {
+    try {
+      const res = await fetch('/api/dashboard-data?channelCurrencyFix=1555&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await res.json();
+      if (!res.ok || !json || json.ok === false) return;
+      const result = patch(json);
+      window.__ICONIC_DIRECT_CHANNEL_CURRENCY_FIX__ = {
+        version: VERSION,
+        ...result
+      };
+    } catch (error) {
+      window.__ICONIC_DIRECT_CHANNEL_CURRENCY_FIX__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    }
+  }
+
+  function start() {
+    [300, 800, 1500, 2500, 4000, 6500, 9000].forEach(ms => setTimeout(run, ms));
   }
 
   if (document.readyState === 'loading') {
