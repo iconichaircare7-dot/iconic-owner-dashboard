@@ -794,16 +794,17 @@ async function prepareReportPage(page, reportUrl) {
   });
 
   /*
-   * v15.6.16 PDF Wait Condition Hardening
+   * v15.6.17 PDF Data-Ready Wait Fix
    * Why:
-   * - /api/report-final-pdf reached the page but failed with:
-   *   "Waiting failed: 120000ms exceeded".
-   * - The previous waitForFunction required channel-card text and campaign-alert
-   *   text to be present before PDF generation. That is too strict for Puppeteer
-   *   on Render and can hang even when the visual report is already usable.
+   * - v15.6.16 generated a PDF, but it captured the default/skeleton report:
+   *   AED 0.00, Date range, Last Updated: Checking..., and no real API results.
+   * - Waiting only for .report-page was too early because the static report shell
+   *   exists before /api/dashboard-data finishes loading and rendering.
    * Fix:
-   * - Wait only for the report pages required for PDF capture.
-   * - Keep a short compatibility delay for rendering/fonts/layout completion.
+   * - Still avoid brittle waits for exact campaign-alert wording or channel-card text.
+   * - Wait for the five report pages AND for top-level real data markers to replace
+   *   placeholders: report week, date range, generatedAt, and normalized channel data.
+   * - This keeps PDF generation practical while preventing empty/default PDFs.
    * - No Apps Script, email, WhatsApp, owner send, or visual logic changes.
    */
   await page.waitForSelector('.report-page', {
@@ -811,19 +812,41 @@ async function prepareReportPage(page, reportUrl) {
   });
 
   await page.waitForFunction(() => {
-    return document.querySelectorAll('.report-page').length >= 5;
+    const pagesReady = document.querySelectorAll('.report-page').length >= 5;
+
+    const textOf = (id) => {
+      const el = document.getElementById(id);
+      return el && el.textContent ? String(el.textContent).replace(/\s+/g, ' ').trim() : '';
+    };
+
+    const reportWeek = textOf('reportWeek');
+    const dateRange = textOf('dateRange');
+    const generatedAt = textOf('generatedAt');
+
+    const hasRealReportHeader =
+      reportWeek &&
+      reportWeek !== 'Week' &&
+      dateRange &&
+      dateRange !== 'Date range' &&
+      generatedAt &&
+      !generatedAt.toLowerCase().includes('checking');
+
+    const debug = window.__ICONIC_DEBUG__ || {};
+    const channels = Array.isArray(debug.normalizedChannels) ? debug.normalizedChannels : [];
+    const hasLoadedChannelData = channels.length >= 1;
+
+    return pagesReady && hasRealReportHeader && hasLoadedChannelData;
   }, {
-    timeout: 30000
+    timeout: 120000
   });
 
   await page.evaluate(() => document.fonts && document.fonts.ready ? document.fonts.ready : true).catch(() => {});
 
   /*
-   * v15.6.14 PDF Wait Compatibility Fix
+   * Cross-version wait compatibility:
    * Some Puppeteer builds on Render do not expose page.waitForTimeout().
-   * Use a plain Promise-based delay instead, which works across Puppeteer versions.
    */
-  await new Promise(resolve => setTimeout(resolve, 750));
+  await new Promise(resolve => setTimeout(resolve, 1200));
 }
 
 async function applySinglePagePrintMode(page, requestedPageNumber) {
