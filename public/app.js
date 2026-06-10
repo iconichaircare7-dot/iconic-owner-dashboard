@@ -2192,8 +2192,8 @@ Scope:
     const snapchat = pickSnapchat(payload.platforms);
     const status = payload.worstStatus || 'Watch';
     const cssStatus = statusClass(status);
-    const warning = short(payload.warning, 190, 'Billing risk needs review. Actual platform charges may not match campaign performance spend.');
-    const action = short(payload.action, 165, 'Do not treat billing charges as current campaign performance spend until billing reconciliation is reviewed.');
+    const warning = short(payload.warning, 125, 'Billing risk needs review. Platform charges may not match campaign spend.');
+    const action = short(payload.action, 118, 'Do not treat billing charges as performance spend until reconciliation is reviewed.');
 
     const snapchatCampaignCurrency = snapchat
       ? normalizeCurrency(snapchat.campaignCurrency || snapchat.spendCurrency || snapchat.currency, 'USD')
@@ -2220,7 +2220,7 @@ Scope:
 
         <div class="billing-risk-highlight-v1552">
           <strong>Snapchat Check</strong>
-          <span>${esc(short(snapLine, 95))}</span>
+          <span>${esc(short(snapLine, 78))}</span>
         </div>
 
         <div class="billing-risk-platforms-v1552">
@@ -2610,7 +2610,7 @@ Scope:
 
 
 /*
-Iconic Owner Dashboard — v15.6.15 Practical Campaign Platform Status Card
+Iconic Owner Dashboard — v15.6.18 Page 1 Risk Cleanup
 Scope:
 - Render visual/PDF layer only.
 - Reads campaignActivityAlert / paidChannelActivity already exposed by /api/dashboard-data.
@@ -2695,84 +2695,41 @@ function pickCampaignActivityPayloadV15612(data) {
 }
 
 function renderCampaignActivityAlertV15612(data) {
-  const payload = pickCampaignActivityPayloadV15615(data);
+  /*
+   * v15.6.18 Page 1 Risk Cleanup
+   * The PDF became visually noisy because Page 1 showed three separate warning blocks:
+   * 1) top alert bar, 2) Billing Risk card, 3) Live Campaign Control card.
+   * Keep the detailed billing risk card + compact top alert only.
+   * Remove the extra campaign activity card to prevent Page 1 overflow/split.
+   */
   const existing = document.getElementById('campaignActivityCardV15612');
-
-  if (!payload.show) {
-    if (existing) existing.remove();
-    return;
-  }
-
-  const statusBadge = payload.paymentRiskChannels.length ? 'ACTION REQUIRED' : 'DIRECT CHECK NEEDED';
-
-  const html = `
-    <section id="campaignActivityCardV15612" class="campaign-activity-card-v15612 ${payload.severity}" data-version="${payload.version}">
-      <div class="campaign-activity-head-v15612">
-        <div>
-          <span class="label">Live Campaign Control</span>
-          <h3>${shortCampaignTextV15615(payload.title, 80)}</h3>
-        </div>
-        <strong>${statusBadge}</strong>
-      </div>
-
-      <p class="campaign-activity-message-v15612">${shortCampaignTextV15615(payload.message, 360)}</p>
-
-      <div class="campaign-activity-grid-v15612 practical-v15615">
-        <div>
-          <span>Confirmed blocker:</span>
-          <b>${shortCampaignTextV15615(listTextV15615(payload.paymentRiskChannels), 72)}</b>
-        </div>
-        <div>
-          <span>Needs direct platform check:</span>
-          <b>${shortCampaignTextV15615(listTextV15615(payload.needsDirectCheckChannels), 88)}</b>
-        </div>
-        <div>
-          <span>Period activity found:</span>
-          <b>${shortCampaignTextV15615(listTextV15615(payload.periodActivityChannels), 88)}</b>
-        </div>
-        <div>
-          <span>Live confirmed by API:</span>
-          <b>${shortCampaignTextV15615(listTextV15615(payload.liveConfirmedChannels), 72)}</b>
-        </div>
-      </div>
-
-      <div class="campaign-activity-owner-v15612 practical-v15615">
-        <span>Practical owner decision:</span>
-        <b>${shortCampaignTextV15615(payload.ownerDecision, 260)}</b>
-      </div>
-    </section>
-  `;
-
-  if (existing) {
-    existing.outerHTML = html;
-    return;
-  }
-
-  const alertCard = document.getElementById('alertCard');
-  if (alertCard && alertCard.parentNode) {
-    alertCard.insertAdjacentHTML('afterend', html);
-    return;
-  }
-
-  const page1Content = document.querySelector('#page1 .page-content');
-  if (page1Content) page1Content.insertAdjacentHTML('beforeend', html);
+  if (existing) existing.remove();
 }
 
 function applyCampaignActivityToExecutiveAlertV15612(data, executive, risk) {
   const payload = pickCampaignActivityPayloadV15615(data);
   if (!payload.show) return { isCampaignCritical: false };
 
-  setText('alertTitle', shortCampaignTextV15615(payload.title, 58));
-  setText('alertText', shortCampaignTextV15615(payload.message, 165));
+  const needsCheck = listTextV15615(payload.needsDirectCheckChannels, 'Google, Snapchat, TikTok');
+  const blockers = listTextV15615(payload.paymentRiskChannels, 'None');
+  const title = 'Billing & Platform Status Alert';
+  const text = payload.paymentRiskChannels.length
+    ? `Confirmed blocker: ${blockers}. Check ${needsCheck} directly before scaling.`
+    : `Billing reconciliation risk is active. Check ${needsCheck} directly before scaling.`;
+
+  setText('alertTitle', shortCampaignTextV15615(title, 44));
+  setText('alertText', shortCampaignTextV15615(text, 140));
 
   const alertCard = document.getElementById('alertCard');
   if (alertCard) {
-    alertCard.classList.add('risk-alert', 'campaign-alert-v15612', 'campaign-alert-v15615');
+    alertCard.classList.add('risk-alert', 'campaign-alert-v15612', 'campaign-alert-v15615', 'page1-risk-clean-v15618');
     alertCard.setAttribute('data-campaign-alert-visible', 'true');
+    alertCard.setAttribute('data-page1-risk-cleanup', 'v15.6.18');
   }
 
   return { isCampaignCritical: true };
 }
+
 
 /*
 Iconic Owner Dashboard — v15.5.5 Direct Channel Currency Formatter Fix
@@ -2952,3 +2909,4 @@ Purpose:
     start();
   }
 })();
+ئ
