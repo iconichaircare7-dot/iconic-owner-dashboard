@@ -2909,4 +2909,210 @@ Purpose:
     start();
   }
 })();
-ئ
+
+
+
+/*
+Iconic Owner Dashboard — v15.6.20 Truth-Based Owner Risk Language
+Scope:
+- Render visual/PDF layer only.
+- Keeps server.js v15.6.17 unchanged because PDF data loading is already fixed.
+- Does not claim channels are live/stopped unless a verifier proves it.
+- Removes owner-facing raw API wording such as "API ERROR / HAD...".
+- Separates billing reconciliation risk from live campaign status.
+- No Apps Script, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
+*/
+function ownerSafeChannelStatusV15620(name, value, fallback = 'Review') {
+  const raw = String(value || fallback || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const lower = raw.toLowerCase();
+  const channel = String(name || '').toLowerCase();
+
+  if (lower.includes('payment') || lower.includes('billing') || lower.includes('blocked') || lower.includes('stopped')) {
+    return 'Payment Review';
+  }
+
+  if (lower.includes('api error') || lower.includes('api failed') || lower.includes('error')) {
+    return 'Needs Check';
+  }
+
+  if (lower.includes('had period') || lower.includes('had activity') || lower.includes('period activity')) {
+    return 'Period Activity';
+  }
+
+  if (lower.includes('unconfirmed') || lower.includes('direct check') || lower.includes('not confirmed')) {
+    return 'Needs Check';
+  }
+
+  if (lower.includes('needs attention') || lower.includes('tracking')) {
+    return 'Needs Attention';
+  }
+
+  if (lower.includes('main engine')) return 'Main Engine';
+  if (lower.includes('strong traffic')) return 'Strong Traffic';
+  if (lower.includes('traffic driver')) return 'Traffic Driver';
+  if (lower.includes('watch')) return 'Watch';
+  if (lower.includes('strong')) return 'Strong';
+  if (lower.includes('testing')) return 'Testing';
+  if (lower.includes('pending')) return 'Pending';
+  if (lower.includes('not active') || lower === 'not active' || lower.includes('inactive')) return 'Not Active';
+
+  if (channel.includes('google') && lower.includes('attention')) return 'Needs Attention';
+  return raw || fallback;
+}
+
+/* Override older status normalizers with owner-safe labels. */
+function statusFromApi(name, row, fallbackStatus) {
+  const raw = objectToText(row && row.status, fallbackStatus);
+  return ownerSafeChannelStatusV15620(name, raw, fallbackStatus || 'Review');
+}
+
+function prettyStatus_V1506(value, fallback = 'Pending') {
+  return ownerSafeChannelStatusV15620('', value || fallback, fallback);
+}
+
+function truthRootV15620(data) {
+  return data && data.__raw ? data.__raw : (data || {});
+}
+
+function truthArrayV15620(value) {
+  if (Array.isArray(value)) return value.map(x => String(x || '').trim()).filter(Boolean);
+  const text = String(value || '').trim();
+  if (!text) return [];
+  return text.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+function truthListV15620(value, fallback = 'None') {
+  const arr = truthArrayV15620(value);
+  return arr.length ? arr.join(', ') : fallback;
+}
+
+function truthShortV15620(value, max = 130, fallback = '') {
+  const text = String(value || fallback || '').replace(/\s+/g, ' ').trim();
+  if (!text) return fallback;
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
+}
+
+function billingPlatformsV15620(root) {
+  const sync = root.ownerReportDataSync || root.ownerReportDataSyncV1549 || root.billingRiskSync || {};
+  const platforms = root.billingPlatformStatuses || sync.platformStatuses || [];
+  return Array.isArray(platforms) ? platforms : [];
+}
+
+function hasSnapchatCriticalBillingV15620(root) {
+  const rows = billingPlatformsV15620(root);
+  return rows.some(row => {
+    const platform = String(row.platform || '').toLowerCase();
+    const status = String(row.status || row.billingStatus || row.unallocatedStatus || '').toLowerCase();
+    return platform.includes('snap') && (status.includes('critical') || status.includes('mismatch'));
+  });
+}
+
+function pickCampaignActivityPayloadV15615(data) {
+  const root = truthRootV15620(data);
+  const executive = root.executive || (data && data.executive) || {};
+  const sync = root.ownerReportDataSync || root.ownerReportDataSyncV1549 || root.billingRiskSync || {};
+  const paid = root.paidChannelActivity || sync.campaignActivity || (data && data.paidChannelActivity) || {};
+  const alert = root.campaignActivityAlert || paid.alert || sync.campaignActivityAlert || (data && data.campaignActivityAlert) || {};
+
+  const periodChannels = truthArrayV15620(paid.periodActivityChannels || executive.periodActivityPaidChannels || []);
+  const liveChannels = truthArrayV15620(paid.liveConfirmedChannels || executive.liveConfirmedPaidChannels || []);
+  const paymentRiskChannels = truthArrayV15620(paid.paymentRiskChannels || executive.paymentRiskPaidChannels || []);
+  const needsCheckChannels = truthArrayV15620(paid.unconfirmedLiveChannels || executive.unconfirmedLivePaidChannels || []);
+  const snapCritical = hasSnapchatCriticalBillingV15620(root);
+
+  const show = !!(
+    alert.show ||
+    executive.renderCampaignActivityAlertVisible ||
+    executive.campaignActivityAlertTitle ||
+    paid.ok ||
+    paymentRiskChannels.length ||
+    needsCheckChannels.length ||
+    snapCritical ||
+    paid.canCompareLivePerformance === false
+  );
+
+  const title = 'Billing & Tracking Risk';
+  const message = snapCritical
+    ? 'Snapchat billing reconciliation risk is active. Google has clicks but no confirmed conversions. Review platform dashboards before scaling.'
+    : 'Platform verification is required before scaling. Use this report as period performance, not a live-status verdict.';
+
+  const ownerDecision = paymentRiskChannels.length
+    ? `Resolve payment/billing review for ${truthListV15620(paymentRiskChannels)} first. Then review platform dashboards before scaling.`
+    : 'Review billing and platform dashboards before scaling. Do not call channels live or stopped from this report alone.';
+
+  return {
+    show,
+    severity: snapCritical || paymentRiskChannels.length ? 'critical' : 'watch',
+    title,
+    message,
+    ownerDecision,
+    periodActivityChannels: periodChannels,
+    liveConfirmedChannels: liveChannels,
+    paymentRiskChannels,
+    needsDirectCheckChannels: needsCheckChannels,
+    canComparePeriodPerformance: paid.canComparePeriodPerformance ?? executive.canComparePeriodPerformance,
+    canCompareLivePerformance: paid.canCompareLivePerformance ?? executive.canCompareLivePerformance,
+    version: 'v15.6.20-truth-based-owner-risk-language'
+  };
+}
+
+function pickCampaignActivityPayloadV15612(data) {
+  return pickCampaignActivityPayloadV15615(data);
+}
+
+function renderCampaignActivityAlertV15612(data) {
+  const existing = document.getElementById('campaignActivityCardV15612');
+  if (existing) existing.remove();
+}
+
+function applyCampaignActivityToExecutiveAlertV15612(data, executive, risk) {
+  const payload = pickCampaignActivityPayloadV15615(data);
+  if (!payload.show) return { isCampaignCritical: false };
+
+  setText('alertTitle', truthShortV15620(payload.title, 42, 'Billing & Tracking Risk'));
+  setText('alertText', truthShortV15620(payload.message, 132, 'Review billing and platform dashboards before scaling.'));
+
+  const alertCard = document.getElementById('alertCard');
+  if (alertCard) {
+    alertCard.classList.add('risk-alert', 'campaign-alert-v15612', 'page1-risk-truth-v15620');
+    alertCard.classList.remove('medium-alert');
+    alertCard.setAttribute('data-campaign-alert-visible', 'true');
+    alertCard.setAttribute('data-truth-risk-language', 'v15.6.20');
+  }
+
+  return { isCampaignCritical: true };
+}
+
+/* Final owner-safe text patch for status pills/health rows rendered from older raw statuses. */
+(function iconicOwnerSafeStatusPatchV15620() {
+  const VERSION = 'v15.6.20-truth-based-owner-risk-language';
+
+  function patchNodeText(node) {
+    if (!node || !node.textContent) return;
+    const raw = node.textContent.trim();
+    const safe = ownerSafeChannelStatusV15620('', raw, raw);
+    if (safe && safe !== raw && raw.length <= 40) node.textContent = safe;
+  }
+
+  function run() {
+    try {
+      document.querySelectorAll('.health-row small, .status').forEach(patchNodeText);
+      window.__ICONIC_TRUTH_RISK_LANGUAGE__ = { ok: true, version: VERSION };
+    } catch (error) {
+      window.__ICONIC_TRUTH_RISK_LANGUAGE__ = { ok: false, version: VERSION, error: error && error.message ? error.message : String(error) };
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(run, 250);
+      setTimeout(run, 900);
+      setTimeout(run, 1800);
+    }, { once: true });
+  } else {
+    setTimeout(run, 250);
+    setTimeout(run, 900);
+    setTimeout(run, 1800);
+  }
+})();
