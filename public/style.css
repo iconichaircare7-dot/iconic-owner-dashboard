@@ -2047,3 +2047,5 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
   font-size:12px;
   line-height:1.55;
 }
+
+/* v15.6.5 Safe Render Data Sync Campaign Alert: CSS unchanged from v15.6.4; visual support already exists for payment/live/period states. */
