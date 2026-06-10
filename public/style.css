@@ -2049,3 +2049,10 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
 }
 
 /* v15.6.5 Safe Render Data Sync Campaign Alert: CSS unchanged from v15.6.4; visual support already exists for payment/live/period states. */
+
+/* v15.6.6 Direct Owner Dashboard API Injection
+   CSS note:
+   - No new visual selectors were required.
+   - v15.6.5/v15.6.2 classes already support Campaign Payment / Live Status Alert,
+     payment_blocked, live_unconfirmed, and had_period_activity states.
+*/
