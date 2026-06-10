@@ -1874,3 +1874,75 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
   color:var(--warning);
   border-color:rgba(253,176,34,.32);
 }
+
+/* v15.6.2 current live status vs period activity + payment diagnostic */
+.channel-card.is-payment-blocked,
+.channel-card[data-current-live-status="payment_blocked"],
+.channel-card[data-activity-status="payment_blocked"] {
+  border-color:rgba(249,112,102,.48);
+  background:
+    radial-gradient(circle at 96% 0%,rgba(249,112,102,.14),transparent 44%),
+    linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.012)),
+    rgba(13,27,46,.92);
+}
+
+.status.payment-blocked,
+.status.payment_blocked,
+.status.payment-stopped,
+.status.payment_stopped {
+  background:rgba(249,112,102,.16);
+  color:var(--danger);
+  border:1px solid rgba(249,112,102,.34);
+}
+
+.status.live-active,
+.status.live_active {
+  background:rgba(50,213,131,.14);
+  color:var(--success);
+  border:1px solid rgba(50,213,131,.30);
+}
+
+.status.had-period-activity,
+.status.had_period_activity,
+.status.live-unconfirmed,
+.status.live_unconfirmed,
+.status.unconfirmed {
+  background:rgba(253,176,34,.14);
+  color:var(--warning);
+  border:1px solid rgba(253,176,34,.30);
+}
+
+.live-status-split,
+.period-activity-split,
+.payment-diagnostic-note {
+  display:grid;
+  gap:7px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+
+.payment-diagnostic-note {
+  border:1px solid rgba(249,112,102,.30);
+  background:rgba(249,112,102,.09);
+  color:rgba(245,247,250,.88);
+}
+
+.campaign-activity-alert[data-severity="critical"],
+.activity-alert[data-severity="critical"] {
+  border-color:rgba(249,112,102,.48);
+  background:
+    radial-gradient(circle at 96% 0%,rgba(249,112,102,.16),transparent 42%),
+    linear-gradient(135deg,rgba(249,112,102,.10),rgba(13,27,46,.90));
+}
+
+.campaign-activity-alert[data-severity="critical"]::before,
+.activity-alert[data-severity="critical"]::before {
+  content:"!";
+  background:rgba(249,112,102,.16);
+  color:var(--danger);
+  border-color:rgba(249,112,102,.35);
+}
