@@ -2096,7 +2096,7 @@ Scope:
 - No Team Inbox / 811.
 */
 (function iconicBillingRiskVisualV1552() {
-  const VERSION = 'v15.5.5-direct-channel-currency-formatter-fix';
+  const VERSION = 'v15.6.22-billing-card-text-polish';
 
   function esc(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -2192,8 +2192,8 @@ Scope:
     const snapchat = pickSnapchat(payload.platforms);
     const status = payload.worstStatus || 'Watch';
     const cssStatus = statusClass(status);
-    const warning = short(payload.warning, 125, 'Billing risk needs review. Platform charges may not match campaign spend.');
-    const action = short(payload.action, 118, 'Do not treat billing charges as performance spend until reconciliation is reviewed.');
+    const warning = 'Actual platform charges are not safely matched to current campaign spend. Reconcile billing before using billing as performance data.';
+    const action = 'Do not treat billing charges as campaign performance spend. Review currency, old balances, threshold payments, VAT/tax, and delayed charges.';
 
     const snapchatCampaignCurrency = snapchat
       ? normalizeCurrency(snapchat.campaignCurrency || snapchat.spendCurrency || snapchat.currency, 'USD')
@@ -2203,9 +2203,10 @@ Scope:
       ? formatPlatformAmount(snapchat.campaignSpend || 0, snapchatCampaignCurrency)
       : '';
 
+    const snapActual = snapchat ? (snapchat.actualBilling || snapchat.billingDisplay || '0') : 'Not available';
     const snapLine = snapchat
-      ? `${snapchat.actualBilling || snapchat.billingDisplay || '0'} actual billing vs ${snapchatCampaignSpend} campaign spend`
-      : 'No Snapchat billing row available yet.';
+      ? `Actual billing: ${snapActual} • Campaign spend: ${snapchatCampaignSpend}`
+      : 'Snapchat billing row is not available yet.';
 
     return `
       <section id="billingRiskCardV1552" class="billing-risk-card-v1552 ${cssStatus}" data-version="${esc(VERSION)}">
@@ -2220,7 +2221,7 @@ Scope:
 
         <div class="billing-risk-highlight-v1552">
           <strong>Snapchat Check</strong>
-          <span>${esc(short(snapLine, 78))}</span>
+          <span>${esc(snapLine)}</span>
         </div>
 
         <div class="billing-risk-platforms-v1552">
@@ -3116,3 +3117,14 @@ function applyCampaignActivityToExecutiveAlertV15612(data, executive, risk) {
     setTimeout(run, 1800);
   }
 })();
+
+
+/*
+Iconic Owner Dashboard — v15.6.22 Billing Card Text Polish
+Scope:
+- Render visual/PDF layer only.
+- Keeps server.js unchanged.
+- Makes Page 1 Billing Reconciliation Risk card use concise full owner-safe wording.
+- Removes ellipsis from Snapchat billing check and Owner Action inside the billing card.
+- No Apps Script, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
+*/
