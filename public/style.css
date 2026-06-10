@@ -2018,3 +2018,32 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
     grid-template-columns:1fr;
   }
 }
+
+
+/* v15.6.4 Render Payload Exposure Fix
+   Visual-only: support current Render legacy alert field carrying campaign live/payment warning. */
+.campaign-activity-alert-v1564,
+.render-campaign-activity-alert-v1564 {
+  display:grid;
+  gap:8px;
+  padding:16px 18px;
+  border-radius:20px;
+  border:1px solid rgba(249,112,102,.48);
+  background:
+    radial-gradient(circle at 96% 0%,rgba(249,112,102,.16),transparent 42%),
+    linear-gradient(135deg,rgba(249,112,102,.10),rgba(13,27,46,.90));
+}
+
+.campaign-activity-alert-v1564 strong,
+.render-campaign-activity-alert-v1564 strong {
+  color:#fff;
+  font-size:14px;
+}
+
+.campaign-activity-alert-v1564 p,
+.render-campaign-activity-alert-v1564 p {
+  margin:0;
+  color:rgba(245,247,250,.88);
+  font-size:12px;
+  line-height:1.55;
+}
