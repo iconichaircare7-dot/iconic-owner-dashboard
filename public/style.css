@@ -2061,3 +2061,6 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
 /* v15.6.7 Campaign Alert Idempotency Fix: no visual change required. */
 
 /* v15.6.8: no visual changes; campaign alert hard de-dup is code-only. */
+
+
+/* v15.6.9 uses same visual classes as v15.6.8; no visual layout change. */
