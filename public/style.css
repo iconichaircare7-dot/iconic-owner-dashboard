@@ -1946,3 +1946,75 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
   color:var(--danger);
   border-color:rgba(249,112,102,.35);
 }
+
+/* v15.6.3 period comparison vs live comparison clarity */
+.compare-split-card,
+.period-live-comparison-card {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:14px;
+  border-radius:18px;
+  border:1px solid rgba(253,176,34,.28);
+  background:rgba(253,176,34,.065);
+}
+
+.compare-split-item {
+  padding:12px 13px;
+  border-radius:15px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.compare-split-item strong {
+  display:block;
+  color:var(--gold);
+  font-size:12px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.compare-split-item span {
+  display:block;
+  margin-top:6px;
+  color:var(--softText);
+  font-size:12px;
+  line-height:1.45;
+}
+
+.compare-split-item.live-blocked {
+  border-color:rgba(249,112,102,.32);
+  background:rgba(249,112,102,.085);
+}
+
+.compare-split-item.live-blocked strong {
+  color:var(--danger);
+}
+
+.status.period-compare,
+.status.period_compare {
+  background:rgba(253,176,34,.14);
+  color:var(--warning);
+  border:1px solid rgba(253,176,34,.30);
+}
+
+.status.live-compare,
+.status.live_compare {
+  background:rgba(50,213,131,.14);
+  color:var(--success);
+  border:1px solid rgba(50,213,131,.30);
+}
+
+.status.live-compare-blocked,
+.status.live_compare_blocked {
+  background:rgba(249,112,102,.14);
+  color:var(--danger);
+  border:1px solid rgba(249,112,102,.30);
+}
+
+@media (max-width: 720px) {
+  .compare-split-card,
+  .period-live-comparison-card {
+    grid-template-columns:1fr;
+  }
+}
