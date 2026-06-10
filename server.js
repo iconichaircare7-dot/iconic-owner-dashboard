@@ -433,7 +433,7 @@ function normalizeBillingRiskSyncV1550(payload) {
 
   return {
     ok: payload.ok !== false,
-    version: payload.version || 'v15.6.15-pdf-wait-compat-plus-practical-alert',
+    version: payload.version || 'v15.6.16-pdf-wait-condition-hardening',
     generatedAt: payload.generatedAt || '',
     period: payload.period || {},
     billingRisk: {
@@ -516,7 +516,7 @@ function applyBillingRiskSyncV1550(root, data) {
   if (!sync) {
     data.billingRiskSync = {
       ok: false,
-      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert',
+      version: 'v15.6.16-pdf-wait-condition-hardening',
       status: 'Not available from upstream OWNER_DATA_API_URL yet',
       note: 'Apps Script must expose ownerReportDataSync or billingRisk in ownerDashboardData before Render can display billing risk.'
     };
@@ -669,7 +669,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert',
+      version: 'v15.6.16-pdf-wait-condition-hardening',
       data
     };
   }
@@ -677,7 +677,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
+    version: 'v15.6.16-pdf-wait-condition-hardening'
   };
 }
 
@@ -793,25 +793,28 @@ async function prepareReportPage(page, reportUrl) {
     timeout: 120000
   });
 
-  await page.waitForFunction(() => {
-    const reportPages = document.querySelectorAll('.report-page');
-    const cards = document.querySelectorAll('#channelCards .channel-card');
-    const text = document.body ? document.body.innerText : '';
-    const hasCoreChannels =
-      text.includes('Meta') &&
-      text.includes('Google') &&
-      text.includes('Snapchat') &&
-      text.includes('TikTok');
-    const hasCampaignAlert =
-      text.includes('Campaign Payment / Live Status Alert') ||
-      text.includes('Payment/billing stop signal detected') ||
-      text.includes('Live Campaign Control');
+  /*
+   * v15.6.16 PDF Wait Condition Hardening
+   * Why:
+   * - /api/report-final-pdf reached the page but failed with:
+   *   "Waiting failed: 120000ms exceeded".
+   * - The previous waitForFunction required channel-card text and campaign-alert
+   *   text to be present before PDF generation. That is too strict for Puppeteer
+   *   on Render and can hang even when the visual report is already usable.
+   * Fix:
+   * - Wait only for the report pages required for PDF capture.
+   * - Keep a short compatibility delay for rendering/fonts/layout completion.
+   * - No Apps Script, email, WhatsApp, owner send, or visual logic changes.
+   */
+  await page.waitForSelector('.report-page', {
+    timeout: 30000
+  });
 
-    return reportPages.length >= 5 &&
-      cards.length >= 4 &&
-      hasCoreChannels &&
-      hasCampaignAlert;
-  }, { timeout: 120000 });
+  await page.waitForFunction(() => {
+    return document.querySelectorAll('.report-page').length >= 5;
+  }, {
+    timeout: 30000
+  });
 
   await page.evaluate(() => document.fonts && document.fonts.ready ? document.fonts.ready : true).catch(() => {});
 
@@ -991,7 +994,7 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.15-pdf-wait-compat-plus-practical-alert' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.16-pdf-wait-condition-hardening' });
   }
 });
 
@@ -1097,7 +1100,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
+      version: 'v15.6.16-pdf-wait-condition-hardening'
     });
   } finally {
     if (browser) {
@@ -1141,7 +1144,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
+      version: 'v15.6.16-pdf-wait-condition-hardening'
     });
   } finally {
     if (browser) {
@@ -1197,7 +1200,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
+      version: 'v15.6.16-pdf-wait-condition-hardening'
     });
   } finally {
     if (browser) {
@@ -1209,7 +1212,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
+  version: 'v15.6.16-pdf-wait-condition-hardening'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
