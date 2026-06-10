@@ -2056,3 +2056,6 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
    - v15.6.5/v15.6.2 classes already support Campaign Payment / Live Status Alert,
      payment_blocked, live_unconfirmed, and had_period_activity states.
 */
+
+
+/* v15.6.7 Campaign Alert Idempotency Fix: no visual change required. */
