@@ -1630,7 +1630,7 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
 
 
 /* ==========================================================
-   v15.6.0 Campaign Activity Alert + Competitor Research UI
+   v15.6.1 Dynamic Campaign Activity Alert + Competitor Research UI
    Scope: Render Web Dashboard only. No PDF/delivery logic here.
    ========================================================== */
 
@@ -1814,4 +1814,63 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
   .campaign-activity-alert,
   .activity-alert,
   .paused-channel-alert { grid-template-columns:1fr; }
+}
+
+
+/* v15.6.1 dynamic activity states */
+.channel-card.is-api-error,
+.channel-card.is-api-not-connected,
+.channel-card.is-no-recent-data,
+.channel-card.is-no-activity,
+.channel-card[data-activity-status="api_error"],
+.channel-card[data-activity-status="api_not_connected"],
+.channel-card[data-activity-status="no_recent_data"],
+.channel-card[data-activity-status="no_activity"] {
+  opacity:.72;
+  border-color:rgba(102,112,133,.30);
+}
+
+.status.no-recent-data,
+.status.no_recent_data,
+.status.no-activity,
+.status.no_activity,
+.status.api-error,
+.status.api_error,
+.status.api-not-connected,
+.status.api_not_connected,
+.status.unknown {
+  background:rgba(102,112,133,.18);
+  color:var(--inactive);
+  border:1px solid rgba(102,112,133,.25);
+}
+
+.status.api-error,
+.status.api_error {
+  background:rgba(249,112,102,.14);
+  color:var(--danger);
+  border-color:rgba(249,112,102,.30);
+}
+
+.dynamic-activity-note,
+.channel-activity-reason {
+  margin-top:8px;
+  color:var(--muted);
+  font-size:10.5px;
+  line-height:1.45;
+}
+
+.campaign-activity-alert[data-severity="watch"],
+.activity-alert[data-severity="watch"] {
+  border-color:rgba(253,176,34,.42);
+  background:
+    radial-gradient(circle at 96% 0%,rgba(253,176,34,.14),transparent 42%),
+    linear-gradient(135deg,rgba(253,176,34,.10),rgba(13,27,46,.88));
+}
+
+.campaign-activity-alert[data-severity="watch"]::before,
+.activity-alert[data-severity="watch"]::before {
+  content:"↯";
+  background:rgba(253,176,34,.16);
+  color:var(--warning);
+  border-color:rgba(253,176,34,.32);
 }
