@@ -2655,3 +2655,131 @@ Scope: small visual cleanup only for owner-safe risk/status wording.
 }
 
 
+
+
+/************************************************************
+ * v15.6.25 Colored DO / DO NOT Visual Cards
+ * Scope:
+ * - Page 5 visual polish only.
+ * - DO THIS card becomes green/success zone.
+ * - DO NOT DO card becomes red/risk zone.
+ * - Cleaner check / X markers for PDF + Render website.
+ * - No data, PDF engine, Apps Script, email, WhatsApp, or owner send change.
+ ************************************************************/
+
+.do-card,
+.dont-card {
+  position: relative;
+  overflow: hidden;
+  border-width: 1.35px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 16px 45px rgba(0,0,0,.16);
+}
+
+.do-card {
+  border-color: rgba(46, 224, 141, .45) !important;
+  background:
+    radial-gradient(circle at 8% 16%, rgba(46,224,141,.16), transparent 35%),
+    linear-gradient(135deg, rgba(11,58,38,.62), rgba(13,27,46,.88) 64%),
+    rgba(13,27,46,.96) !important;
+}
+
+.dont-card {
+  border-color: rgba(255, 86, 102, .50) !important;
+  background:
+    radial-gradient(circle at 9% 18%, rgba(255,86,102,.16), transparent 36%),
+    linear-gradient(135deg, rgba(72,19,29,.58), rgba(13,27,46,.88) 66%),
+    rgba(13,27,46,.96) !important;
+}
+
+.do-card::before,
+.dont-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  opacity: .9;
+}
+
+.do-card::before {
+  background: linear-gradient(180deg, rgba(46,224,141,.95), rgba(46,224,141,.18));
+}
+
+.dont-card::before {
+  background: linear-gradient(180deg, rgba(255,86,102,.95), rgba(255,86,102,.18));
+}
+
+.do-card .section-title strong,
+.do-card .section-title span:last-child {
+  color: #A7F3D0 !important;
+}
+
+.dont-card .section-title strong,
+.dont-card .section-title span:last-child {
+  color: #FDA4AF !important;
+}
+
+.do-card .rule-item,
+.dont-card .rule-item {
+  align-items: center;
+  min-height: 33px;
+  padding: 6px 9px 6px 5px;
+  border-radius: 13px;
+}
+
+.do-card .rule-item {
+  background: rgba(46,224,141,.055);
+}
+
+.dont-card .rule-item {
+  background: rgba(255,86,102,.055);
+}
+
+.do-card .rule-dot,
+.dont-card .rule-dot {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  font-size: 0 !important;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+.do-card .rule-dot {
+  background: rgba(46,224,141,.16) !important;
+  border: 1px solid rgba(46,224,141,.46);
+  color: #34D399 !important;
+}
+
+.dont-card .rule-dot {
+  background: rgba(255,86,102,.15) !important;
+  border: 1px solid rgba(255,86,102,.50);
+  color: #FB7185 !important;
+}
+
+.do-card .rule-dot::before {
+  content: '✓';
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.dont-card .rule-dot::before {
+  content: '×';
+  font-size: 18px;
+  font-weight: 950;
+  transform: translateY(-1px);
+}
+
+.do-card .rule-item span:last-child,
+.dont-card .rule-item span:last-child {
+  color: rgba(245,248,255,.92) !important;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+@media print {
+  .do-card,
+  .dont-card {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
