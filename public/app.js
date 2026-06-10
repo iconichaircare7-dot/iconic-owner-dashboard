@@ -3128,3 +3128,186 @@ Scope:
 - Removes ellipsis from Snapchat billing check and Owner Action inside the billing card.
 - No Apps Script, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
 */
+
+/*
+Iconic Owner Dashboard — v15.6.23 Platform Trend Status Snapshot
+Scope:
+- Render visual/PDF layer only.
+- Adds visual trend-arrow indicators in the Page 1 overflow area.
+- Uses current report truth labels: Meta Payment Review, Google ON/Tracking Check,
+  Snapchat OFF/Billing Risk, TikTok OFF/Period Activity.
+- No Apps Script, no server.js, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
+*/
+(function iconicPlatformTrendSnapshotV15623() {
+  const VERSION = 'v15.6.23-platform-trend-status-snapshot';
+
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function text(value, fallback = '') {
+    return String(value || fallback || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function num(value) {
+    const n = Number(String(value || '0').replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function channel(root, key) {
+    const channels = root && root.channels && typeof root.channels === 'object' ? root.channels : {};
+    return channels[key] || channels[String(key || '').toLowerCase()] || {};
+  }
+
+  function findBillingPlatform(root, platformName) {
+    const sync = root.billingRiskSync || root.ownerReportDataSync || root.ownerReportDataSyncV1549 || {};
+    const rows = root.billingPlatformStatuses || sync.platformStatuses || [];
+    if (!Array.isArray(rows)) return null;
+    return rows.find(row => String(row.platform || '').toLowerCase().includes(platformName.toLowerCase())) || null;
+  }
+
+  function statusFromCurrentReport(root) {
+    const google = channel(root, 'google');
+    const snapchat = channel(root, 'snapchat');
+    const tiktok = channel(root, 'tiktok');
+    const snapBilling = findBillingPlatform(root, 'snap') || {};
+
+    const googleHasCurrentSignal = num(google.spend) > 0 || num(google.clicks) > 0 || num(google.results) > 0;
+    const snapIsCritical = /critical|mismatch/i.test(String(snapBilling.status || snapBilling.billingStatus || snapBilling.unallocatedStatus || ''));
+
+    return [
+      {
+        key: 'meta',
+        name: 'Meta',
+        icon: '∞',
+        arrow: '↘',
+        state: 'PAYMENT REVIEW',
+        headline: 'Review before scaling',
+        detail: 'Keep stable. Do not increase budget until payment/platform status is reviewed.',
+        tone: 'review'
+      },
+      {
+        key: 'google',
+        name: 'Google',
+        icon: 'G',
+        arrow: googleHasCurrentSignal ? '↗' : '↓',
+        state: googleHasCurrentSignal ? 'ON' : 'OFF',
+        headline: 'Tracking check',
+        detail: googleHasCurrentSignal
+          ? 'Traffic/click signal exists. Conversions are not confirmed yet.'
+          : 'No current signal in this report. Check Google Ads before scaling.',
+        tone: googleHasCurrentSignal ? 'on' : 'off'
+      },
+      {
+        key: 'snapchat',
+        name: 'Snapchat',
+        icon: '●',
+        arrow: '↓',
+        state: 'OFF',
+        headline: snapIsCritical ? 'Billing risk' : 'Period activity only',
+        detail: snapIsCritical
+          ? 'Billing mismatch active. Reconcile billing before treating spend as performance.'
+          : 'Period activity exists, but current live delivery is not treated as ON here.',
+        tone: snapIsCritical ? 'risk' : 'off'
+      },
+      {
+        key: 'tiktok',
+        name: 'TikTok',
+        icon: '♪',
+        arrow: '↓',
+        state: 'OFF',
+        headline: 'Period activity only',
+        detail: 'Use as historical traffic signal. Do not scale until current delivery is verified.',
+        tone: 'off'
+      }
+    ];
+  }
+
+  function buildBoard(root) {
+    const items = statusFromCurrentReport(root);
+    return `
+      <section id="platformTrendSnapshotV15623" class="platform-trend-snapshot-v15623" data-version="${VERSION}">
+        <div class="platform-trend-head-v15623">
+          <div>
+            <span>Visual Platform Status</span>
+            <h3>Current ON / OFF Trend Snapshot</h3>
+          </div>
+          <b>Trend arrows · owner quick view</b>
+        </div>
+        <div class="platform-trend-grid-v15623">
+          ${items.map(item => `
+            <article class="platform-trend-card-v15623 ${item.tone}">
+              <div class="platform-trend-arrow-v15623">${esc(item.arrow)}</div>
+              <div class="platform-trend-body-v15623">
+                <div class="platform-trend-title-v15623">
+                  <span class="platform-trend-icon-v15623">${esc(item.icon)}</span>
+                  <strong>${esc(item.name)}</strong>
+                  <em>${esc(item.state)}</em>
+                </div>
+                <h4>${esc(item.headline)}</h4>
+                <p>${esc(item.detail)}</p>
+              </div>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function insertBoard(root) {
+    const existing = document.getElementById('platformTrendSnapshotV15623');
+    if (existing) existing.remove();
+
+    const html = buildBoard(root || {});
+    const nextAction = document.getElementById('nextAction');
+    const recommendedCard = nextAction ? nextAction.closest('.card, .closing-card, .recommended-card') : null;
+
+    if (recommendedCard && recommendedCard.parentNode) {
+      recommendedCard.insertAdjacentHTML('afterend', html);
+      return true;
+    }
+
+    const page1Content = document.querySelector('#page1 .page-content') || document.querySelector('.report-page .page-content');
+    if (page1Content) {
+      page1Content.insertAdjacentHTML('beforeend', html);
+      return true;
+    }
+
+    return false;
+  }
+
+  async function fetchAndRender() {
+    try {
+      const response = await fetch('/api/dashboard-data?platformTrendSnapshot=15623&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return;
+      const inserted = insertBoard(json);
+      window.__ICONIC_PLATFORM_TREND_SNAPSHOT__ = { ok: inserted, version: VERSION };
+    } catch (error) {
+      window.__ICONIC_PLATFORM_TREND_SNAPSHOT__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    }
+  }
+
+  function start() {
+    [700, 1800, 3200].forEach(ms => setTimeout(fetchAndRender, ms));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
+
