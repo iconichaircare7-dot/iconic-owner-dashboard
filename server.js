@@ -433,7 +433,7 @@ function normalizeBillingRiskSyncV1550(payload) {
 
   return {
     ok: payload.ok !== false,
-    version: payload.version || 'v15.5.0-render-billing-risk-sync',
+    version: payload.version || 'v15.6.13-pdf-navigation-timeout-fix',
     generatedAt: payload.generatedAt || '',
     period: payload.period || {},
     billingRisk: {
@@ -516,7 +516,7 @@ function applyBillingRiskSyncV1550(root, data) {
   if (!sync) {
     data.billingRiskSync = {
       ok: false,
-      version: 'v15.5.0-render-billing-risk-sync',
+      version: 'v15.6.13-pdf-navigation-timeout-fix',
       status: 'Not available from upstream OWNER_DATA_API_URL yet',
       note: 'Apps Script must expose ownerReportDataSync or billingRisk in ownerDashboardData before Render can display billing risk.'
     };
@@ -669,7 +669,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.5.0-render-billing-risk-sync',
+      version: 'v15.6.13-pdf-navigation-timeout-fix',
       data
     };
   }
@@ -677,7 +677,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.5.0-render-billing-risk-sync'
+    version: 'v15.6.13-pdf-navigation-timeout-fix'
   };
 }
 
@@ -764,28 +764,57 @@ async function prepareReportPage(page, reportUrl) {
     Authorization: authHeaderValue()
   });
 
+  page.setDefaultNavigationTimeout(120000);
+  page.setDefaultTimeout(120000);
+
   await page.setViewport({
     width: PDF_WIDTH,
     height: PDF_HEIGHT,
     deviceScaleFactor: 1
   });
 
+  /*
+   * v15.6.13 PDF Navigation Timeout Fix
+   * Why:
+   * - /api/report-final-pdf was failing with:
+   *   "Navigation timeout of 60000 ms exceeded".
+   * - The visual report already loads correctly in the browser.
+   * - Puppeteer was waiting for networkidle0, which can hang on Render because
+   *   the report page performs authenticated local API fetches and browser/runtime
+   *   network activity may not become fully idle within 60 seconds.
+   * Fix:
+   * - Wait for DOM readiness first.
+   * - Then wait for the actual report content we need for PDF capture.
+   * - This does not change the visual report, Apps Script, delivery, email, WhatsApp,
+   *   or owner-send flow.
+   */
   await page.goto(reportUrl, {
-    waitUntil: 'networkidle0',
-    timeout: 60000
+    waitUntil: 'domcontentloaded',
+    timeout: 120000
   });
 
   await page.waitForFunction(() => {
     const reportPages = document.querySelectorAll('.report-page');
     const cards = document.querySelectorAll('#channelCards .channel-card');
     const text = document.body ? document.body.innerText : '';
-    return reportPages.length >= 5 &&
-      cards.length >= 4 &&
+    const hasCoreChannels =
       text.includes('Meta') &&
       text.includes('Google') &&
       text.includes('Snapchat') &&
       text.includes('TikTok');
-  }, { timeout: 45000 });
+    const hasCampaignAlert =
+      text.includes('Campaign Payment / Live Status Alert') ||
+      text.includes('Payment/billing stop signal detected') ||
+      text.includes('Live Campaign Control');
+
+    return reportPages.length >= 5 &&
+      cards.length >= 4 &&
+      hasCoreChannels &&
+      hasCampaignAlert;
+  }, { timeout: 120000 });
+
+  await page.evaluate(() => document.fonts && document.fonts.ready ? document.fonts.ready : true).catch(() => {});
+  await page.waitForTimeout(750).catch(() => {});
 }
 
 async function applySinglePagePrintMode(page, requestedPageNumber) {
@@ -956,7 +985,7 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.5.0-render-billing-risk-sync' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.13-pdf-navigation-timeout-fix' });
   }
 });
 
@@ -1062,7 +1091,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.5.0-render-billing-risk-sync'
+      version: 'v15.6.13-pdf-navigation-timeout-fix'
     });
   } finally {
     if (browser) {
@@ -1106,7 +1135,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.5.0-render-billing-risk-sync'
+      version: 'v15.6.13-pdf-navigation-timeout-fix'
     });
   } finally {
     if (browser) {
@@ -1162,7 +1191,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.5.0-render-billing-risk-sync'
+      version: 'v15.6.13-pdf-navigation-timeout-fix'
     });
   } finally {
     if (browser) {
@@ -1174,7 +1203,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.5.0-render-billing-risk-sync'
+  version: 'v15.6.13-pdf-navigation-timeout-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
