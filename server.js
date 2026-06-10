@@ -433,7 +433,7 @@ function normalizeBillingRiskSyncV1550(payload) {
 
   return {
     ok: payload.ok !== false,
-    version: payload.version || 'v15.6.16-pdf-wait-condition-hardening',
+    version: payload.version || 'v15.6.21-pdf-dynamic-page-height-fix',
     generatedAt: payload.generatedAt || '',
     period: payload.period || {},
     billingRisk: {
@@ -516,7 +516,7 @@ function applyBillingRiskSyncV1550(root, data) {
   if (!sync) {
     data.billingRiskSync = {
       ok: false,
-      version: 'v15.6.16-pdf-wait-condition-hardening',
+      version: 'v15.6.21-pdf-dynamic-page-height-fix',
       status: 'Not available from upstream OWNER_DATA_API_URL yet',
       note: 'Apps Script must expose ownerReportDataSync or billingRisk in ownerDashboardData before Render can display billing risk.'
     };
@@ -669,7 +669,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.6.16-pdf-wait-condition-hardening',
+      version: 'v15.6.21-pdf-dynamic-page-height-fix',
       data
     };
   }
@@ -677,7 +677,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.6.16-pdf-wait-condition-hardening'
+    version: 'v15.6.21-pdf-dynamic-page-height-fix'
   };
 }
 
@@ -872,12 +872,22 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
 
     target.scrollIntoView({ block: 'start', inline: 'nearest' });
 
+    target.style.height = 'auto';
+    target.style.minHeight = 'auto';
+    target.style.maxHeight = 'none';
+    target.style.overflow = 'visible';
+
     const rect = target.getBoundingClientRect();
+    const fullHeight = Math.max(
+      Number(rect.height || 0),
+      Number(target.scrollHeight || 0),
+      Number(target.offsetHeight || 0)
+    );
 
     return {
       ok: true,
       count: pages.length,
-      height: Math.ceil(rect.height || target.scrollHeight || 0)
+      height: Math.ceil(fullHeight || 0)
     };
   }, PAGE_SELECTOR, pageIndex);
 
@@ -885,7 +895,20 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
     throw new Error(`Requested page ${safePageNumber} not found. Available pages: ${info.count}`);
   }
 
-  const calculatedHeight = Math.max(900, Math.min(1800, Number(info.height || 0) + 80));
+  /*
+   * v15.6.21 PDF Dynamic Page Height Fix
+   * Why:
+   * - Page 1 can become taller than 1800px after billing/platform risk cards.
+   * - The previous 1800px height cap forced Puppeteer/Chromium to split Page 1
+   *   into a second PDF page, leaving a large blank space before the real Page 2.
+   * Fix:
+   * - Use the actual rendered .report-page height + safe padding.
+   * - Do not cap page height at 1800px.
+   * - This changes only PDF page sizing; it does not touch Apps Script,
+   *   dashboard data, email, WhatsApp, or owner-send logic.
+   */
+  const measuredHeight = Number(info.height || 0);
+  const calculatedHeight = Math.max(900, Math.ceil(measuredHeight + 140));
 
   await page.addStyleTag({
     content: `
@@ -923,6 +946,10 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
       .report-page {
         width: ${REPORT_WIDTH}px !important;
         max-width: none !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         margin: 0 auto !important;
         page-break-after: auto !important;
         break-after: auto !important;
@@ -1017,7 +1044,7 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.16-pdf-wait-condition-hardening' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.21-pdf-dynamic-page-height-fix' });
   }
 });
 
@@ -1123,7 +1150,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.16-pdf-wait-condition-hardening'
+      version: 'v15.6.21-pdf-dynamic-page-height-fix'
     });
   } finally {
     if (browser) {
@@ -1167,7 +1194,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.16-pdf-wait-condition-hardening'
+      version: 'v15.6.21-pdf-dynamic-page-height-fix'
     });
   } finally {
     if (browser) {
@@ -1223,7 +1250,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.16-pdf-wait-condition-hardening'
+      version: 'v15.6.21-pdf-dynamic-page-height-fix'
     });
   } finally {
     if (browser) {
@@ -1235,7 +1262,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.6.16-pdf-wait-condition-hardening'
+  version: 'v15.6.21-pdf-dynamic-page-height-fix'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
