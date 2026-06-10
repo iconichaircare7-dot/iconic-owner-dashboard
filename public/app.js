@@ -2610,59 +2610,92 @@ Scope:
 
 
 /*
-Iconic Owner Dashboard — v15.6.12 Campaign Activity Visual Report Card
+Iconic Owner Dashboard — v15.6.15 Practical Campaign Platform Status Card
 Scope:
-- Render visual layer only.
+- Render visual/PDF layer only.
 - Reads campaignActivityAlert / paidChannelActivity already exposed by /api/dashboard-data.
-- Makes the campaign payment/live status warning visible in Page 1 and PDF render.
+- Changes wording from “live unconfirmed” to practical owner language: direct platform check required.
+- Keeps confirmed blocker language only where the data actually proves it (Meta payment/billing risk).
 - No Apps Script, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
 */
-function shortCampaignTextV15612(value, max = 150, fallback = '-') {
+function shortCampaignTextV15615(value, max = 150, fallback = '-') {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   if (!text) return fallback;
   if (text.length <= max) return text;
   return `${text.slice(0, Math.max(0, max - 1)).trim()}…`;
 }
 
-function listTextV15612(value, fallback = 'None') {
+function listTextV15615(value, fallback = 'None') {
   if (Array.isArray(value)) return value.length ? value.join(', ') : fallback;
   const text = String(value || '').trim();
   return text || fallback;
 }
 
-function pickCampaignActivityPayloadV15612(data) {
+function normalizeListV15615(value) {
+  if (Array.isArray(value)) return value.map(x => String(x || '').trim()).filter(Boolean);
+  const text = String(value || '').trim();
+  if (!text) return [];
+  return text.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+function pickCampaignActivityPayloadV15615(data) {
   const root = data && data.__raw ? data.__raw : data || {};
   const executive = root.executive || data.executive || {};
   const sync = root.ownerReportDataSync || root.ownerReportDataSyncV1549 || root.billingRiskSync || {};
   const paid = root.paidChannelActivity || sync.campaignActivity || data.paidChannelActivity || {};
   const alert = root.campaignActivityAlert || paid.alert || sync.campaignActivityAlert || data.campaignActivityAlert || {};
 
+  const periodChannels = normalizeListV15615(paid.periodActivityChannels || executive.periodActivityPaidChannels || []);
+  const liveChannels = normalizeListV15615(paid.liveConfirmedChannels || executive.liveConfirmedPaidChannels || []);
+  const riskChannels = normalizeListV15615(paid.paymentRiskChannels || executive.paymentRiskPaidChannels || []);
+  const needsCheckChannels = normalizeListV15615(paid.unconfirmedLiveChannels || executive.unconfirmedLivePaidChannels || []);
+
   const show = !!(
     alert.show ||
     executive.renderCampaignActivityAlertVisible ||
     executive.campaignActivityAlertTitle ||
     paid.ok ||
+    riskChannels.length ||
+    needsCheckChannels.length ||
     paid.canCompareLivePerformance === false
   );
+
+  const confirmedBlockerText = riskChannels.length ? listTextV15615(riskChannels) : 'None';
+  const directCheckText = needsCheckChannels.length ? listTextV15615(needsCheckChannels) : 'None';
+  const periodText = periodChannels.length ? listTextV15615(periodChannels) : 'None';
+  const liveText = liveChannels.length ? listTextV15615(liveChannels) : 'None';
+
+  const practicalMessage = riskChannels.length
+    ? `Confirmed blocker: ${confirmedBlockerText} has a payment/billing stop signal. For ${directCheckText}, this report has period activity only; verify current live status directly inside each ad platform before saying the campaigns are live or stopped.`
+    : `No payment blocker is confirmed in this payload. For ${directCheckText}, verify current live status directly inside each ad platform before saying the campaigns are live or stopped.`;
+
+  const practicalDecision = riskChannels.length
+    ? `Fix payment/billing first for ${confirmedBlockerText}. Then check ${directCheckText} directly in their ad platforms before judging current delivery or scaling.`
+    : `Check ${directCheckText} directly in their ad platforms before judging current delivery or scaling.`;
 
   return {
     show,
     severity: String(alert.severity || 'critical').toLowerCase(),
-    title: alert.title || executive.campaignActivityAlertTitle || 'Campaign Payment / Live Status Alert',
-    message: alert.message || executive.campaignActivityAlertText || paid.summaryStatus || executive.campaignActivityStatus || '',
-    ownerDecision: alert.ownerDecision || executive.campaignActivityOwnerDecision || '',
-    periodActivityChannels: paid.periodActivityChannels || executive.periodActivityPaidChannels || [],
-    liveConfirmedChannels: paid.liveConfirmedChannels || executive.liveConfirmedPaidChannels || [],
-    paymentRiskChannels: paid.paymentRiskChannels || executive.paymentRiskPaidChannels || [],
-    unconfirmedLiveChannels: paid.unconfirmedLiveChannels || executive.unconfirmedLivePaidChannels || [],
+    title: 'Campaign Payment / Platform Status Alert',
+    message: practicalMessage,
+    ownerDecision: practicalDecision,
+    periodActivityChannels: periodChannels,
+    liveConfirmedChannels: liveChannels,
+    paymentRiskChannels: riskChannels,
+    needsDirectCheckChannels: needsCheckChannels,
     canComparePeriodPerformance: paid.canComparePeriodPerformance ?? executive.canComparePeriodPerformance,
     canCompareLivePerformance: paid.canCompareLivePerformance ?? executive.canCompareLivePerformance,
-    version: root.renderCampaignActivitySyncVersion || executive.renderCampaignActivitySyncVersion || paid.version || 'v15.6.12-render-visual-campaign-alert-card'
+    version: root.renderCampaignActivitySyncVersion || executive.renderCampaignActivitySyncVersion || paid.version || 'v15.6.15-practical-campaign-platform-status-card'
   };
 }
 
+/* Backward-compatible wrapper: renderPage1 already calls the v15.6.12 function name. */
+function pickCampaignActivityPayloadV15612(data) {
+  return pickCampaignActivityPayloadV15615(data);
+}
+
 function renderCampaignActivityAlertV15612(data) {
-  const payload = pickCampaignActivityPayloadV15612(data);
+  const payload = pickCampaignActivityPayloadV15615(data);
   const existing = document.getElementById('campaignActivityCardV15612');
 
   if (!payload.show) {
@@ -2670,25 +2703,42 @@ function renderCampaignActivityAlertV15612(data) {
     return;
   }
 
+  const statusBadge = payload.paymentRiskChannels.length ? 'ACTION REQUIRED' : 'DIRECT CHECK NEEDED';
+
   const html = `
     <section id="campaignActivityCardV15612" class="campaign-activity-card-v15612 ${payload.severity}" data-version="${payload.version}">
       <div class="campaign-activity-head-v15612">
         <div>
           <span class="label">Live Campaign Control</span>
-          <h3>${shortCampaignTextV15612(payload.title, 72)}</h3>
+          <h3>${shortCampaignTextV15615(payload.title, 80)}</h3>
         </div>
-        <strong>${payload.canCompareLivePerformance === false ? 'LIVE NOT CONFIRMED' : 'LIVE CHECK'}</strong>
+        <strong>${statusBadge}</strong>
       </div>
-      <p class="campaign-activity-message-v15612">${shortCampaignTextV15612(payload.message, 255)}</p>
-      <div class="campaign-activity-grid-v15612">
-        <div><span>Period Activity</span><b>${shortCampaignTextV15612(listTextV15612(payload.periodActivityChannels), 64)}</b></div>
-        <div><span>Live Confirmed</span><b>${shortCampaignTextV15612(listTextV15612(payload.liveConfirmedChannels), 64)}</b></div>
-        <div><span>Payment Risk</span><b>${shortCampaignTextV15612(listTextV15612(payload.paymentRiskChannels), 64)}</b></div>
-        <div><span>Live Unconfirmed</span><b>${shortCampaignTextV15612(listTextV15612(payload.unconfirmedLiveChannels), 64)}</b></div>
+
+      <p class="campaign-activity-message-v15612">${shortCampaignTextV15615(payload.message, 360)}</p>
+
+      <div class="campaign-activity-grid-v15612 practical-v15615">
+        <div>
+          <span>Confirmed blocker:</span>
+          <b>${shortCampaignTextV15615(listTextV15615(payload.paymentRiskChannels), 72)}</b>
+        </div>
+        <div>
+          <span>Needs direct platform check:</span>
+          <b>${shortCampaignTextV15615(listTextV15615(payload.needsDirectCheckChannels), 88)}</b>
+        </div>
+        <div>
+          <span>Period activity found:</span>
+          <b>${shortCampaignTextV15615(listTextV15615(payload.periodActivityChannels), 88)}</b>
+        </div>
+        <div>
+          <span>Live confirmed by API:</span>
+          <b>${shortCampaignTextV15615(listTextV15615(payload.liveConfirmedChannels), 72)}</b>
+        </div>
       </div>
-      <div class="campaign-activity-owner-v15612">
-        <span>Owner decision</span>
-        <b>${shortCampaignTextV15612(payload.ownerDecision || 'Fix payment/billing first. Do not scale or judge current delivery until fresh post-fix data appears.', 190)}</b>
+
+      <div class="campaign-activity-owner-v15612 practical-v15615">
+        <span>Practical owner decision:</span>
+        <b>${shortCampaignTextV15615(payload.ownerDecision, 260)}</b>
       </div>
     </section>
   `;
@@ -2709,15 +2759,15 @@ function renderCampaignActivityAlertV15612(data) {
 }
 
 function applyCampaignActivityToExecutiveAlertV15612(data, executive, risk) {
-  const payload = pickCampaignActivityPayloadV15612(data);
+  const payload = pickCampaignActivityPayloadV15615(data);
   if (!payload.show) return { isCampaignCritical: false };
 
-  setText('alertTitle', shortCampaignTextV15612(payload.title, 54));
-  setText('alertText', shortCampaignTextV15612(payload.message, 145));
+  setText('alertTitle', shortCampaignTextV15615(payload.title, 58));
+  setText('alertText', shortCampaignTextV15615(payload.message, 165));
 
   const alertCard = document.getElementById('alertCard');
   if (alertCard) {
-    alertCard.classList.add('risk-alert', 'campaign-alert-v15612');
+    alertCard.classList.add('risk-alert', 'campaign-alert-v15612', 'campaign-alert-v15615');
     alertCard.setAttribute('data-campaign-alert-visible', 'true');
   }
 
