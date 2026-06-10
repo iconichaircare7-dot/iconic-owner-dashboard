@@ -2064,3 +2064,182 @@ Scope: visual-only Billing Risk card for Page 1 / PDF render.
 
 
 /* v15.6.9 uses same visual classes as v15.6.8; no visual layout change. */
+
+
+/*
+Iconic Owner Dashboard — v15.6.12 Campaign Activity Visual Report Card
+Scope: Render UI + PDF visual warning for campaign payment/live status.
+*/
+.alert-card.campaign-alert-v15612,
+.alert-card.risk-alert.campaign-alert-v15612 {
+  border-color: rgba(255, 111, 97, 0.82);
+  background:
+    radial-gradient(circle at top left, rgba(255, 111, 97, 0.20), transparent 34%),
+    linear-gradient(135deg, rgba(68, 18, 26, 0.92), rgba(16, 24, 39, 0.96));
+  box-shadow: 0 18px 52px rgba(255, 83, 73, 0.18), 0 18px 52px rgba(0, 0, 0, 0.30);
+}
+
+.campaign-activity-card-v15612 {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 111, 97, 0.20), transparent 36%),
+    linear-gradient(135deg, rgba(28, 38, 61, 0.96), rgba(8, 17, 32, 0.98));
+  border: 1px solid rgba(255, 111, 97, 0.58);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.32);
+  color: #f8efe7;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.campaign-activity-head-v15612 {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.campaign-activity-head-v15612 h3 {
+  margin: 5px 0 0;
+  font-size: 22px;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.campaign-activity-head-v15612 > strong {
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  border-radius: 999px;
+  background: rgba(255, 111, 97, 0.14);
+  border: 1px solid rgba(255, 111, 97, 0.44);
+  color: #ffd2c8;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.campaign-activity-message-v15612 {
+  margin: 11px 0 12px;
+  color: rgba(248, 239, 231, 0.80);
+  font-size: 12.5px;
+  line-height: 1.42;
+}
+
+.campaign-activity-grid-v15612 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.campaign-activity-grid-v15612 div,
+.campaign-activity-owner-v15612 {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 15px;
+  padding: 10px;
+}
+
+.campaign-activity-grid-v15612 span,
+.campaign-activity-owner-v15612 span {
+  display: block;
+  color: rgba(248, 239, 231, 0.58);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.campaign-activity-grid-v15612 b,
+.campaign-activity-owner-v15612 b {
+  display: block;
+  color: #fff7ed;
+  font-size: 12px;
+  line-height: 1.28;
+}
+
+.campaign-activity-owner-v15612 {
+  margin-top: 10px;
+  border-color: rgba(255, 205, 112, 0.22);
+}
+
+@media print {
+  .campaign-activity-card-v15612 {
+    margin-top: 10px;
+    padding: 13px;
+  }
+
+  .campaign-activity-message-v15612 {
+    font-size: 11.5px;
+    margin: 8px 0 9px;
+  }
+
+  .campaign-activity-head-v15612 h3 {
+    font-size: 19px;
+  }
+
+  .campaign-activity-grid-v15612 {
+    gap: 6px;
+  }
+
+  .campaign-activity-grid-v15612 div,
+  .campaign-activity-owner-v15612 {
+    padding: 8px;
+  }
+}
+
+
+/*
+Iconic Owner Dashboard — v15.6.15 Practical Campaign Status Card polish
+- Prevents label/value collision in browser and PDF.
+- Keeps Campaign Alert compact enough for Page 1 PDF capture.
+*/
+.campaign-activity-card-v15612 {
+  max-width: 100%;
+  overflow: visible;
+}
+
+.campaign-activity-message-v15612 {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.campaign-activity-grid-v15612.practical-v15615 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.campaign-activity-grid-v15612.practical-v15615 div,
+.campaign-activity-owner-v15612.practical-v15615 {
+  min-height: auto;
+  overflow: visible;
+}
+
+.campaign-activity-grid-v15612.practical-v15615 span,
+.campaign-activity-owner-v15612.practical-v15615 span {
+  display: block;
+  margin-bottom: 6px;
+  white-space: normal;
+}
+
+.campaign-activity-grid-v15612.practical-v15615 b,
+.campaign-activity-owner-v15612.practical-v15615 b {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media print {
+  .campaign-activity-grid-v15612.practical-v15615 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .campaign-activity-card-v15612 {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
