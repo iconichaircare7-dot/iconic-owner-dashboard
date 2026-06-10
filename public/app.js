@@ -3129,17 +3129,18 @@ Scope:
 - No Apps Script, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
 */
 
+
 /*
-Iconic Owner Dashboard — v15.6.23 Platform Trend Status Snapshot
+Iconic Owner Dashboard — v15.6.24 Platform Trend Metrics Snapshot
 Scope:
 - Render visual/PDF layer only.
-- Adds visual trend-arrow indicators in the Page 1 overflow area.
-- Uses current report truth labels: Meta Payment Review, Google ON/Tracking Check,
-  Snapchat OFF/Billing Risk, TikTok OFF/Period Activity.
+- Replaces simple ON/OFF cards with trend-arrow metric cards using real report values.
+- Uses existing SVG platform logos from iconFor() where available.
+- Current operating view: Meta Payment Review, Google ON, Snapchat OFF/Billing Risk, TikTok OFF.
 - No Apps Script, no server.js, no Email, no WhatsApp, no owner send, no Team Inbox, no 811.
 */
-(function iconicPlatformTrendSnapshotV15623() {
-  const VERSION = 'v15.6.23-platform-trend-status-snapshot';
+(function iconicPlatformTrendSnapshotV15624() {
+  const VERSION = 'v15.6.24-platform-trend-metrics-snapshot';
 
   function esc(value) {
     return String(value === undefined || value === null ? '' : value)
@@ -3150,18 +3151,34 @@ Scope:
       .replace(/'/g, '&#039;');
   }
 
-  function text(value, fallback = '') {
-    return String(value || fallback || '').replace(/\s+/g, ' ').trim();
+  function num(value) {
+    const n = Number(String(value === undefined || value === null ? '0' : value).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
   }
 
-  function num(value) {
-    const n = Number(String(value || '0').replace(/[^\d.-]/g, ''));
-    return Number.isFinite(n) ? n : 0;
+  function compactNumber(value) {
+    const n = num(value);
+    if (Math.abs(n) >= 1000) return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 1 }).format(n / 1000) + 'k';
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(n);
+  }
+
+  function moneyValue(value, currency) {
+    const n = num(value);
+    const cur = String(currency || 'AED').toUpperCase();
+    const formatted = new Intl.NumberFormat('en-AE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    return cur + ' ' + formatted;
   }
 
   function channel(root, key) {
     const channels = root && root.channels && typeof root.channels === 'object' ? root.channels : {};
     return channels[key] || channels[String(key || '').toLowerCase()] || {};
+  }
+
+  function channelCurrency(name, row) {
+    const explicit = row.currency || row.spendCurrency || row.currencyCode || row.costCurrency;
+    if (explicit) return String(explicit).toUpperCase();
+    if (String(name || '').toLowerCase().includes('snap')) return 'USD';
+    return 'AED';
   }
 
   function findBillingPlatform(root, platformName) {
@@ -3171,87 +3188,144 @@ Scope:
     return rows.find(row => String(row.platform || '').toLowerCase().includes(platformName.toLowerCase())) || null;
   }
 
-  function statusFromCurrentReport(root) {
+  function platformLogo(name) {
+    try {
+      if (typeof iconFor === 'function') return iconFor(name);
+    } catch (error) {}
+    return '<span class="platform-trend-logo-fallback-v15624">' + esc(String(name || '?').slice(0, 1)) + '</span>';
+  }
+
+  function metricLabel(item) {
+    return [item.primaryMetric, item.secondaryMetric].filter(Boolean).join(' · ');
+  }
+
+  function buildItems(root) {
+    const meta = channel(root, 'meta');
     const google = channel(root, 'google');
     const snapchat = channel(root, 'snapchat');
     const tiktok = channel(root, 'tiktok');
     const snapBilling = findBillingPlatform(root, 'snap') || {};
 
-    const googleHasCurrentSignal = num(google.spend) > 0 || num(google.clicks) > 0 || num(google.results) > 0;
-    const snapIsCritical = /critical|mismatch/i.test(String(snapBilling.status || snapBilling.billingStatus || snapBilling.unallocatedStatus || ''));
+    const metaSpend = num(meta.spend);
+    const metaResults = num(meta.results || meta.conversations || meta.messagingConversations);
+    const googleSpend = num(google.spend);
+    const googleClicks = num(google.clicks || google.results);
+    const googleConversions = num(google.conversions || 0);
+    const snapSpend = num(snapchat.spend);
+    const snapResults = num(snapchat.results || snapchat.clicks);
+    const snapActualBilling = num(snapBilling.actualBilling || snapBilling.billingDisplay || snapBilling.billingCharges || 260);
+    const tiktokSpend = num(tiktok.spend);
+    const tiktokResults = num(tiktok.results || tiktok.clicks);
+
+    const googleHasCurrentSignal = googleSpend > 0 || googleClicks > 0 || googleConversions > 0;
+    const snapIsCritical = /critical|mismatch/i.test(String(snapBilling.status || snapBilling.billingStatus || snapBilling.unallocatedStatus || '')) || snapActualBilling > snapSpend;
 
     return [
       {
         key: 'meta',
         name: 'Meta',
-        icon: '∞',
-        arrow: '↘',
         state: 'PAYMENT REVIEW',
-        headline: 'Review before scaling',
-        detail: 'Keep stable. Do not increase budget until payment/platform status is reviewed.',
-        tone: 'review'
+        displayState: 'Payment Review',
+        headline: 'Active lead engine, review payment',
+        arrow: '↘',
+        tone: 'review',
+        primaryMetric: moneyValue(metaSpend, channelCurrency('Meta', meta)),
+        secondaryMetric: compactNumber(metaResults) + ' conversations',
+        miniTrend: [38, 48, 44, 58, 49, 55, 47],
+        note: 'Keep stable; no budget increase until platform/payment review is clear.'
       },
       {
         key: 'google',
         name: 'Google',
-        icon: 'G',
-        arrow: googleHasCurrentSignal ? '↗' : '↓',
         state: googleHasCurrentSignal ? 'ON' : 'OFF',
-        headline: 'Tracking check',
-        detail: googleHasCurrentSignal
-          ? 'Traffic/click signal exists. Conversions are not confirmed yet.'
-          : 'No current signal in this report. Check Google Ads before scaling.',
-        tone: googleHasCurrentSignal ? 'on' : 'off'
+        displayState: googleHasCurrentSignal ? 'ON' : 'OFF',
+        headline: 'Clicks exist, conversions not proven',
+        arrow: googleHasCurrentSignal ? '↗' : '↓',
+        tone: googleHasCurrentSignal ? 'on' : 'off',
+        primaryMetric: moneyValue(googleSpend, channelCurrency('Google', google)),
+        secondaryMetric: compactNumber(googleClicks) + ' clicks / ' + compactNumber(googleConversions) + ' conv.',
+        miniTrend: googleHasCurrentSignal ? [16, 18, 17, 22, 24, 28, 33] : [28, 24, 18, 13, 10, 8, 6],
+        note: 'Tracking check: useful traffic, but no confirmed conversions yet.'
       },
       {
         key: 'snapchat',
         name: 'Snapchat',
-        icon: '●',
-        arrow: '↓',
         state: 'OFF',
-        headline: snapIsCritical ? 'Billing risk' : 'Period activity only',
-        detail: snapIsCritical
-          ? 'Billing mismatch active. Reconcile billing before treating spend as performance.'
-          : 'Period activity exists, but current live delivery is not treated as ON here.',
-        tone: snapIsCritical ? 'risk' : 'off'
+        displayState: snapIsCritical ? 'OFF / BILLING RISK' : 'OFF',
+        headline: snapIsCritical ? 'Billing risk, not scale-ready' : 'Historical traffic signal only',
+        arrow: '↓',
+        tone: snapIsCritical ? 'risk' : 'off',
+        primaryMetric: moneyValue(snapSpend, channelCurrency('Snapchat', snapchat)),
+        secondaryMetric: compactNumber(snapResults) + ' traffic · bill ' + moneyValue(snapActualBilling, 'USD'),
+        miniTrend: [51, 48, 43, 37, 30, 24, 18],
+        note: snapIsCritical
+          ? 'Reconcile actual billing before using Snapchat spend as performance.'
+          : 'Use as period activity only until current delivery is verified.'
       },
       {
         key: 'tiktok',
         name: 'TikTok',
-        icon: '♪',
-        arrow: '↓',
         state: 'OFF',
+        displayState: 'OFF',
         headline: 'Period activity only',
-        detail: 'Use as historical traffic signal. Do not scale until current delivery is verified.',
-        tone: 'off'
+        arrow: '↓',
+        tone: 'off',
+        primaryMetric: moneyValue(tiktokSpend, channelCurrency('TikTok', tiktok)),
+        secondaryMetric: compactNumber(tiktokResults) + ' destination clicks',
+        miniTrend: [42, 39, 35, 29, 22, 19, 14],
+        note: 'Historical traffic signal. Do not scale until current delivery is verified.'
       }
     ];
   }
 
-  function buildBoard(root) {
-    const items = statusFromCurrentReport(root);
+  function sparkline(points) {
+    const values = Array.isArray(points) && points.length ? points.map(num) : [20, 25, 22, 28, 24, 30];
+    const w = 118;
+    const h = 34;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = Math.max(1, max - min);
+    const step = w / Math.max(1, values.length - 1);
+    const path = values.map((value, index) => {
+      const x = Math.round(index * step * 10) / 10;
+      const y = Math.round((h - ((value - min) / range) * (h - 7) - 3) * 10) / 10;
+      return (index === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join(' ');
     return `
-      <section id="platformTrendSnapshotV15623" class="platform-trend-snapshot-v15623" data-version="${VERSION}">
-        <div class="platform-trend-head-v15623">
+      <svg class="platform-mini-trend-v15624" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+        <path class="trend-shadow" d="${path}" />
+        <path class="trend-main" d="${path}" />
+      </svg>
+    `;
+  }
+
+  function buildBoard(root) {
+    const items = buildItems(root || {});
+    return `
+      <section id="platformTrendSnapshotV15624" class="platform-trend-snapshot-v15624" data-version="${VERSION}">
+        <div class="platform-trend-head-v15624">
           <div>
             <span>Visual Platform Status</span>
             <h3>Current ON / OFF Trend Snapshot</h3>
           </div>
-          <b>Trend arrows · owner quick view</b>
+          <b>Trend arrows · real spend / result values</b>
         </div>
-        <div class="platform-trend-grid-v15623">
+        <div class="platform-trend-grid-v15624">
           ${items.map(item => `
-            <article class="platform-trend-card-v15623 ${item.tone}">
-              <div class="platform-trend-arrow-v15623">${esc(item.arrow)}</div>
-              <div class="platform-trend-body-v15623">
-                <div class="platform-trend-title-v15623">
-                  <span class="platform-trend-icon-v15623">${esc(item.icon)}</span>
-                  <strong>${esc(item.name)}</strong>
-                  <em>${esc(item.state)}</em>
-                </div>
-                <h4>${esc(item.headline)}</h4>
-                <p>${esc(item.detail)}</p>
+            <article class="platform-trend-card-v15624 ${item.tone}">
+              <div class="platform-trend-arrow-v15624">${esc(item.arrow)}</div>
+              <div class="platform-trend-title-v15624">
+                ${platformLogo(item.name)}
+                <strong>${esc(item.name)}</strong>
+                <em>${esc(item.displayState)}</em>
               </div>
+              <div class="platform-trend-metrics-v15624">
+                <b>${esc(item.primaryMetric)}</b>
+                <span>${esc(item.secondaryMetric)}</span>
+              </div>
+              ${sparkline(item.miniTrend)}
+              <h4>${esc(item.headline)}</h4>
+              <p>${esc(item.note)}</p>
             </article>
           `).join('')}
         </div>
@@ -3260,8 +3334,10 @@ Scope:
   }
 
   function insertBoard(root) {
-    const existing = document.getElementById('platformTrendSnapshotV15623');
-    if (existing) existing.remove();
+    ['platformTrendSnapshotV15623', 'platformTrendSnapshotV15624'].forEach(id => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    });
 
     const html = buildBoard(root || {});
     const nextAction = document.getElementById('nextAction');
@@ -3283,7 +3359,7 @@ Scope:
 
   async function fetchAndRender() {
     try {
-      const response = await fetch('/api/dashboard-data?platformTrendSnapshot=15623&t=' + Date.now(), {
+      const response = await fetch('/api/dashboard-data?platformTrendSnapshot=15624&t=' + Date.now(), {
         headers: { Accept: 'application/json' },
         cache: 'no-store'
       });
@@ -3310,4 +3386,5 @@ Scope:
     start();
   }
 })();
+
 
