@@ -433,7 +433,7 @@ function normalizeBillingRiskSyncV1550(payload) {
 
   return {
     ok: payload.ok !== false,
-    version: payload.version || 'v15.6.13-pdf-navigation-timeout-fix',
+    version: payload.version || 'v15.6.15-pdf-wait-compat-plus-practical-alert',
     generatedAt: payload.generatedAt || '',
     period: payload.period || {},
     billingRisk: {
@@ -516,7 +516,7 @@ function applyBillingRiskSyncV1550(root, data) {
   if (!sync) {
     data.billingRiskSync = {
       ok: false,
-      version: 'v15.6.13-pdf-navigation-timeout-fix',
+      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert',
       status: 'Not available from upstream OWNER_DATA_API_URL yet',
       note: 'Apps Script must expose ownerReportDataSync or billingRisk in ownerDashboardData before Render can display billing risk.'
     };
@@ -669,7 +669,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
     return {
       ...root,
       ok: root.ok !== false,
-      version: 'v15.6.13-pdf-navigation-timeout-fix',
+      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert',
       data
     };
   }
@@ -677,7 +677,7 @@ function normalizeOwnerDashboardDataV1537(rawJson) {
   return {
     ...data,
     ok: root.ok !== false,
-    version: 'v15.6.13-pdf-navigation-timeout-fix'
+    version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
   };
 }
 
@@ -774,7 +774,7 @@ async function prepareReportPage(page, reportUrl) {
   });
 
   /*
-   * v15.6.13 PDF Navigation Timeout Fix
+   * v15.6.13/v15.6.14 PDF Navigation + Wait Compatibility Fix
    * Why:
    * - /api/report-final-pdf was failing with:
    *   "Navigation timeout of 60000 ms exceeded".
@@ -814,7 +814,13 @@ async function prepareReportPage(page, reportUrl) {
   }, { timeout: 120000 });
 
   await page.evaluate(() => document.fonts && document.fonts.ready ? document.fonts.ready : true).catch(() => {});
-  await page.waitForTimeout(750).catch(() => {});
+
+  /*
+   * v15.6.14 PDF Wait Compatibility Fix
+   * Some Puppeteer builds on Render do not expose page.waitForTimeout().
+   * Use a plain Promise-based delay instead, which works across Puppeteer versions.
+   */
+  await new Promise(resolve => setTimeout(resolve, 750));
 }
 
 async function applySinglePagePrintMode(page, requestedPageNumber) {
@@ -985,7 +991,7 @@ app.get('/api/dashboard-data', async (req, res) => {
 
     return res.json(cleanedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.13-pdf-navigation-timeout-fix' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.15-pdf-wait-compat-plus-practical-alert' });
   }
 });
 
@@ -1091,7 +1097,7 @@ app.get('/api/report-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.13-pdf-navigation-timeout-fix'
+      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
     });
   } finally {
     if (browser) {
@@ -1135,7 +1141,7 @@ app.get('/api/report-page-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.13-pdf-navigation-timeout-fix'
+      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
     });
   } finally {
     if (browser) {
@@ -1191,7 +1197,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.13-pdf-navigation-timeout-fix'
+      version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
     });
   } finally {
     if (browser) {
@@ -1203,7 +1209,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.6.13-pdf-navigation-timeout-fix'
+  version: 'v15.6.15-pdf-wait-compat-plus-practical-alert'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
