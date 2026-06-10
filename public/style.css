@@ -2406,3 +2406,35 @@ Scope: small visual cleanup only for owner-safe risk/status wording.
 .status {
   max-width: 125px;
 }
+
+
+/* v15.6.22 Billing Card Text Polish
+   Keep the Billing Risk card readable in PDF without ellipsis. */
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] {
+  padding: 12px 14px !important;
+}
+
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-main-v1552 p,
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-highlight-v1552 span,
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-owner-action-v1552 span {
+  max-height: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-main-v1552 p {
+  font-size: 10.8px !important;
+  line-height: 1.32 !important;
+}
+
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-highlight-v1552,
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-owner-action-v1552 {
+  grid-template-columns: 118px minmax(0, 1fr) !important;
+}
+
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-highlight-v1552 span,
+.billing-risk-card-v1552[data-version="v15.6.22-billing-card-text-polish"] .billing-risk-owner-action-v1552 span {
+  font-size: 10.4px !important;
+  line-height: 1.28 !important;
+}
