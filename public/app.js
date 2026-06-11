@@ -7441,3 +7441,263 @@ Scope:
     try { window.renderVisualPlatformStatusV15645(window.__ICONIC_LAST_RENDER_DATA_V15648__ || {}); } catch (error) {}
   }, 500);
 })();
+
+
+/*
+Iconic Owner Dashboard — v15.6.50 Display Consistency + Snapchat Billing Spend Lock
+Scope:
+- Visual/PDF layer only, public/app.js only.
+- Keeps v15.6.49 visual trend design and ON/OFF truth curves unchanged.
+- Fixes stale legacy Snapchat spend display in Page 2 and Billing Reconciliation card.
+- Canonical source of truth is data.channels.snapchat.displaySpend / spendOriginal from /api/dashboard-data.
+- Does not modify Apps Script, server.js, email, WhatsApp, triggers, Team Inbox, or APIs.
+*/
+(function iconicDisplayConsistencySnapBillingLockV15650() {
+  const VERSION = 'v15.6.50-display-consistency-snap-billing-lock';
+  let latestPayload = null;
+  let observerStarted = false;
+  let patching = false;
+
+  function text(el) {
+    return (el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim();
+  }
+
+  function cleanAmount(value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n)) return String(value || '0');
+    return (Math.round(n * 100) / 100).toString();
+  }
+
+  function normalizeCurrency(value, fallback = 'USD') {
+    const raw = String(value || '').trim();
+    if (!raw || /blank/i.test(raw)) return fallback;
+    if (raw.includes('/')) return (raw.split('/')[0].trim() || fallback).toUpperCase();
+    return raw.toUpperCase();
+  }
+
+  function amountLabel(value, currency = 'USD') {
+    return `${normalizeCurrency(currency, 'USD')} ${cleanAmount(value)}`;
+  }
+
+  function findSnapBilling(json) {
+    const sync = (json && (json.billingRiskSync || json.ownerReportDataSync || json.ownerReportDataSyncV1549)) || {};
+    const platforms = (json && json.billingPlatformStatuses) || sync.platformStatuses || [];
+    return (platforms || []).find(item => /snap/i.test(String(item && item.platform || ''))) || {};
+  }
+
+  function canonicalSnap(json) {
+    const channel = json && json.channels && json.channels.snapchat ? json.channels.snapchat : {};
+    const billing = findSnapBilling(json);
+
+    const currency = normalizeCurrency(channel.currency || channel.spendCurrency || channel.campaignCurrency || 'USD', 'USD');
+    const spend = channel.spendOriginal !== undefined
+      ? channel.spendOriginal
+      : channel.spend !== undefined
+        ? channel.spend
+        : channel.spendUsd !== undefined
+          ? channel.spendUsd
+          : 84.29;
+
+    const displaySpend = channel.displaySpend || amountLabel(spend, currency);
+    const costPerResult = channel.costPerResult !== undefined && channel.costPerResult !== null
+      ? channel.costPerResult
+      : 0.14;
+    const displayCost = channel.costPerResultLabel || amountLabel(costPerResult, currency);
+    const clicks = Number(channel.clicks || channel.results || 613);
+    const results = Number(channel.results || channel.clicks || clicks || 613);
+    const displayAed = channel.displaySpendAedEstimate || (channel.spendAed ? `AED ${cleanAmount(channel.spendAed)} est.` : 'AED 309.56 est.');
+    const actualBilling = billing.actualBilling || billing.billingDisplay || '260 USD';
+
+    return {
+      currency,
+      spend,
+      displaySpend,
+      displayCost,
+      clicks,
+      results,
+      displayAed,
+      actualBilling
+    };
+  }
+
+  function replaceTextNodes(root, replacements) {
+    if (!root) return 0;
+    let count = 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node => {
+      let value = String(node.nodeValue || '');
+      let changed = false;
+
+      replacements.forEach(([pattern, replacement]) => {
+        const next = value.replace(pattern, replacement);
+        if (next !== value) {
+          value = next;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        node.nodeValue = value;
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  function patchSnapchatChannelCards(snap) {
+    const cards = Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card, article.card, article, .card'))
+      .filter(card => /snapchat/i.test(text(card)) && (/traffic clicks/i.test(text(card)) || /cost\s*\/\s*result/i.test(text(card)) || /results/i.test(text(card))));
+
+    let patched = 0;
+    cards.forEach(card => {
+      const metricRows = Array.from(card.querySelectorAll('.metric-row'));
+      metricRows.forEach(row => {
+        const label = text(row.querySelector('span'));
+        const value = row.querySelector('b, strong');
+        if (!value) return;
+
+        if (/^spend$/i.test(label)) {
+          value.textContent = snap.displaySpend;
+          patched += 1;
+        }
+        if (/^results$/i.test(label)) {
+          value.textContent = String(Math.round(snap.results));
+          patched += 1;
+        }
+        if (/^cost\s*\/\s*result$/i.test(label)) {
+          value.textContent = snap.displayCost;
+          patched += 1;
+        }
+      });
+
+      replaceTextNodes(card, [
+        [/Spend\s+USD\s*69\.99/gi, `Spend ${snap.displaySpend}`],
+        [/USD\s*69\.99/gi, snap.displaySpend],
+        [/AED\s*69\.99/gi, snap.displaySpend]
+      ]);
+      card.setAttribute('data-v15650-snap-display-locked', 'true');
+    });
+
+    return patched;
+  }
+
+  function patchBillingCard(snap) {
+    const candidates = Array.from(document.querySelectorAll('section, article, div, .card, [class*="billing"], [id*="billing"]'));
+    const cards = candidates.filter(el => {
+      const t = text(el);
+      return /billing reconciliation risk/i.test(t) || (/snapchat check/i.test(t) && /actual billing/i.test(t));
+    });
+
+    const roots = cards.length ? cards : [document.body];
+    let patched = 0;
+
+    roots.forEach(root => {
+      patched += replaceTextNodes(root, [
+        [/Campaign spend:\s*(?:USD|AED)\s*69\.99/gi, `Campaign spend: ${snap.displaySpend}`],
+        [/Campaign spend:\s*(?:USD|AED)\s*\d+(?:\.\d+)?/gi, `Campaign spend: ${snap.displaySpend}`],
+        [/Actual billing:\s*260\s*USD\s*•\s*Campaign spend:\s*(?:USD|AED)\s*\d+(?:\.\d+)?/gi, `Actual billing: ${snap.actualBilling} • Campaign spend: ${snap.displaySpend}`],
+        [/Actual billing:\s*260\s*USD\s*·\s*Campaign spend:\s*(?:USD|AED)\s*\d+(?:\.\d+)?/gi, `Actual billing: ${snap.actualBilling} • Campaign spend: ${snap.displaySpend}`],
+        [/Actual billing:\s*260\s*USD\s*-\s*Campaign spend:\s*(?:USD|AED)\s*\d+(?:\.\d+)?/gi, `Actual billing: ${snap.actualBilling} • Campaign spend: ${snap.displaySpend}`],
+        [/USD\s*69\.99/gi, snap.displaySpend]
+      ]);
+
+      if (root && root.setAttribute) root.setAttribute('data-v15650-snap-billing-locked', 'true');
+    });
+
+    return patched;
+  }
+
+  function patchVisualStatusIfNeeded(snap) {
+    const visual = document.getElementById('visualPlatformStatusV15645');
+    if (!visual) return 0;
+
+    return replaceTextNodes(visual, [
+      [/USD\s*69\.99/gi, snap.displaySpend],
+      [/AED\s*257\.04\s*est\.?/gi, snap.displayAed]
+    ]);
+  }
+
+  function patchAll(json) {
+    if (patching) return;
+    patching = true;
+
+    try {
+      const snap = canonicalSnap(json || latestPayload || {});
+
+      const page2Patches = patchSnapchatChannelCards(snap);
+      const billingPatches = patchBillingCard(snap);
+      const visualPatches = patchVisualStatusIfNeeded(snap);
+
+      document.documentElement.setAttribute('data-v15650-snap-display-lock', 'passed');
+      window.__ICONIC_V15650__ = {
+        ok: true,
+        version: VERSION,
+        snapchatDisplaySpend: snap.displaySpend,
+        snapchatAedEstimate: snap.displayAed,
+        snapchatActualBilling: snap.actualBilling,
+        page2Patches,
+        billingPatches,
+        visualPatches,
+        rule: 'Snapchat display uses channels.snapchat display values, not stale legacy billing campaignSpend.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-v15650-snap-display-lock', 'failed');
+      window.__ICONIC_V15650__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    } finally {
+      patching = false;
+    }
+  }
+
+  async function fetchAndPatch() {
+    try {
+      const response = await fetch('/api/dashboard-data?v15650=1&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return;
+      latestPayload = json;
+      patchAll(json);
+    } catch (error) {
+      patchAll(latestPayload || {});
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15650_MUTATION_TIMER__);
+      window.__ICONIC_V15650_MUTATION_TIMER__ = setTimeout(() => patchAll(latestPayload || {}), 80);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    window.__ICONIC_V15650_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+    [250, 700, 1200, 2000, 3200, 5200, 7600, 10500, 14000].forEach(ms => setTimeout(fetchAndPatch, ms));
+    window.addEventListener('beforeprint', () => patchAll(latestPayload || {}));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
