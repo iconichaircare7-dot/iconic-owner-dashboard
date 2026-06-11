@@ -6854,3 +6854,590 @@ function renderPage2(data) {
     rule: 'Never leave Channel Health empty; keep Visual Platform Status taller and below the signal row.'
   };
 })();
+
+/*
+Iconic Owner Dashboard — v15.6.49 ON/OFF Truth Curves + Premium Visual Trend
+Scope:
+- public/app.js only
+- Restores visible ON/OFF status per platform inside Visual Platform Status
+- Uses real dailyBreakdown when available; otherwise uses real adset split/current values
+- Adds curved + jagged truth lines, not decorative fake trends
+- Keeps Channel Health visible and keeps PDF at 5 pages
+- No Apps Script, no server.js, no PDF delivery
+*/
+(function iconicVisualOnOffTruthCurvesV15649() {
+  const VERSION = 'v15.6.49-on-off-truth-curves-premium-visual-trend';
+
+  function num49(value, fallback = 0) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const n = Number(String(value).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function esc49(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function clamp49(value, max = 80) {
+    const text = String(value === undefined || value === null ? '' : value).replace(/\s+/g, ' ').trim();
+    if (text.length <= max) return text;
+    return text.slice(0, Math.max(0, max - 1)).trim() + '…';
+  }
+
+  function fmtMoney49(value, currency = 'AED') {
+    const n = num49(value, 0);
+    const fixed = Math.round((n + Number.EPSILON) * 100) / 100;
+    const clean = fixed.toLocaleString('en-AE', { minimumFractionDigits: fixed % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+    return `${currency} ${clean}`;
+  }
+
+  function channel49(data, name) {
+    const rows = Array.isArray(data && data.channels) ? data.channels : [];
+    const wanted = String(name || '').toLowerCase();
+    return rows.find(row => String(row && (row.name || row.platform || '')).toLowerCase() === wanted) || {};
+  }
+
+  function platformIcon49(name) {
+    return typeof window.iconFor === 'function' ? window.iconFor(name) : '';
+  }
+
+  function liveState49(row) {
+    const liveRaw = String(row.currentLiveStatus || row.activityStatus || row.status || '').toLowerCase();
+    const apiRaw = String(row.apiStatus || '').toLowerCase();
+    const payment = !!row.paymentIssueDetected || liveRaw.includes('payment') || liveRaw.includes('blocked') || liveRaw.includes('stopped');
+    const confirmed = row.isLiveConfirmed === true || liveRaw === 'live' || liveRaw === 'active' || liveRaw === 'on' || apiRaw === 'active_live';
+
+    if (confirmed && !payment) {
+      return { on: true, label: 'ON', className: 'on', reason: 'API confirmed live' };
+    }
+
+    if (payment) {
+      return { on: false, label: 'OFF', className: 'off payment', reason: 'Payment blocked' };
+    }
+
+    if (liveRaw.includes('unconfirmed') || row.hadPeriodActivity) {
+      return { on: false, label: 'OFF', className: 'off unconfirmed', reason: 'Live unconfirmed' };
+    }
+
+    return { on: false, label: 'OFF', className: 'off', reason: 'No live confirmation' };
+  }
+
+  function sourceLabel49(row, name) {
+    if (Array.isArray(row.dailyBreakdown) && row.dailyBreakdown.length >= 2) return 'daily rows';
+    if (Array.isArray(row.adsets) && row.adsets.length >= 2) return 'ad set split';
+    return 'current value';
+  }
+
+  function rawSeries49(row, name) {
+    const platform = String(name || '').toLowerCase();
+    const daily = Array.isArray(row.dailyBreakdown) ? row.dailyBreakdown : [];
+
+    if (daily.length >= 2) {
+      return daily.map(day => {
+        if (platform.includes('google')) return num49(day.clicks, num49(day.results, num49(day.spend, 0)));
+        if (platform.includes('snap')) return num49(day.clicks, num49(day.results, num49(day.spend, 0)));
+        if (platform.includes('tiktok')) return num49(day.clicks, num49(day.results, num49(day.spend, 0)));
+        return num49(day.results, num49(day.clicks, num49(day.spend, 0)));
+      });
+    }
+
+    const adsets = Array.isArray(row.adsets) ? row.adsets : [];
+    if (adsets.length >= 2) {
+      return adsets.map(adset => num49(adset.results, num49(adset.clicks, num49(adset.spend, 0))));
+    }
+
+    const results = num49(row.results, 0);
+    const clicks = num49(row.clicks, 0);
+    const spend = num49(row.spendAed || row.spendOriginal || row.spend, 0);
+    const base = results || clicks || spend || 1;
+    return [base, base];
+  }
+
+  function points49(values, width = 260, height = 58) {
+    const list = Array.isArray(values) && values.length ? values.map(v => num49(v, 0)) : [0, 1];
+    const min = Math.min.apply(null, list);
+    const max = Math.max.apply(null, list);
+    const range = Math.max(1, max - min);
+    const step = width / Math.max(1, list.length - 1);
+    return list.map((value, index) => {
+      const x = Math.round(index * step * 100) / 100;
+      const y = Math.round((height - ((value - min) / range) * (height - 14) - 7) * 100) / 100;
+      return { x, y, value };
+    });
+  }
+
+  function angularPath49(pts) {
+    return pts.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`).join(' ');
+  }
+
+  function smoothPath49(pts) {
+    if (!pts.length) return '';
+    if (pts.length < 3) return angularPath49(pts);
+
+    let d = `M${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      const midX = (prev.x + curr.x) / 2;
+      d += ` Q${prev.x} ${prev.y} ${midX} ${(prev.y + curr.y) / 2}`;
+      d += ` T${curr.x} ${curr.y}`;
+    }
+    return d;
+  }
+
+  function spark49(row, name) {
+    const values = rawSeries49(row, name);
+    const pts = points49(values);
+    const angular = angularPath49(pts);
+    const smooth = smoothPath49(pts);
+    const dots = pts.map(point => `<circle cx="${point.x}" cy="${point.y}" r="2.15"/>`).join('');
+
+    return `
+      <svg class="vps49-spark" viewBox="0 0 260 58" preserveAspectRatio="none" aria-label="Truth-based trend line">
+        <path class="vps49-area" d="${smooth} L260 58 L0 58 Z"></path>
+        <path class="vps49-angular" d="${angular}"></path>
+        <path class="vps49-smooth" d="${smooth}"></path>
+        <g class="vps49-dots">${dots}</g>
+      </svg>
+    `;
+  }
+
+  function metric49(row, name) {
+    const platform = String(name || '').toLowerCase();
+
+    if (platform.includes('snap')) {
+      return {
+        value: row.displaySpend || fmtMoney49(row.spendOriginal || row.spend, 'USD'),
+        detail: `${row.displaySpendAedEstimate || fmtMoney49(row.spendAed, 'AED') + ' est.'} • ${num49(row.clicks || row.results, 0).toLocaleString('en-AE')} clicks`,
+        reason: 'Billing risk'
+      };
+    }
+
+    if (platform.includes('google')) {
+      return {
+        value: row.displaySpend || fmtMoney49(row.spendAed || row.spend, 'AED'),
+        detail: `${num49(row.clicks, 0).toLocaleString('en-AE')} clicks • ${num49(row.conversions || row.results, 0).toLocaleString('en-AE')} conv`,
+        reason: 'Tracking risk'
+      };
+    }
+
+    if (platform.includes('tiktok')) {
+      return {
+        value: row.displaySpend || fmtMoney49(row.spendAed || row.spend, 'AED'),
+        detail: `${num49(row.results || row.clicks, 0).toLocaleString('en-AE')} destination clicks`,
+        reason: 'Period signal'
+      };
+    }
+
+    return {
+      value: row.displaySpend || fmtMoney49(row.spendAed || row.spend, 'AED'),
+      detail: `${num49(row.results, 0).toLocaleString('en-AE')} WhatsApp conversations`,
+      reason: row.paymentIssueDetected ? 'Payment review' : 'Lead engine'
+    };
+  }
+
+  function card49(data, name, className) {
+    const row = channel49(data, name);
+    const live = liveState49(row);
+    const metric = metric49(row, name);
+    const source = sourceLabel49(row, name);
+
+    return `
+      <article class="vps49-card ${className}" data-platform="${esc49(name)}" data-live="${esc49(live.label)}">
+        <div class="vps49-topline">
+          <div class="vps49-name">${platformIcon49(name)}<strong>${esc49(name)}</strong></div>
+          <div class="vps49-live ${esc49(live.className)}"><b>${esc49(live.label)}</b><span>${esc49(live.reason)}</span></div>
+        </div>
+        <div class="vps49-body">
+          <div>
+            <div class="vps49-value">${esc49(metric.value)}</div>
+            <div class="vps49-detail">${esc49(metric.detail)}</div>
+          </div>
+          <span class="vps49-chip">${esc49(metric.reason)}</span>
+        </div>
+        <div class="vps49-curve-wrap">
+          ${spark49(row, name)}
+        </div>
+        <div class="vps49-foot"><span>truth curve</span><b>${esc49(source)}</b></div>
+      </article>
+    `;
+  }
+
+  function visualHTML49(data) {
+    return `
+      <section id="visualPlatformStatusV15645" class="visual-platform-status-v15649" data-required-block="visual-platform-status" data-version="${VERSION}">
+        <div class="vps49-head">
+          <div>
+            <span class="vps49-kicker">Visual Platform Status</span>
+            <h3 class="vps49-title">Current ON / OFF Truth Trend Snapshot</h3>
+            <p class="vps49-subtitle">Locked Page 1 board · ON/OFF uses current live confirmation · curves use real daily rows or real platform split only</p>
+          </div>
+          <b class="vps49-lock">Permanent Lock</b>
+        </div>
+        <div class="vps49-grid">
+          ${card49(data, 'Meta', 'meta')}
+          ${card49(data, 'Google', 'google')}
+          ${card49(data, 'Snapchat', 'snapchat')}
+          ${card49(data, 'TikTok', 'tiktok')}
+        </div>
+      </section>
+    `;
+  }
+
+  function injectStyle49() {
+    if (document.getElementById('iconicV15649VisualTruthCurvesStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'iconicV15649VisualTruthCurvesStyle';
+    style.textContent = `
+      #visualPlatformStatusV15645.visual-platform-status-v15649 {
+        display: block !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-height: 248px !important;
+        margin-top: 16px !important;
+        margin-bottom: 12px !important;
+        padding: 19px 22px 18px 22px !important;
+        border-radius: 24px !important;
+        background:
+          radial-gradient(circle at 16% 0%, rgba(212,177,95,.15), transparent 31%),
+          radial-gradient(circle at 92% 24%, rgba(96,165,250,.12), transparent 32%),
+          linear-gradient(135deg, rgba(17,31,50,.96), rgba(8,18,32,.98)) !important;
+        border: 1px solid rgba(212,177,95,.44) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.07),
+          0 16px 42px rgba(0,0,0,.18) !important;
+        overflow: hidden !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-head {
+        display: flex !important;
+        align-items: flex-start !important;
+        justify-content: space-between !important;
+        gap: 20px !important;
+        margin-bottom: 17px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-kicker {
+        display: block !important;
+        color: #f0c96b !important;
+        font-size: 8px !important;
+        line-height: 1 !important;
+        letter-spacing: .38em !important;
+        text-transform: uppercase !important;
+        font-weight: 900 !important;
+        margin-bottom: 7px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-title {
+        margin: 0 !important;
+        color: #fff !important;
+        font-size: 25px !important;
+        line-height: 1.03 !important;
+        font-weight: 950 !important;
+        letter-spacing: -.02em !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-subtitle {
+        margin: 7px 0 0 0 !important;
+        color: rgba(203,213,225,.78) !important;
+        font-size: 10px !important;
+        line-height: 1.25 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-lock {
+        flex: 0 0 auto !important;
+        color: #f7d77f !important;
+        border: 1px solid rgba(247,215,127,.45) !important;
+        background: rgba(247,215,127,.09) !important;
+        border-radius: 999px !important;
+        padding: 7px 12px !important;
+        font-size: 8px !important;
+        text-transform: uppercase !important;
+        letter-spacing: .05em !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 15px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-card {
+        position: relative !important;
+        box-sizing: border-box !important;
+        min-height: 155px !important;
+        padding: 14px 15px 12px 15px !important;
+        border-radius: 21px !important;
+        overflow: hidden !important;
+        background:
+          linear-gradient(180deg, rgba(19,34,54,.95), rgba(9,20,35,.98)) !important;
+        border: 1px solid rgba(148,163,184,.17) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.055) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-card:before {
+        content: '' !important;
+        position: absolute !important;
+        inset: 0 auto 0 0 !important;
+        width: 4px !important;
+        background: var(--tone) !important;
+        box-shadow: 0 0 24px var(--tone) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-card.meta { --tone:#d4b15f; }
+      #visualPlatformStatusV15645 .vps49-card.google { --tone:#fbbf24; }
+      #visualPlatformStatusV15645 .vps49-card.snapchat { --tone:#ff5874; }
+      #visualPlatformStatusV15645 .vps49-card.tiktok { --tone:#60a5fa; }
+
+      #visualPlatformStatusV15645 .vps49-topline,
+      #visualPlatformStatusV15645 .vps49-body,
+      #visualPlatformStatusV15645 .vps49-foot {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 8px !important;
+        position: relative !important;
+        z-index: 2 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-name {
+        display: flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        min-width: 0 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-name strong {
+        color: #fff !important;
+        font-size: 12px !important;
+        font-weight: 950 !important;
+      }
+
+      #visualPlatformStatusV15645 .platform-icon,
+      #visualPlatformStatusV15645 .platform-icon svg {
+        width: 18px !important;
+        height: 18px !important;
+        flex: 0 0 18px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-live {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        border-radius: 999px !important;
+        padding: 4px 7px !important;
+        text-transform: uppercase !important;
+        border: 1px solid rgba(148,163,184,.22) !important;
+        background: rgba(15,23,42,.72) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-live b {
+        font-size: 9px !important;
+        font-weight: 1000 !important;
+        letter-spacing: .04em !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-live span {
+        color: rgba(203,213,225,.78) !important;
+        font-size: 6.7px !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-live.on b { color:#34d399 !important; }
+      #visualPlatformStatusV15645 .vps49-live.off b { color:#f87171 !important; }
+      #visualPlatformStatusV15645 .vps49-live.unconfirmed b { color:#fbbf24 !important; }
+
+      #visualPlatformStatusV15645 .vps49-body { margin-top: 13px !important; }
+
+      #visualPlatformStatusV15645 .vps49-value {
+        color: #fff !important;
+        font-size: 20px !important;
+        line-height: 1.05 !important;
+        font-weight: 950 !important;
+        letter-spacing: -.015em !important;
+        white-space: nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-detail {
+        display: block !important;
+        color: rgba(226,232,240,.76) !important;
+        font-size: 8.5px !important;
+        line-height: 1.25 !important;
+        margin-top: 5px !important;
+        white-space: nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-chip {
+        color: #f7d77f !important;
+        border: 1px solid rgba(247,215,127,.28) !important;
+        background: rgba(247,215,127,.08) !important;
+        border-radius: 999px !important;
+        padding: 5px 8px !important;
+        font-size: 7px !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        white-space: nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-curve-wrap {
+        position: relative !important;
+        z-index: 1 !important;
+        height: 58px !important;
+        margin-top: 11px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-spark {
+        width: 100% !important;
+        height: 58px !important;
+        overflow: visible !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-area {
+        fill: var(--tone) !important;
+        opacity: .10 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-angular {
+        fill: none !important;
+        stroke: rgba(255,255,255,.22) !important;
+        stroke-width: 1.15 !important;
+        stroke-dasharray: 4 4 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-smooth {
+        fill: none !important;
+        stroke: var(--tone) !important;
+        stroke-width: 3 !important;
+        stroke-linecap: round !important;
+        stroke-linejoin: round !important;
+        filter: drop-shadow(0 0 7px var(--tone)) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-dots circle {
+        fill: #fff !important;
+        stroke: var(--tone) !important;
+        stroke-width: 1.4 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-foot {
+        margin-top: 8px !important;
+        color: rgba(148,163,184,.72) !important;
+        font-size: 7.3px !important;
+        text-transform: uppercase !important;
+        letter-spacing: .05em !important;
+      }
+
+      #visualPlatformStatusV15645 .vps49-foot b { color: rgba(247,215,127,.9) !important; }
+
+      @media print {
+        #visualPlatformStatusV15645.visual-platform-status-v15649 {
+          min-height: 186px !important;
+          padding: 14px 16px 13px 16px !important;
+          margin-top: 10px !important;
+          margin-bottom: 8px !important;
+          border-radius: 19px !important;
+        }
+
+        #visualPlatformStatusV15645 .vps49-head { margin-bottom: 11px !important; }
+        #visualPlatformStatusV15645 .vps49-kicker { font-size: 6.8px !important; margin-bottom: 5px !important; }
+        #visualPlatformStatusV15645 .vps49-title { font-size: 18px !important; }
+        #visualPlatformStatusV15645 .vps49-subtitle { font-size: 7px !important; margin-top: 4px !important; }
+        #visualPlatformStatusV15645 .vps49-lock { font-size: 6.3px !important; padding: 5px 8px !important; }
+        #visualPlatformStatusV15645 .vps49-grid { gap: 9px !important; }
+        #visualPlatformStatusV15645 .vps49-card { min-height: 123px !important; padding: 10px 10px 9px 10px !important; border-radius: 15px !important; }
+        #visualPlatformStatusV15645 .vps49-name strong { font-size: 9px !important; }
+        #visualPlatformStatusV15645 .platform-icon,
+        #visualPlatformStatusV15645 .platform-icon svg { width: 14px !important; height: 14px !important; flex-basis: 14px !important; }
+        #visualPlatformStatusV15645 .vps49-live { padding: 3px 5px !important; gap: 4px !important; }
+        #visualPlatformStatusV15645 .vps49-live b { font-size: 7.3px !important; }
+        #visualPlatformStatusV15645 .vps49-live span { display: none !important; }
+        #visualPlatformStatusV15645 .vps49-body { margin-top: 8px !important; }
+        #visualPlatformStatusV15645 .vps49-value { font-size: 14.5px !important; }
+        #visualPlatformStatusV15645 .vps49-detail { font-size: 6.7px !important; margin-top: 4px !important; }
+        #visualPlatformStatusV15645 .vps49-chip { font-size: 5.8px !important; padding: 3px 5px !important; }
+        #visualPlatformStatusV15645 .vps49-curve-wrap { height: 39px !important; margin-top: 7px !important; }
+        #visualPlatformStatusV15645 .vps49-spark { height: 39px !important; }
+        #visualPlatformStatusV15645 .vps49-smooth { stroke-width: 2.1 !important; }
+        #visualPlatformStatusV15645 .vps49-dots circle { r: 1.65 !important; }
+        #visualPlatformStatusV15645 .vps49-foot { margin-top: 5px !important; font-size: 5.8px !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function removeExistingVisual49() {
+    const old = document.getElementById('visualPlatformStatusV15645');
+    if (old) old.remove();
+  }
+
+  function signalAnchor49() {
+    const competitorEl = document.getElementById('competitorSignal');
+    const customerEl = document.getElementById('customerSignal');
+    const healthEl = document.getElementById('page1ChannelHealth');
+    const competitorCard = competitorEl ? (competitorEl.closest('.card') || competitorEl) : null;
+    const customerCard = customerEl ? (customerEl.closest('.card') || customerEl) : null;
+    const healthCard = healthEl ? (healthEl.closest('.card') || healthEl) : null;
+    return competitorCard || customerCard || healthCard || null;
+  }
+
+  window.renderVisualPlatformStatusV15645 = function renderVisualPlatformStatusV15649(data) {
+    injectStyle49();
+    removeExistingVisual49();
+
+    const anchor = signalAnchor49();
+    const html = visualHTML49(data || window.__ICONIC_LAST_RENDER_DATA_V15648__ || {});
+
+    if (anchor && anchor.parentElement) {
+      anchor.insertAdjacentHTML('afterend', html);
+    } else {
+      const page1 = document.querySelector('#page1 .page-content') || document.querySelector('.report-page:first-of-type .page-content') || document.querySelector('.report-page:first-of-type') || document.body;
+      page1.insertAdjacentHTML('beforeend', html);
+    }
+
+    const ok = !!document.getElementById('visualPlatformStatusV15645');
+    document.documentElement.setAttribute('data-iconic-v15649-visual', ok ? 'passed' : 'failed');
+    window.__ICONIC_V15649__ = {
+      ok,
+      version: VERSION,
+      rule: 'ON/OFF chips are truth-based; curves use daily rows when present and real adset/current split otherwise; no decorative fake trends.'
+    };
+    return ok;
+  };
+
+  const previousRenderPage2 = window.renderPage2;
+  if (typeof previousRenderPage2 === 'function') {
+    window.renderPage2 = function renderPage2V15649(data) {
+      const result = previousRenderPage2(data);
+      try {
+        const cards = document.querySelectorAll('#channelCards .channel-card');
+        const rows = Array.isArray(data && data.channels) ? data.channels : [];
+        cards.forEach(card => {
+          const name = (card.querySelector('.channel-name strong') || {}).textContent || '';
+          const row = rows.find(item => String(item && item.name || '').toLowerCase() === String(name).toLowerCase()) || {};
+          const spendRow = Array.from(card.querySelectorAll('.metric-row')).find(el => (el.querySelector('span') || {}).textContent === 'Spend');
+          if (spendRow && row.displaySpend) {
+            const b = spendRow.querySelector('b');
+            if (b) b.textContent = row.displaySpend;
+          }
+          if (/snap/i.test(name) && spendRow) {
+            const b = spendRow.querySelector('b');
+            if (b) b.textContent = row.displaySpend || fmtMoney49(row.spendOriginal || row.spend, 'USD');
+          }
+        });
+      } catch (error) {
+        console.warn('v15.6.49 page2 display patch skipped', error);
+      }
+      return result;
+    };
+  }
+
+  setTimeout(() => {
+    try { window.renderVisualPlatformStatusV15645(window.__ICONIC_LAST_RENDER_DATA_V15648__ || {}); } catch (error) {}
+  }, 500);
+})();
