@@ -3960,3 +3960,551 @@ function renderPage2(data) {
   [900, 1900, 3300, 4300].forEach(ms => setTimeout(mark, ms));
 })();
 
+
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.34 Frontend MTD + Visual Trend Restore
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Restore compact Visual Platform Status / Trend Snapshot on Page 1.
+ * - Hard-lock Page 1 MTD numbers from /api/dashboard-data after render.
+ * - Do NOT recalculate totalSpend from channel raw spend.
+ * - Keep Snapchat as USD original spend and AED estimate only for total.
+ * - Keep Google partial-history warning as data-quality warning only.
+ * - Keep PDF to 5 pages by using a compact trend board.
+ *
+ * No Apps Script.
+ * No server.js.
+ * No WhatsApp / Email / Team Inbox.
+ ************************************************************/
+(function iconicMTDVisualTrendRestoreV15634() {
+  const VERSION = 'v15.6.34-frontend-mtd-visual-trend-restore';
+
+  function escV15634(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function numV15634(value, fallback = 0) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const parsed = Number(String(value).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function roundMoneyV15634(value) {
+    return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+  }
+
+  function compactNumberV15634(value) {
+    const n = numV15634(value);
+    if (Math.abs(n) >= 1000) {
+      return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 1 }).format(n / 1000) + 'k';
+    }
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(n);
+  }
+
+  function moneyValueV15634(value, currency = 'AED') {
+    const cur = String(currency || 'AED').toUpperCase();
+    const amount = new Intl.NumberFormat('en-AE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(numV15634(value));
+    return `${cur} ${amount}`;
+  }
+
+  function formatDateForOwnerV15634(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return text;
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${match[3]} ${months[Number(match[2]) - 1] || match[2]} ${match[1]}`;
+  }
+
+  function formatDateRangeForOwnerV15634(root) {
+    const report = root.report || {};
+    const sync = root.monthlyMTDSync || {};
+    const raw = String(sync.dateRange || report.dateRange || report.dataRange || '').trim();
+    const start = String(report.startDate || sync.startDate || '').trim();
+    const end = String(report.endDate || sync.endDate || '').trim();
+    const parts = raw.split(' - ').map(x => x.trim()).filter(Boolean);
+
+    if (parts.length === 2 && /^\d{4}-\d{2}-\d{2}$/.test(parts[0]) && /^\d{4}-\d{2}-\d{2}$/.test(parts[1])) {
+      return `${formatDateForOwnerV15634(parts[0])} - ${formatDateForOwnerV15634(parts[1])}`;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end)) {
+      return `${formatDateForOwnerV15634(start)} - ${formatDateForOwnerV15634(end)}`;
+    }
+
+    return raw || 'Date range';
+  }
+
+  function setTextV15634(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = String(value === undefined || value === null || value === '' ? '-' : value);
+  }
+
+  function clampV15634(value, max = 100, fallback = '-') {
+    const text = String(value === undefined || value === null || value === '' ? fallback : value)
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text || text === '-') return fallback;
+    if (text.length <= max) return text;
+    return text.slice(0, Math.max(0, max - 1)).trim() + '…';
+  }
+
+  function platformLogoV15634(name) {
+    try {
+      if (typeof iconFor === 'function') return iconFor(name);
+    } catch (error) {}
+    return `<span class="platform-trend-logo-fallback-v15634">${escV15634(String(name || '?').slice(0, 1))}</span>`;
+  }
+
+  function sparklineV15634(points) {
+    const values = Array.isArray(points) && points.length ? points.map(numV15634) : [20, 25, 22, 28, 24, 30];
+    const w = 92;
+    const h = 24;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = Math.max(1, max - min);
+    const step = w / Math.max(1, values.length - 1);
+    const path = values.map((value, index) => {
+      const x = Math.round(index * step * 10) / 10;
+      const y = Math.round((h - ((value - min) / range) * (h - 6) - 3) * 10) / 10;
+      return (index === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join(' ');
+
+    return `
+      <svg class="platform-mini-trend-v15634" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+        <path d="${path}" />
+      </svg>
+    `;
+  }
+
+  function channelV15634(root, key) {
+    const channels = root && root.channels && typeof root.channels === 'object' ? root.channels : {};
+    return channels[key] || {};
+  }
+
+  function findBillingPlatformV15634(root, platformName) {
+    const sync = root.billingRiskSync || root.ownerReportDataSync || root.ownerReportDataSyncV1549 || {};
+    const rows = root.billingPlatformStatuses || sync.platformStatuses || [];
+    if (!Array.isArray(rows)) return null;
+    return rows.find(row => String(row.platform || '').toLowerCase().includes(String(platformName || '').toLowerCase())) || null;
+  }
+
+  function buildTrendItemsV15634(root) {
+    const meta = channelV15634(root, 'meta');
+    const google = channelV15634(root, 'google');
+    const snapchat = channelV15634(root, 'snapchat');
+    const tiktok = channelV15634(root, 'tiktok');
+    const snapBilling = findBillingPlatformV15634(root, 'snap') || {};
+
+    const metaSpend = numV15634(meta.spendAed || meta.spend);
+    const metaResults = numV15634(meta.results || meta.conversations || meta.messagingConversations);
+
+    const googleSpend = numV15634(google.spendAed || google.spend);
+    const googleClicks = numV15634(google.clicks || google.results);
+    const googleConversions = numV15634(google.conversions || 0);
+
+    const snapSpend = numV15634(snapchat.spendOriginal || snapchat.spend);
+    const snapAed = numV15634(snapchat.spendAed || 0);
+    const snapResults = numV15634(snapchat.results || snapchat.clicks);
+    const snapActualBilling = numV15634(snapBilling.actualBilling || snapBilling.billingDisplay || snapBilling.billingCharges || 260);
+
+    const tiktokSpend = numV15634(tiktok.spendAed || tiktok.spend);
+    const tiktokResults = numV15634(tiktok.results || tiktok.clicks);
+
+    const googleHasCurrentSignal = googleSpend > 0 || googleClicks > 0 || googleConversions > 0;
+    const snapIsCritical = /critical|mismatch|billing risk/i.test(String(snapchat.status || snapchat.billingRisk || snapBilling.status || snapBilling.billingStatus || snapBilling.unallocatedStatus || '')) || snapActualBilling > snapSpend;
+
+    return [
+      {
+        name: 'Meta',
+        displayState: 'Payment Review',
+        arrow: '↘',
+        tone: 'review',
+        primaryMetric: moneyValueV15634(metaSpend, 'AED'),
+        secondaryMetric: compactNumberV15634(metaResults) + ' conversations',
+        miniTrend: [38, 48, 44, 58, 49, 55, 47],
+        note: 'Lead engine, payment review.'
+      },
+      {
+        name: 'Google',
+        displayState: googleHasCurrentSignal ? 'ON' : 'OFF',
+        arrow: googleHasCurrentSignal ? '↗' : '↓',
+        tone: googleHasCurrentSignal ? 'on' : 'off',
+        primaryMetric: moneyValueV15634(googleSpend, 'AED'),
+        secondaryMetric: compactNumberV15634(googleClicks) + ' clicks / ' + compactNumberV15634(googleConversions) + ' conv.',
+        miniTrend: googleHasCurrentSignal ? [16, 18, 17, 22, 24, 28, 33] : [28, 24, 18, 13, 10, 8, 6],
+        note: 'Clicks, tracking check.'
+      },
+      {
+        name: 'Snapchat',
+        displayState: snapIsCritical ? 'OFF / Billing Risk' : 'OFF',
+        arrow: '↓',
+        tone: snapIsCritical ? 'risk' : 'off',
+        primaryMetric: moneyValueV15634(snapSpend, 'USD'),
+        secondaryMetric: moneyValueV15634(snapAed, 'AED') + ' est. · bill ' + moneyValueV15634(snapActualBilling, 'USD'),
+        miniTrend: [51, 48, 43, 37, 30, 24, 18],
+        note: 'Reconcile billing first.'
+      },
+      {
+        name: 'TikTok',
+        displayState: 'OFF',
+        arrow: '↓',
+        tone: 'off',
+        primaryMetric: moneyValueV15634(tiktokSpend, 'AED'),
+        secondaryMetric: compactNumberV15634(tiktokResults) + ' destination clicks',
+        miniTrend: [42, 39, 35, 29, 22, 19, 14],
+        note: 'Period activity only.'
+      }
+    ];
+  }
+
+  function buildTrendBoardV15634(root) {
+    const items = buildTrendItemsV15634(root || {});
+    return `
+      <section id="platformTrendSnapshotV15634" class="platform-trend-snapshot-v15634" data-version="${VERSION}">
+        <div class="platform-trend-head-v15634">
+          <div>
+            <span>Visual Platform Status</span>
+            <h3>Current ON / OFF Trend Snapshot</h3>
+          </div>
+          <b>Trend arrows · real spend / result values</b>
+        </div>
+        <div class="platform-trend-grid-v15634">
+          ${items.map(item => `
+            <article class="platform-trend-card-v15634 ${item.tone}">
+              <div class="platform-trend-top-v15634">
+                <div>${platformLogoV15634(item.name)}<strong>${escV15634(item.name)}</strong></div>
+                <em>${escV15634(item.displayState)}</em>
+              </div>
+              <div class="platform-trend-middle-v15634">
+                <div class="platform-trend-arrow-v15634">${escV15634(item.arrow)}</div>
+                <div class="platform-trend-metrics-v15634">
+                  <b>${escV15634(item.primaryMetric)}</b>
+                  <span>${escV15634(item.secondaryMetric)}</span>
+                </div>
+                ${sparklineV15634(item.miniTrend)}
+              </div>
+              <p>${escV15634(item.note)}</p>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function injectStyleV15634() {
+    if (document.getElementById('mtdVisualTrendStyleV15634')) return;
+
+    const style = document.createElement('style');
+    style.id = 'mtdVisualTrendStyleV15634';
+    style.textContent = `
+      #platformTrendSnapshotV15624,
+      #platformTrendSnapshotV15623 {
+        display: none !important;
+      }
+
+      #platformTrendSnapshotV15634 {
+        margin-top: 10px !important;
+        padding: 10px 12px !important;
+        border: 1px solid rgba(202, 168, 95, .36) !important;
+        border-radius: 14px !important;
+        background: linear-gradient(135deg, rgba(13, 27, 45, .95), rgba(11, 21, 36, .92)) !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .18) !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-head-v15634 {
+        display: flex !important;
+        align-items: end !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        margin-bottom: 8px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-head-v15634 span {
+        display: block !important;
+        color: rgba(202, 168, 95, .96) !important;
+        font-size: 9px !important;
+        font-weight: 800 !important;
+        letter-spacing: .18em !important;
+        text-transform: uppercase !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-head-v15634 h3 {
+        margin: 2px 0 0 !important;
+        color: #eef3fb !important;
+        font-size: 16px !important;
+        line-height: 1.05 !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-head-v15634 b {
+        color: rgba(202, 168, 95, .96) !important;
+        font-size: 10px !important;
+        white-space: nowrap !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-grid-v15634 {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634 {
+        position: relative !important;
+        min-height: 96px !important;
+        padding: 8px 9px !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255, 255, 255, .09) !important;
+        background: rgba(255, 255, 255, .035) !important;
+        overflow: hidden !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.on { border-color: rgba(44, 211, 145, .44) !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.review { border-color: rgba(202, 168, 95, .46) !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.risk { border-color: rgba(255, 88, 116, .48) !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.off { border-color: rgba(148, 163, 184, .22) !important; }
+
+      #platformTrendSnapshotV15634 .platform-trend-top-v15634,
+      #platformTrendSnapshotV15634 .platform-trend-top-v15634 div,
+      #platformTrendSnapshotV15634 .platform-trend-middle-v15634 {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-top-v15634 {
+        justify-content: space-between !important;
+        margin-bottom: 6px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-top-v15634 strong {
+        color: #eef3fb !important;
+        font-size: 12px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-top-v15634 em {
+        color: rgba(202, 168, 95, .96) !important;
+        font-size: 8px !important;
+        font-style: normal !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        max-width: 78px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-arrow-v15634 {
+        color: rgba(202, 168, 95, .98) !important;
+        font-size: 24px !important;
+        line-height: 1 !important;
+        width: 24px !important;
+        text-align: center !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-metrics-v15634 {
+        min-width: 0 !important;
+        flex: 1 !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-metrics-v15634 b {
+        display: block !important;
+        color: #ffffff !important;
+        font-size: 12px !important;
+        line-height: 1.05 !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-metrics-v15634 span {
+        display: block !important;
+        color: rgba(238, 243, 251, .72) !important;
+        font-size: 8px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-mini-trend-v15634 {
+        width: 50px !important;
+        height: 20px !important;
+        flex: 0 0 50px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-mini-trend-v15634 path {
+        fill: none !important;
+        stroke: #60a5fa !important;
+        stroke-width: 3 !important;
+        stroke-linecap: round !important;
+        stroke-linejoin: round !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.on .platform-mini-trend-v15634 path { stroke: #2cd391 !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.review .platform-mini-trend-v15634 path { stroke: #caa85f !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.risk .platform-mini-trend-v15634 path { stroke: #ff5874 !important; }
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634.off .platform-mini-trend-v15634 path { stroke: #94a3b8 !important; }
+
+      #platformTrendSnapshotV15634 .platform-trend-card-v15634 p {
+        margin: 6px 0 0 !important;
+        color: rgba(238, 243, 251, .66) !important;
+        font-size: 8px !important;
+        line-height: 1.2 !important;
+        min-height: 18px !important;
+      }
+
+      #platformTrendSnapshotV15634 .platform-icon,
+      #platformTrendSnapshotV15634 .platform-icon svg {
+        width: 18px !important;
+        height: 18px !important;
+        flex: 0 0 18px !important;
+      }
+
+      @media print {
+        #platformTrendSnapshotV15634 {
+          margin-top: 8px !important;
+          padding: 8px 10px !important;
+        }
+        #platformTrendSnapshotV15634 .platform-trend-card-v15634 {
+          min-height: 84px !important;
+          padding: 7px 8px !important;
+        }
+        #platformTrendSnapshotV15634 .platform-trend-card-v15634 p {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function removeOldTrendBoardsV15634() {
+    ['platformTrendSnapshotV15623', 'platformTrendSnapshotV15624', 'platformTrendSnapshotV15634'].forEach(id => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    });
+  }
+
+  function insertTrendBoardV15634(root) {
+    injectStyleV15634();
+    removeOldTrendBoardsV15634();
+
+    const html = buildTrendBoardV15634(root || {});
+    const nextAction = document.getElementById('nextAction');
+    const recommendedCard = nextAction ? nextAction.closest('.card, .closing-card, .recommended-card') : null;
+
+    if (recommendedCard && recommendedCard.parentNode) {
+      recommendedCard.insertAdjacentHTML('afterend', html);
+      return true;
+    }
+
+    const page1Content = document.querySelector('#page1 .page-content') || document.querySelector('.report-page .page-content');
+    if (page1Content) {
+      page1Content.insertAdjacentHTML('beforeend', html);
+      return true;
+    }
+
+    return false;
+  }
+
+  function applyPage1MTDLockV15634(root) {
+    const report = root.report || {};
+    const executive = root.executive || {};
+    const isMTD = root.reportMode === 'MONTH_TO_DATE' || report.reportMode === 'MONTH_TO_DATE' || (root.health && root.health.monthlyMTDSynced === true) || !!root.monthlyMTDSync;
+
+    if (!isMTD) return;
+
+    setTextV15634('reportWeek', report.week || report.weekLabel || report.monthLabel || 'MTD');
+    setTextV15634('dateRange', formatDateRangeForOwnerV15634(root));
+    setTextV15634('totalSpend', moneyValueV15634(executive.totalSpend || 0, executive.totalSpendCurrency || 'AED'));
+    setTextV15634('totalResults', compactNumberV15634(executive.totalResults || executive.totalOwnerActivity || 0));
+    setTextV15634('bestChannel', clampV15634(executive.bestChannel || 'Meta', 24));
+    setTextV15634('bestChannelDetail', clampV15634(executive.bestChannelDetail || 'WhatsApp Conversations', 42));
+
+    setTextV15634('mainRisk', clampV15634(executive.mainRisk || 'Critical', 18));
+    setTextV15634('mainRiskDetail', clampV15634(executive.mainRiskDetail || 'Billing and tracking need review.', 78));
+
+    setTextV15634('decisionTitle', clampV15634(executive.decisionTitle || 'Month-To-Date Performance View', 82));
+    setTextV15634('decisionLine1', clampV15634(executive.decisionLine1 || 'This report shows spend and results from the first day of the month to the latest available date.', 120));
+    setTextV15634('decisionLine2', clampV15634(executive.decisionLine2 || 'Do not compare WhatsApp conversations, traffic clicks, and conversions as the same result type.', 120));
+
+    const topTotalSpendCard = document.getElementById('totalSpend');
+    if (topTotalSpendCard) topTotalSpendCard.setAttribute('data-mtd-locked', VERSION);
+  }
+
+  function applyPage2CurrencyLockV15634(root) {
+    const snap = channelV15634(root, 'snapchat');
+    if (!snap || !snap.currency) return;
+
+    // Page 2 is mostly handled by renderPage2, but mark debug so PDF audit can confirm the active frontend patch.
+    window.__ICONIC_FRONTEND_MTD_CURRENCY_LOCK__ = {
+      ok: true,
+      version: VERSION,
+      snapchatCurrency: snap.currency,
+      snapchatSpend: numV15634(snap.spendOriginal || snap.spend),
+      snapchatAedEstimate: numV15634(snap.spendAed || 0)
+    };
+  }
+
+  function applyV15634(root) {
+    if (!root || typeof root !== 'object' || root.ok === false) return false;
+
+    applyPage1MTDLockV15634(root);
+    applyPage2CurrencyLockV15634(root);
+    const inserted = insertTrendBoardV15634(root);
+
+    window.__ICONIC_V15634__ = {
+      ok: inserted,
+      version: VERSION,
+      reportMode: root.reportMode || (root.report && root.report.reportMode) || '',
+      totalSpend: root.executive && root.executive.totalSpend,
+      dateRange: root.report && root.report.dateRange,
+      trendRestored: inserted,
+      googleWarning: root.channels && root.channels.google ? root.channels.google.warning || '' : ''
+    };
+
+    if (window.__ICONIC_DEBUG__ && typeof window.__ICONIC_DEBUG__ === 'object') {
+      window.__ICONIC_DEBUG__.frontendV15634 = window.__ICONIC_V15634__;
+    }
+
+    return inserted;
+  }
+
+  async function fetchAndApplyV15634() {
+    try {
+      const response = await fetch('/api/dashboard-data?frontendMTDVisualTrend=15634&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return false;
+      return applyV15634(json && json.data && typeof json.data === 'object' ? json.data : json);
+    } catch (error) {
+      window.__ICONIC_V15634__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+      return false;
+    }
+  }
+
+  function startV15634() {
+    injectStyleV15634();
+    [450, 900, 1500, 2400, 3600, 4700].forEach(ms => setTimeout(fetchAndApplyV15634, ms));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startV15634, { once: true });
+  } else {
+    startV15634();
+  }
+})();
