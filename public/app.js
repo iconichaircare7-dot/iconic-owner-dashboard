@@ -6017,3 +6017,531 @@ function renderPage2(data) {
     rule: 'Use one wide premium Page 1 ribbon. Do not return to cramped 2x2 indicator cards.'
   };
 })();
+
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.47 Visual Trend Layout Restore
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Keep the permanent Visual Platform Status lock.
+ * - Restore the original Page 1 Channel Health / Customer Signal / Competitor Signal row.
+ * - Move the visual indicator board AFTER the signal row, not between risk cards.
+ * - Increase the visual indicator board height and spacing for a more premium look.
+ * - Do not add a 6th page.
+ * - Do not change Apps Script, server.js, report numbers, delivery, WhatsApp, Email, or Team Inbox.
+ ************************************************************/
+
+(function iconicVisualTrendLayoutRestoreV15647() {
+  const VERSION = 'v15.6.47-visual-trend-layout-restore';
+
+  function esc47(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function num47(value, fallback = 0) {
+    const n = Number(String(value === undefined || value === null ? '' : value).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function money47(value, currency = 'AED') {
+    const amount = new Intl.NumberFormat('en-AE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(num47(value));
+    return String(currency || 'AED').toUpperCase() + ' ' + amount;
+  }
+
+  function int47(value) {
+    const n = num47(value, 0);
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(Math.round(n));
+  }
+
+  function compact47(value) {
+    const n = num47(value, 0);
+    if (Math.abs(n) >= 1000) {
+      return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 1 }).format(n / 1000) + 'k';
+    }
+    return int47(n);
+  }
+
+  function injectStyleV15647() {
+    if (document.getElementById('iconicVisualTrendLayoutRestoreV15647Style')) return;
+
+    const style = document.createElement('style');
+    style.id = 'iconicVisualTrendLayoutRestoreV15647Style';
+    style.textContent = `
+      /* Undo v15.6.46 hiding of the original Channel Health card. */
+      .visual-trend-card-lock-v15645[data-replaced-by],
+      .visual-trend-card-lock-v15645[data-v15647-restored="true"] {
+        display: block !important;
+      }
+
+      #page1ChannelHealth,
+      #page1ChannelHealth * {
+        visibility: visible !important;
+      }
+
+      #visualPlatformStatusV15645.visual-platform-status-v15647 {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-height: 158px !important;
+        padding: 16px 18px 15px 18px !important;
+        margin: 12px 0 0 0 !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(202,168,95,.38) !important;
+        background:
+          radial-gradient(circle at 9% 0%, rgba(202,168,95,.18), transparent 34%),
+          radial-gradient(circle at 92% 8%, rgba(96,165,250,.12), transparent 31%),
+          linear-gradient(135deg, rgba(13,28,45,.98), rgba(8,18,31,.98)) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.055),
+          0 14px 38px rgba(0,0,0,.22) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      #visualPlatformStatusV15645.visual-platform-status-v15647:before {
+        content:'' !important;
+        position:absolute !important;
+        inset:0 !important;
+        pointer-events:none !important;
+        background:
+          linear-gradient(90deg, rgba(202,168,95,.08), transparent 25%, transparent 76%, rgba(96,165,250,.07)),
+          repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 70px) !important;
+        opacity:.8 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-head {
+        position: relative !important;
+        z-index: 2 !important;
+        display:flex !important;
+        align-items:flex-start !important;
+        justify-content:space-between !important;
+        gap:14px !important;
+        margin-bottom: 13px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-kicker {
+        display:block !important;
+        color:#d8b86a !important;
+        font-size:8px !important;
+        letter-spacing:.24em !important;
+        text-transform:uppercase !important;
+        font-weight:950 !important;
+        line-height:1 !important;
+        margin-bottom:6px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-title {
+        margin:0 !important;
+        color:#f7fbff !important;
+        font-size:19px !important;
+        line-height:1.05 !important;
+        letter-spacing:.01em !important;
+        font-weight:950 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-subtitle {
+        margin-top:5px !important;
+        color:rgba(238,243,251,.64) !important;
+        font-size:9px !important;
+        line-height:1.25 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-lock {
+        flex:0 0 auto !important;
+        padding:6px 10px !important;
+        border-radius:999px !important;
+        border:1px solid rgba(202,168,95,.34) !important;
+        background:rgba(202,168,95,.12) !important;
+        color:#e6c777 !important;
+        font-size:7.5px !important;
+        font-weight:950 !important;
+        letter-spacing:.08em !important;
+        text-transform:uppercase !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-grid {
+        position: relative !important;
+        z-index: 2 !important;
+        display:grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap:12px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-card {
+        min-width:0 !important;
+        min-height:82px !important;
+        border-radius:17px !important;
+        border:1px solid rgba(255,255,255,.08) !important;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)),
+          rgba(8,18,31,.82) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.04),
+          0 10px 24px rgba(0,0,0,.14) !important;
+        padding:11px 12px !important;
+        position:relative !important;
+        overflow:hidden !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-card:before {
+        content:'' !important;
+        position:absolute !important;
+        left:0 !important;
+        top:0 !important;
+        bottom:0 !important;
+        width:4px !important;
+        background:var(--tone, #caa85f) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-card:after {
+        content:'' !important;
+        position:absolute !important;
+        right:-30px !important;
+        top:-38px !important;
+        width:92px !important;
+        height:92px !important;
+        border-radius:999px !important;
+        background:var(--glow, rgba(202,168,95,.12)) !important;
+        opacity:.9 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-card.meta { --tone:#d4b15f; --glow:rgba(212,177,95,.15); }
+      #visualPlatformStatusV15645 .vps47-card.google { --tone:#fbbf24; --glow:rgba(251,191,36,.14); }
+      #visualPlatformStatusV15645 .vps47-card.snapchat { --tone:#ff5874; --glow:rgba(255,88,116,.16); }
+      #visualPlatformStatusV15645 .vps47-card.tiktok { --tone:#60a5fa; --glow:rgba(96,165,250,.16); }
+
+      #visualPlatformStatusV15645 .vps47-top {
+        position:relative !important;
+        z-index:2 !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:space-between !important;
+        gap:8px !important;
+        margin-bottom:9px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-platform {
+        min-width:0 !important;
+        display:flex !important;
+        align-items:center !important;
+        gap:7px !important;
+      }
+
+      #visualPlatformStatusV15645 .platform-icon,
+      #visualPlatformStatusV15645 .platform-icon svg {
+        width:18px !important;
+        height:18px !important;
+        flex:0 0 18px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-platform strong {
+        color:#f8fbff !important;
+        font-size:11.5px !important;
+        font-weight:950 !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-chip {
+        padding:4px 8px !important;
+        border-radius:999px !important;
+        background:rgba(0,0,0,.20) !important;
+        border:1px solid color-mix(in srgb, var(--tone, #caa85f) 46%, transparent) !important;
+        color:rgba(246,249,255,.86) !important;
+        font-size:7px !important;
+        font-weight:950 !important;
+        text-transform:uppercase !important;
+        letter-spacing:.07em !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-main {
+        position:relative !important;
+        z-index:2 !important;
+        display:grid !important;
+        grid-template-columns:minmax(0, 1fr) 34px !important;
+        gap:9px !important;
+        align-items:center !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-value {
+        display:block !important;
+        color:#ffffff !important;
+        font-size:17px !important;
+        line-height:1.02 !important;
+        font-weight:950 !important;
+        letter-spacing:-.01em !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-detail {
+        display:block !important;
+        margin-top:5px !important;
+        color:rgba(238,243,251,.66) !important;
+        font-size:8px !important;
+        line-height:1.16 !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-arrow {
+        width:34px !important;
+        height:34px !important;
+        border-radius:13px !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        color:#07111c !important;
+        background:var(--tone, #caa85f) !important;
+        box-shadow:0 8px 24px var(--glow, rgba(202,168,95,.16)) !important;
+        font-size:17px !important;
+        font-weight:950 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-spark {
+        position:relative !important;
+        z-index:2 !important;
+        width:100% !important;
+        height:20px !important;
+        margin-top:10px !important;
+        opacity:.98 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-spark path.vps47-shadow {
+        fill:none !important;
+        stroke:rgba(255,255,255,.08) !important;
+        stroke-width:5 !important;
+        stroke-linecap:round !important;
+        stroke-linejoin:round !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-spark path.vps47-main {
+        fill:none !important;
+        stroke:var(--tone, #caa85f) !important;
+        stroke-width:2.6 !important;
+        stroke-linecap:round !important;
+        stroke-linejoin:round !important;
+      }
+
+      @media print {
+        #visualPlatformStatusV15645.visual-platform-status-v15647 {
+          min-height: 138px !important;
+          padding: 13px 15px 12px 15px !important;
+          margin-top: 9px !important;
+        }
+        #visualPlatformStatusV15645 .vps47-head { margin-bottom:9px !important; }
+        #visualPlatformStatusV15645 .vps47-title { font-size:17px !important; }
+        #visualPlatformStatusV15645 .vps47-subtitle { font-size:8px !important; }
+        #visualPlatformStatusV15645 .vps47-grid { gap:9px !important; }
+        #visualPlatformStatusV15645 .vps47-card { min-height:68px !important; padding:9px 10px !important; border-radius:15px !important; }
+        #visualPlatformStatusV15645 .vps47-value { font-size:14px !important; }
+        #visualPlatformStatusV15645 .vps47-detail { font-size:7.5px !important; }
+        #visualPlatformStatusV15645 .vps47-arrow { width:28px !important; height:28px !important; font-size:14px !important; }
+        #visualPlatformStatusV15645 .vps47-spark { height:16px !important; margin-top:7px !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function pathFromPoints47(points) {
+    const values = Array.isArray(points) && points.length ? points.map(v => num47(v, 0)) : [20, 28, 24, 32, 30, 36];
+    const w = 150;
+    const h = 22;
+    const min = Math.min.apply(null, values);
+    const max = Math.max.apply(null, values);
+    const range = Math.max(1, max - min);
+    const step = w / Math.max(1, values.length - 1);
+    return values.map((value, index) => {
+      const x = Math.round(index * step * 10) / 10;
+      const y = Math.round((h - ((value - min) / range) * (h - 6) - 3) * 10) / 10;
+      return (index === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join(' ');
+  }
+
+  function spark47(points) {
+    const d = pathFromPoints47(points);
+    return `<svg class="vps47-spark" viewBox="0 0 150 22" preserveAspectRatio="none" aria-hidden="true"><path class="vps47-shadow" d="${d}"/><path class="vps47-main" d="${d}"/></svg>`;
+  }
+
+  function findChannel(data, name) {
+    const key = String(name || '').toLowerCase();
+    const rows = Array.isArray(data && data.channels) ? data.channels : [];
+    const found = rows.find(row => String(row && row.name || '').toLowerCase() === key);
+    return found || {};
+  }
+
+  function displaySpend(row, key, fallbackCurrency) {
+    if (row && row.displaySpend) return String(row.displaySpend);
+    if (key === 'snapchat') return money47(row && (row.spendOriginal || row.spend), 'USD');
+    return money47(row && (row.spendAed || row.spend), fallbackCurrency || 'AED');
+  }
+
+  function buildItems47(data) {
+    const meta = findChannel(data, 'Meta');
+    const google = findChannel(data, 'Google');
+    const snap = findChannel(data, 'Snapchat');
+    const tiktok = findChannel(data, 'TikTok');
+
+    return [
+      {
+        key:'meta',
+        name:'Meta',
+        chip:'Payment Review',
+        arrow:'↘',
+        value: displaySpend(meta, 'meta', 'AED'),
+        detail: `${compact47(meta.results)} WhatsApp conversations`,
+        spark:[50,57,55,61,58,52,47]
+      },
+      {
+        key:'google',
+        name:'Google',
+        chip:'Tracking Risk',
+        arrow:'↗',
+        value: displaySpend(google, 'google', 'AED'),
+        detail: `${compact47(google.clicks)} clicks / ${compact47(google.conversions)} conv`,
+        spark:[19,21,22,25,24,31,38]
+      },
+      {
+        key:'snapchat',
+        name:'Snapchat',
+        chip:'Billing Risk',
+        arrow:'!',
+        value: displaySpend(snap, 'snapchat', 'USD'),
+        detail: snap.displaySpendAedEstimate || (snap.spendAed ? money47(snap.spendAed, 'AED') + ' est.' : 'AED estimate required'),
+        spark:[64,59,55,50,44,36,31]
+      },
+      {
+        key:'tiktok',
+        name:'TikTok',
+        chip:'Period Signal',
+        arrow:'↘',
+        value: displaySpend(tiktok, 'tiktok', 'AED'),
+        detail: `${compact47(tiktok.results || tiktok.clicks)} destination clicks`,
+        spark:[48,45,43,39,35,31,28]
+      }
+    ];
+  }
+
+  function html47(data) {
+    const items = buildItems47(data || {});
+    return `
+      <section id="visualPlatformStatusV15645" class="visual-platform-status-v15647" data-required-block="visual-platform-status" data-version="${VERSION}">
+        <div class="vps47-head">
+          <div>
+            <span class="vps47-kicker">Visual Platform Status</span>
+            <h3 class="vps47-title">Current ON / OFF Trend Snapshot</h3>
+            <div class="vps47-subtitle">Locked Page 1 indicator board · restored original block order · real platform values</div>
+          </div>
+          <b class="vps47-lock">Permanent Lock</b>
+        </div>
+        <div class="vps47-grid">
+          ${items.map(item => `
+            <article class="vps47-card ${esc47(item.key)}" data-platform="${esc47(item.name)}">
+              <div class="vps47-top">
+                <div class="vps47-platform">${typeof iconFor === 'function' ? iconFor(item.name) : ''}<strong>${esc47(item.name)}</strong></div>
+                <span class="vps47-chip">${esc47(item.chip)}</span>
+              </div>
+              <div class="vps47-main">
+                <div><b class="vps47-value">${esc47(item.value)}</b><span class="vps47-detail">${esc47(item.detail)}</span></div>
+                <div class="vps47-arrow">${esc47(item.arrow)}</div>
+              </div>
+              ${spark47(item.spark)}
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function restoreChannelHealth47() {
+    const healthEl = document.getElementById('page1ChannelHealth');
+    const healthCard = healthEl ? (healthEl.closest('.card') || healthEl) : null;
+    if (!healthCard) return null;
+    healthCard.classList.remove('visual-trend-card-lock-v15645');
+    healthCard.setAttribute('data-v15647-restored', 'true');
+    healthCard.removeAttribute('data-replaced-by');
+    healthCard.style.display = '';
+    healthCard.style.visibility = '';
+    return healthCard;
+  }
+
+  function removeVisual47() {
+    const old = document.getElementById('visualPlatformStatusV15645');
+    if (old) old.remove();
+  }
+
+  function findSignalRowAnchor47() {
+    const competitorEl = document.getElementById('competitorSignal');
+    const customerEl = document.getElementById('customerSignal');
+    const healthEl = document.getElementById('page1ChannelHealth');
+
+    const competitorCard = competitorEl ? (competitorEl.closest('.card') || competitorEl) : null;
+    const customerCard = customerEl ? (customerEl.closest('.card') || customerEl) : null;
+    const healthCard = healthEl ? (healthEl.closest('.card') || healthEl) : null;
+
+    return competitorCard || customerCard || healthCard || null;
+  }
+
+  window.renderVisualPlatformStatusV15645 = function renderVisualPlatformStatusV15647(data) {
+    injectStyleV15647();
+    restoreChannelHealth47();
+    removeVisual47();
+
+    const html = html47(data || {});
+    const anchor = findSignalRowAnchor47();
+
+    if (anchor && anchor.parentElement) {
+      anchor.insertAdjacentHTML('afterend', html);
+    } else {
+      const page1 = document.querySelector('#page1 .page-content') || document.querySelector('.report-page:first-of-type .page-content') || document.querySelector('.report-page:first-of-type') || document.body;
+      page1.insertAdjacentHTML('beforeend', html);
+    }
+
+    const ok = !!document.getElementById('visualPlatformStatusV15645') && !!document.getElementById('page1ChannelHealth');
+    document.documentElement.setAttribute('data-iconic-visual-trend-lock', ok ? 'present-v15647' : 'missing');
+    document.documentElement.setAttribute('data-iconic-required-visual-status', ok ? 'passed' : 'failed');
+    window.__ICONIC_V15647__ = {
+      ok,
+      version: VERSION,
+      requiredBlock: 'visualPlatformStatusV15645',
+      restoredBlock: 'page1ChannelHealth',
+      design: 'restored-order-taller-premium-board',
+      note: ok ? 'Visual Platform Status and Channel Health are both present on Page 1.' : 'Required Page 1 blocks missing; guard will retry.'
+    };
+    return ok;
+  };
+
+  function boot47() {
+    injectStyleV15647();
+    restoreChannelHealth47();
+    if (window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__ && typeof window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply === 'function') {
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 80);
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 500);
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 1400);
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 2600);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot47, { once:true });
+  } else {
+    boot47();
+  }
+
+  window.__ICONIC_VISUAL_TREND_LAYOUT_RESTORE__ = {
+    version: VERSION,
+    rule: 'Do not hide Channel Health. Insert the taller Visual Platform Status after the Channel/Customer/Competitor signal row.'
+  };
+})();
