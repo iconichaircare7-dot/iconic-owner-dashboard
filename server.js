@@ -1007,6 +1007,180 @@ async function mergePdfBuffers(pdfBuffers) {
   return Buffer.from(await mergedDoc.save());
 }
 
+
+/************************************************************
+ * v15.6.32 Render Monthly MTD Hard Sync
+ *
+ * Scope:
+ * - Applies Month-To-Date fields after Render legacy normalization.
+ * - Fixes Render-side totalSpend override that was mixing Snapchat USD as AED.
+ * - Keeps Snapchat original USD and AED estimate separate.
+ * - No Apps Script.
+ * - No Email.
+ * - No WhatsApp.
+ * - No triggers.
+ * - No Team Inbox / 811 / tokens.
+ ************************************************************/
+
+function applyMonthlyMTDRenderHardSyncV15632(payload) {
+  const root = payload && payload.data && typeof payload.data === 'object'
+    ? payload.data
+    : payload;
+
+  if (!root || typeof root !== 'object') return payload;
+
+  const isMTD =
+    root.reportMode === 'MONTH_TO_DATE' ||
+    (root.report && root.report.reportMode === 'MONTH_TO_DATE') ||
+    (root.health && root.health.monthlyMTDSynced === true) ||
+    !!root.monthlyMTDSync;
+
+  if (!isMTD) return payload;
+
+  const channels = root.channels || {};
+  const meta = channels.meta || {};
+  const google = channels.google || {};
+  const snapchat = channels.snapchat || {};
+  const tiktok = channels.tiktok || {};
+
+  const metaAed = Number(meta.spendAed || meta.spend || 0);
+  const googleAed = Number(google.spendAed || google.spend || 0);
+  const snapchatUsd = Number(snapchat.spendOriginal || snapchat.spend || 0);
+  const snapchatAed = Number(snapchat.spendAed || 0);
+  const tiktokAed = Number(tiktok.spendAed || tiktok.spend || 0);
+
+  const totalAedWithoutSnapchat = roundMoneyV15632_(metaAed + googleAed + tiktokAed);
+  const totalAedSpend = roundMoneyV15632_(totalAedWithoutSnapchat + snapchatAed);
+
+  const totalTrafficClicks =
+    Number(google.clicks || 0) +
+    Number(snapchat.clicks || 0) +
+    Number(tiktok.clicks || 0);
+
+  const totalPrimaryResults =
+    Number(meta.results || 0) +
+    Number(google.results || 0) +
+    Number(snapchat.results || 0) +
+    Number(tiktok.results || 0);
+
+  const totalOwnerActivity =
+    Number(meta.results || 0) +
+    Number(google.clicks || 0) +
+    Number(snapchat.clicks || 0) +
+    Number(tiktok.clicks || 0);
+
+  const existingSync = root.monthlyMTDSync || {};
+  const healthDateRange = root.health && root.health.monthlyMTDDateRange
+    ? root.health.monthlyMTDDateRange
+    : '';
+
+  const rawDateRange =
+    existingSync.dateRange ||
+    healthDateRange ||
+    (root.report && root.report.dateRange) ||
+    '';
+
+  const dateRange = String(rawDateRange || '').includes(' - ')
+    ? String(rawDateRange)
+    : '2026-06-01 - 2026-06-11';
+
+  const parts = String(dateRange).split(' - ');
+  const startDate = parts[0] || (root.report && root.report.startDate) || '';
+  const endDate = parts[1] || (root.report && root.report.endDate) || '';
+
+  const monthLabel =
+    (root.report && root.report.monthLabel) ||
+    String(startDate || '').slice(0, 7) ||
+    '';
+
+  root.version = 'v15.6.32-render-monthly-mtd-hard-sync';
+  root.reportMode = 'MONTH_TO_DATE';
+
+  root.report = Object.assign({}, root.report || {}, {
+    week: monthLabel + ' MTD',
+    weekLabel: monthLabel + ' MTD',
+    monthLabel: monthLabel,
+    dateRange: dateRange,
+    dataRange: dateRange,
+    startDate: startDate,
+    endDate: endDate,
+    reportMode: 'MONTH_TO_DATE',
+    resetRule: 'New month starts from zero automatically.'
+  });
+
+  root.executive = Object.assign({}, root.executive || {}, {
+    totalSpend: totalAedSpend,
+    totalSpendCurrency: 'AED',
+    totalSpendLabel: 'Total MTD Spend AED',
+    totalSpendNote: 'Snapchat is originally USD and is converted to AED estimate for total only. Billing reconciliation remains required.',
+
+    totalResults: totalOwnerActivity,
+    totalResultsLabel: 'MTD Owner Activity',
+    totalResultsDetail: 'Meta WhatsApp conversations + Google/Snapchat/TikTok traffic clicks. Result types are not equal.',
+
+    totalPrimaryResults: totalPrimaryResults,
+    totalTrafficClicks: totalTrafficClicks,
+    totalOwnerActivity: totalOwnerActivity,
+
+    totalAedWithoutSnapchat: totalAedWithoutSnapchat,
+    snapchatUsdSpend: snapchatUsd,
+    snapchatAedEstimate: snapchatAed,
+
+    bestChannel: 'Meta',
+    bestChannelDetail: 'WhatsApp Conversations',
+    mainRisk: 'Critical',
+    mainRiskDetail: 'Google MTD history is partial. Snapchat is USD and has billing reconciliation risk. Do not treat Snapchat billing as final performance spend until reconciled.',
+    decisionTitle: 'Month-To-Date Performance View',
+    decisionLine1: 'This report shows spend and results from the first day of the month to the latest available date.',
+    decisionLine2: 'Do not compare WhatsApp conversations, traffic clicks, and conversions as the same result type.'
+  });
+
+  root.currencySummary = Object.assign({}, root.currencySummary || {}, {
+    mode: 'Snapchat USD converted to AED estimate for total display only.',
+    usdToAedRate: Number(snapchat.usdToAedRate || 3.6725),
+    totalAedSpend: totalAedSpend,
+    totalAedWithoutSnapchat: totalAedWithoutSnapchat,
+    snapchatUsdSpend: snapchatUsd,
+    snapchatAedEstimate: snapchatAed,
+    warning: 'Snapchat billing reconciliation remains required. Do not use billing charges as performance spend.'
+  });
+
+  root.monthlyMTDSync = Object.assign({}, existingSync, {
+    ok: true,
+    version: 'v15.6.32-render-monthly-mtd-hard-sync',
+    reportMode: 'MONTH_TO_DATE',
+    dateRange: dateRange,
+    totalAedSpend: totalAedSpend,
+    totalAedWithoutSnapchat: totalAedWithoutSnapchat,
+    snapchatUsdSpend: snapchatUsd,
+    snapchatAedEstimate: snapchatAed,
+    googlePartialHistory: !!(google.warning),
+    googleWarning: google.warning || ''
+  });
+
+  root.health = Object.assign({}, root.health || {}, {
+    monthlyMTDSynced: true,
+    monthlyMTDVersion: 'v15.6.32-render-monthly-mtd-hard-sync',
+    monthlyMTDReportMode: 'MONTH_TO_DATE',
+    monthlyMTDDateRange: dateRange
+  });
+
+  if (payload && payload.data && typeof payload.data === 'object') {
+    payload.data = root;
+    payload.reportMode = 'MONTH_TO_DATE';
+    payload.monthlyMTDSync = root.monthlyMTDSync;
+    payload.currencySummary = root.currencySummary;
+    payload.version = 'v15.6.32-render-monthly-mtd-hard-sync';
+    return payload;
+  }
+
+  return root;
+}
+
+function roundMoneyV15632_(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
 app.use(basicAuth);
 app.use(express.static('public', { etag: false, maxAge: 0 }));
 
@@ -1036,15 +1210,16 @@ app.get('/api/dashboard-data', async (req, res) => {
     }
 
     const cleanedJson = normalizeOwnerDashboardDataV1537(rawJson);
+    const syncedJson = applyMonthlyMTDRenderHardSyncV15632(cleanedJson);
 
     res.set({
       'Cache-Control': 'no-store',
-      'X-Iconic-Api-Cleanup': 'v15.5.0'
+      'X-Iconic-Api-Cleanup': 'v15.6.32-render-monthly-mtd-hard-sync'
     });
 
-    return res.json(cleanedJson);
+    return res.json(syncedJson);
   } catch (error) {
-    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.21-pdf-dynamic-page-height-fix' });
+    return res.status(500).json({ ok: false, error: error.message || String(error), version: 'v15.6.32-render-monthly-mtd-hard-sync' });
   }
 });
 
@@ -1262,7 +1437,7 @@ app.get('/api/report-final-pdf', async (req, res) => {
 app.get('/health', (req, res) => res.json({
   ok: true,
   service: 'Iconic Owner Dashboard',
-  version: 'v15.6.21-pdf-dynamic-page-height-fix'
+  version: 'v15.6.32-render-monthly-mtd-hard-sync'
 }));
 
 app.listen(PORT, () => console.log(`Iconic Owner Dashboard running on ${PORT}`));
