@@ -4508,3 +4508,106 @@ function renderPage2(data) {
     startV15634();
   }
 })();
+
+
+/*
+Iconic Owner Dashboard — v15.6.35 MTD Copy Polish
+Scope:
+- Frontend copy polish only.
+- Keeps v15.6.34 MTD data lock + Visual Platform Status / Trend Snapshot.
+- Replaces weekly wording that survived in static HTML with MTD wording.
+- No Apps Script, no server.js, no PDF logic, no delivery.
+*/
+(function () {
+  const VERSION = 'v15.6.35-mtd-copy-polish';
+
+  const COPY_REPLACEMENTS = [
+    ['All active channels this week', 'All channels month-to-date'],
+    ['Primary results from active channels', 'MTD owner activity'],
+    ['FINAL WEEKLY DECISION', 'FINAL MTD DECISION'],
+    ['Final Weekly Decision', 'Final MTD Decision'],
+    ['final weekly decision', 'final MTD decision'],
+    ['Next weekly review', 'Next MTD review'],
+    ['Next Weekly Review', 'Next MTD Review']
+  ];
+
+  function isInsideIgnoredTagV15635(node) {
+    let current = node && node.parentNode;
+    while (current && current.nodeType === 1) {
+      const tag = String(current.tagName || '').toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'svg') return true;
+      current = current.parentNode;
+    }
+    return false;
+  }
+
+  function replaceTextNodeV15635(node) {
+    if (!node || node.nodeType !== Node.TEXT_NODE || isInsideIgnoredTagV15635(node)) return false;
+
+    let value = node.nodeValue || '';
+    let changed = false;
+
+    COPY_REPLACEMENTS.forEach(([from, to]) => {
+      if (value.includes(from)) {
+        value = value.split(from).join(to);
+        changed = true;
+      }
+    });
+
+    if (changed) node.nodeValue = value;
+    return changed;
+  }
+
+  function walkAndReplaceCopyV15635(root) {
+    const start = root || document.body;
+    if (!start) return 0;
+
+    let changed = 0;
+    const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, null);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (replaceTextNodeV15635(node)) changed += 1;
+      node = walker.nextNode();
+    }
+
+    return changed;
+  }
+
+  function isMTDPageV15635() {
+    const text = String(document.body && document.body.textContent ? document.body.textContent : '');
+    return text.includes('MTD') || text.includes('Month-To-Date') || text.includes('month-to-date');
+  }
+
+  function applyCopyPolishV15635() {
+    if (!document.body || !isMTDPageV15635()) return false;
+
+    const changed = walkAndReplaceCopyV15635(document.body);
+
+    window.__ICONIC_V15635__ = {
+      ok: true,
+      version: VERSION,
+      changedTextNodes: changed,
+      copyPolish: 'MTD wording applied to static frontend labels.'
+    };
+
+    if (window.__ICONIC_DEBUG__ && typeof window.__ICONIC_DEBUG__ === 'object') {
+      window.__ICONIC_DEBUG__.frontendV15635 = window.__ICONIC_V15635__;
+    }
+
+    document.documentElement.setAttribute('data-iconic-copy-polish', VERSION);
+    return true;
+  }
+
+  function startV15635() {
+    [300, 700, 1200, 1900, 2800, 4200, 5600].forEach(ms => {
+      setTimeout(applyCopyPolishV15635, ms);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startV15635, { once: true });
+  } else {
+    startV15635();
+  }
+})();
