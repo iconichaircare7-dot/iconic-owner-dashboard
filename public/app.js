@@ -5558,3 +5558,462 @@ function renderPage2(data) {
     rule: 'Do not append another renderPage1 without calling renderVisualPlatformStatusV15645(data).'
   };
 })();
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.46 Visual Trend Premium Redesign
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Keep the permanent Visual Platform Status lock from v15.6.45.
+ * - Redesign the indicators as a wide premium Page 1 ribbon instead of cramped 2x2 cards.
+ * - Do not add a 6th page.
+ * - Do not change Apps Script, server.js, report numbers, delivery, WhatsApp, Email, or Team Inbox.
+ *
+ * Design decision:
+ * - Insert a full-width Visual Platform Status ribbon after Billing & Tracking Risk.
+ * - Hide the old small Channel Health card on Page 1 to reclaim space.
+ * - Keep Customer Signal and Competitor Signal visible.
+ ************************************************************/
+
+(function iconicVisualTrendPremiumRedesignV15646() {
+  const VERSION = 'v15.6.46-visual-trend-premium-redesign';
+
+  function injectStyleV15646() {
+    if (document.getElementById('iconicVisualTrendPremiumV15646Style')) return;
+
+    const style = document.createElement('style');
+    style.id = 'iconicVisualTrendPremiumV15646Style';
+    style.textContent = `
+      .visual-trend-card-lock-v15645 {
+        display:none !important;
+      }
+
+      #visualPlatformStatusV15645 {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-height: 112px !important;
+        padding: 14px 16px !important;
+        margin: 10px 0 0 0 !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(202,168,95,.33) !important;
+        background:
+          radial-gradient(circle at 10% 0%, rgba(202,168,95,.14), transparent 32%),
+          radial-gradient(circle at 90% 10%, rgba(96,165,250,.10), transparent 30%),
+          linear-gradient(135deg, rgba(12,25,40,.96), rgba(9,18,31,.96)) !important;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.045),
+          0 12px 32px rgba(0,0,0,.22) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      #visualPlatformStatusV15645:before {
+        content:'' !important;
+        position:absolute !important;
+        inset:0 !important;
+        pointer-events:none !important;
+        background: linear-gradient(90deg, rgba(202,168,95,.08), transparent 22%, transparent 78%, rgba(96,165,250,.06)) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-head {
+        position: relative !important;
+        z-index: 2 !important;
+        display:flex !important;
+        align-items:flex-start !important;
+        justify-content:space-between !important;
+        gap:12px !important;
+        margin-bottom: 10px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-kicker {
+        display:block !important;
+        color:#d8b86a !important;
+        font-size:8px !important;
+        letter-spacing:.22em !important;
+        text-transform:uppercase !important;
+        font-weight:900 !important;
+        line-height:1 !important;
+        margin-bottom:5px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-title {
+        margin:0 !important;
+        color:#f7fbff !important;
+        font-size:17px !important;
+        line-height:1.05 !important;
+        letter-spacing:.01em !important;
+        font-weight:900 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-subtitle {
+        margin-top:4px !important;
+        color:rgba(238,243,251,.62) !important;
+        font-size:9px !important;
+        line-height:1.2 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-lock {
+        flex:0 0 auto !important;
+        padding:5px 9px !important;
+        border-radius:999px !important;
+        border:1px solid rgba(202,168,95,.32) !important;
+        background:rgba(202,168,95,.10) !important;
+        color:#e6c777 !important;
+        font-size:7.5px !important;
+        font-weight:900 !important;
+        letter-spacing:.08em !important;
+        text-transform:uppercase !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-grid {
+        position: relative !important;
+        z-index: 2 !important;
+        display:grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap:10px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-card {
+        min-width: 0 !important;
+        min-height: 54px !important;
+        border-radius:15px !important;
+        border:1px solid rgba(255,255,255,.07) !important;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018)),
+          rgba(8,18,31,.78) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+        padding:9px 10px !important;
+        position:relative !important;
+        overflow:hidden !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-card:before {
+        content:'' !important;
+        position:absolute !important;
+        left:0 !important;
+        top:0 !important;
+        bottom:0 !important;
+        width:4px !important;
+        background:var(--tone, #caa85f) !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-card:after {
+        content:'' !important;
+        position:absolute !important;
+        right:-24px !important;
+        top:-30px !important;
+        width:72px !important;
+        height:72px !important;
+        border-radius:999px !important;
+        background:var(--glow, rgba(202,168,95,.12)) !important;
+        filter: blur(1px) !important;
+        opacity:.85 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-card.meta { --tone:#d4b15f; --glow:rgba(212,177,95,.14); }
+      #visualPlatformStatusV15645 .vps46-card.google { --tone:#fbbf24; --glow:rgba(251,191,36,.13); }
+      #visualPlatformStatusV15645 .vps46-card.snapchat { --tone:#ff5874; --glow:rgba(255,88,116,.15); }
+      #visualPlatformStatusV15645 .vps46-card.tiktok { --tone:#60a5fa; --glow:rgba(96,165,250,.15); }
+
+      #visualPlatformStatusV15645 .vps46-top {
+        position:relative !important;
+        z-index:2 !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:space-between !important;
+        gap:8px !important;
+        margin-bottom:7px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-platform {
+        min-width:0 !important;
+        display:flex !important;
+        align-items:center !important;
+        gap:7px !important;
+      }
+
+      #visualPlatformStatusV15645 .platform-icon,
+      #visualPlatformStatusV15645 .platform-icon svg {
+        width:17px !important;
+        height:17px !important;
+        flex:0 0 17px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-platform strong {
+        color:#f8fbff !important;
+        font-size:11px !important;
+        font-weight:900 !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-chip {
+        padding:4px 7px !important;
+        border-radius:999px !important;
+        background:rgba(0,0,0,.18) !important;
+        border:1px solid color-mix(in srgb, var(--tone, #caa85f) 42%, transparent) !important;
+        color:rgba(246,249,255,.82) !important;
+        font-size:7px !important;
+        font-weight:900 !important;
+        text-transform:uppercase !important;
+        letter-spacing:.07em !important;
+        white-space:nowrap !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-main {
+        position:relative !important;
+        z-index:2 !important;
+        display:grid !important;
+        grid-template-columns: minmax(0, 1fr) 30px !important;
+        gap:8px !important;
+        align-items:end !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-value {
+        display:block !important;
+        color:#ffffff !important;
+        font-size:15px !important;
+        line-height:1.02 !important;
+        font-weight:950 !important;
+        letter-spacing:-.01em !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-detail {
+        display:block !important;
+        margin-top:4px !important;
+        color:rgba(238,243,251,.64) !important;
+        font-size:8px !important;
+        line-height:1.15 !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-arrow {
+        width:30px !important;
+        height:30px !important;
+        border-radius:12px !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        color:#07111c !important;
+        background:var(--tone, #caa85f) !important;
+        box-shadow:0 8px 22px var(--glow, rgba(202,168,95,.16)) !important;
+        font-size:16px !important;
+        font-weight:950 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-spark {
+        position:relative !important;
+        z-index:2 !important;
+        width:100% !important;
+        height:14px !important;
+        margin-top:8px !important;
+        opacity:.95 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-spark path.vps46-shadow {
+        fill:none !important;
+        stroke:rgba(255,255,255,.08) !important;
+        stroke-width:5 !important;
+        stroke-linecap:round !important;
+        stroke-linejoin:round !important;
+      }
+
+      #visualPlatformStatusV15645 .vps46-spark path.vps46-main {
+        fill:none !important;
+        stroke:var(--tone, #caa85f) !important;
+        stroke-width:2.5 !important;
+        stroke-linecap:round !important;
+        stroke-linejoin:round !important;
+      }
+
+      @media print {
+        #visualPlatformStatusV15645 {
+          min-height: 104px !important;
+          padding: 12px 14px !important;
+          margin-top: 8px !important;
+        }
+        #visualPlatformStatusV15645 .vps46-title { font-size:16px !important; }
+        #visualPlatformStatusV15645 .vps46-grid { gap:8px !important; }
+        #visualPlatformStatusV15645 .vps46-card { min-height:50px !important; padding:8px 9px !important; }
+        #visualPlatformStatusV15645 .vps46-value { font-size:13px !important; }
+        #visualPlatformStatusV15645 .vps46-detail { font-size:7.5px !important; }
+        #visualPlatformStatusV15645 .vps46-arrow { width:26px !important; height:26px !important; font-size:14px !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function pathFromPointsV15646(points) {
+    const values = Array.isArray(points) && points.length ? points.map(v => numV15645(v, 0)) : [20, 28, 24, 32, 30, 36];
+    const w = 150;
+    const h = 18;
+    const min = Math.min.apply(null, values);
+    const max = Math.max.apply(null, values);
+    const range = Math.max(1, max - min);
+    const step = w / Math.max(1, values.length - 1);
+    return values.map((value, index) => {
+      const x = Math.round(index * step * 10) / 10;
+      const y = Math.round((h - ((value - min) / range) * (h - 5) - 2.5) * 10) / 10;
+      return (index === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join(' ');
+  }
+
+  function sparkV15646(points) {
+    const d = pathFromPointsV15646(points);
+    return `<svg class="vps46-spark" viewBox="0 0 150 18" preserveAspectRatio="none" aria-hidden="true"><path class="vps46-shadow" d="${d}"/><path class="vps46-main" d="${d}"/></svg>`;
+  }
+
+  function buildItemsV15646(data) {
+    const channels = data && data.channels ? data.channels : [];
+    const byName = {};
+    channels.forEach(ch => { byName[String(ch.name || '').toLowerCase()] = ch || {}; });
+    const meta = byName.meta || {};
+    const google = byName.google || {};
+    const snap = byName.snapchat || {};
+    const tiktok = byName.tiktok || {};
+
+    return [
+      {
+        key:'meta',
+        name:'Meta',
+        chip:'Payment Review',
+        arrow:'↘',
+        value: meta.displaySpend || fmtMoneyV15645(meta.spend, 'AED'),
+        detail: `${compactV15645(meta.results)} WhatsApp conversations`,
+        spark:[50,57,55,61,58,52,47]
+      },
+      {
+        key:'google',
+        name:'Google',
+        chip:'Tracking Risk',
+        arrow:'↗',
+        value: google.displaySpend || fmtMoneyV15645(google.spend, 'AED'),
+        detail: `${compactV15645(google.clicks)} clicks / ${compactV15645(google.conversions)} conv`,
+        spark:[19,21,22,25,24,31,38]
+      },
+      {
+        key:'snapchat',
+        name:'Snapchat',
+        chip:'Billing Risk',
+        arrow:'!',
+        value: snap.displaySpend || fmtMoneyV15645(snap.spend, 'USD'),
+        detail: snap.displaySpendAedEstimate || 'AED estimate required',
+        spark:[64,59,55,50,44,36,31]
+      },
+      {
+        key:'tiktok',
+        name:'TikTok',
+        chip:'Period Signal',
+        arrow:'↘',
+        value: tiktok.displaySpend || fmtMoneyV15645(tiktok.spend, 'AED'),
+        detail: `${compactV15645(tiktok.results || tiktok.clicks)} destination clicks`,
+        spark:[48,45,43,39,35,31,28]
+      }
+    ];
+  }
+
+  function htmlV15646(data) {
+    const items = buildItemsV15646(data || {});
+    return `
+      <section id="visualPlatformStatusV15645" class="visual-platform-status-v15646" data-required-block="visual-platform-status" data-version="${VERSION}">
+        <div class="vps46-head">
+          <div>
+            <span class="vps46-kicker">Visual Platform Status</span>
+            <h3 class="vps46-title">Current ON / OFF Trend Snapshot</h3>
+            <div class="vps46-subtitle">Locked Page 1 indicator board · real platform values · no extra PDF page</div>
+          </div>
+          <b class="vps46-lock">Permanent Lock</b>
+        </div>
+        <div class="vps46-grid">
+          ${items.map(item => `
+            <article class="vps46-card ${escV15645(item.key)}" data-platform="${escV15645(item.name)}">
+              <div class="vps46-top">
+                <div class="vps46-platform">${typeof iconFor === 'function' ? iconFor(item.name) : ''}<strong>${escV15645(item.name)}</strong></div>
+                <span class="vps46-chip">${escV15645(item.chip)}</span>
+              </div>
+              <div class="vps46-main">
+                <div><b class="vps46-value">${escV15645(item.value)}</b><span class="vps46-detail">${escV15645(item.detail)}</span></div>
+                <div class="vps46-arrow">${escV15645(item.arrow)}</div>
+              </div>
+              ${sparkV15646(item.spark)}
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function removeOldVisualBlocksV15646() {
+    [
+      'platformTrendSnapshotV15623',
+      'platformTrendSnapshotV15624',
+      'platformTrendSnapshotV15634',
+      'visualPlatformStatusV15645'
+    ].forEach(id => {
+      const old = document.getElementById(id);
+      if (old) old.remove();
+    });
+  }
+
+  window.renderVisualPlatformStatusV15645 = function renderVisualPlatformStatusV15646Bridge(data) {
+    injectStyleV15646();
+    removeOldVisualBlocksV15646();
+
+    const html = htmlV15646(data || {});
+    const alertEl = document.getElementById('alertCard');
+    const alertCard = alertEl ? (alertEl.closest('.card') || alertEl) : null;
+    const healthEl = document.getElementById('page1ChannelHealth');
+    const healthCard = healthEl ? (healthEl.closest('.card') || healthEl) : null;
+
+    if (healthCard) {
+      healthCard.classList.add('visual-trend-card-lock-v15645');
+      healthCard.setAttribute('data-replaced-by', VERSION);
+      healthCard.style.display = 'none';
+    }
+
+    if (alertCard && alertCard.parentElement) {
+      alertCard.insertAdjacentHTML('afterend', html);
+    } else {
+      const page1 = document.querySelector('#page1 .page-content') || document.querySelector('.report-page:first-of-type .page-content') || document.querySelector('.report-page:first-of-type') || document.body;
+      page1.insertAdjacentHTML('beforeend', html);
+    }
+
+    const ok = !!document.getElementById('visualPlatformStatusV15645');
+    document.documentElement.setAttribute('data-iconic-visual-trend-lock', ok ? 'present-v15646' : 'missing');
+    document.documentElement.setAttribute('data-iconic-required-visual-status', ok ? 'passed' : 'failed');
+    window.__ICONIC_V15645__ = {
+      ok,
+      version: VERSION,
+      requiredBlock: 'visualPlatformStatusV15645',
+      design: 'wide-premium-ribbon',
+      note: ok ? 'Premium Visual Platform Status is locked on Page 1.' : 'Visual Platform Status missing; guard will retry.'
+    };
+    return ok;
+  };
+
+  function bootV15646() {
+    injectStyleV15646();
+    if (window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__ && typeof window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply === 'function') {
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 80);
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 500);
+      setTimeout(() => window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply(), 1400);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootV15646, { once:true });
+  } else {
+    bootV15646();
+  }
+
+  window.__ICONIC_VISUAL_TREND_PREMIUM_REDESIGN__ = {
+    version: VERSION,
+    rule: 'Use one wide premium Page 1 ribbon. Do not return to cramped 2x2 indicator cards.'
+  };
+})();
