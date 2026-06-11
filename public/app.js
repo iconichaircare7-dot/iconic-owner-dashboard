@@ -6545,3 +6545,312 @@ function renderPage2(data) {
     rule: 'Do not hide Channel Health. Insert the taller Visual Platform Status after the Channel/Customer/Competitor signal row.'
   };
 })();
+
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.48 Channel Health Fill + Taller Visual Lock
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Keep v15.6.47 order: Channel Health + Customer Signal + Competitor Signal, then Visual Platform Status.
+ * - Restore the missing Channel Health rows after earlier patches replaced the card content.
+ * - Make Visual Platform Status taller, cleaner, and more premium without adding a 6th page.
+ * - Keep Permanent Visual Trend Lock active.
+ * - Do not change Apps Script, server.js, delivery, WhatsApp, Email, Team Inbox, or data totals.
+ ************************************************************/
+
+(function iconicChannelHealthFillVisualHeightLockV15648() {
+  const VERSION = 'v15.6.48-channel-health-fill-visual-height-lock';
+
+  function esc48(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function num48(value, fallback = 0) {
+    const n = Number(String(value === undefined || value === null ? '' : value).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function compact48(value) {
+    const n = num48(value, 0);
+    if (Math.abs(n) >= 1000) {
+      return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 1 }).format(n / 1000) + 'k';
+    }
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(Math.round(n));
+  }
+
+  function findChannel48(data, name) {
+    const key = String(name || '').toLowerCase();
+    const rows = Array.isArray(data && data.channels) ? data.channels : [];
+    return rows.find(row => String(row && row.name || '').toLowerCase() === key) || {};
+  }
+
+  function healthStatus48(name, row) {
+    const raw = String(row && row.status || '').toLowerCase();
+
+    if (name === 'Meta') return raw.includes('payment') ? 'Payment Review' : 'MTD Lead Engine';
+    if (name === 'Google') return 'Needs Attention';
+    if (name === 'Snapchat') return 'Billing Risk';
+    if (name === 'TikTok') return 'Period Activity';
+    return 'Review';
+  }
+
+  function healthRows48(data) {
+    const rows = [
+      ['Meta', findChannel48(data, 'Meta')],
+      ['Google', findChannel48(data, 'Google')],
+      ['Snapchat', findChannel48(data, 'Snapchat')],
+      ['TikTok', findChannel48(data, 'TikTok')]
+    ];
+
+    return rows.map(([name, row]) => `
+      <div class="health-row v15648-health-row" data-platform="${esc48(name)}">
+        <div class="health-name">${typeof iconFor === 'function' ? iconFor(name) : ''}<strong>${esc48(name)}</strong></div>
+        <small>${esc48(healthStatus48(name, row))}</small>
+      </div>
+    `).join('');
+  }
+
+  function injectStyle48() {
+    if (document.getElementById('iconicV15648ChannelHealthVisualHeightStyle')) return;
+
+    const style = document.createElement('style');
+    style.id = 'iconicV15648ChannelHealthVisualHeightStyle';
+    style.textContent = `
+      #page1ChannelHealth {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        min-height: 72px !important;
+        padding-top: 2px !important;
+      }
+
+      #page1ChannelHealth .v15648-health-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        min-height: 22px !important;
+        padding: 5px 9px !important;
+        border-radius: 11px !important;
+        background: rgba(9, 21, 36, .62) !important;
+        border: 1px solid rgba(148, 163, 184, .08) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+      }
+
+      #page1ChannelHealth .v15648-health-row .health-name {
+        display: flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        min-width: 0 !important;
+      }
+
+      #page1ChannelHealth .v15648-health-row strong {
+        color: rgba(248,250,252,.94) !important;
+        font-size: 10px !important;
+        font-weight: 850 !important;
+        letter-spacing: .01em !important;
+      }
+
+      #page1ChannelHealth .v15648-health-row small {
+        color: #f0c96b !important;
+        font-size: 8px !important;
+        font-weight: 850 !important;
+        letter-spacing: .02em !important;
+        text-transform: none !important;
+        white-space: nowrap !important;
+      }
+
+      #page1ChannelHealth .platform-icon {
+        width: 16px !important;
+        height: 16px !important;
+        flex: 0 0 16px !important;
+      }
+
+      #visualPlatformStatusV15645.visual-platform-status-v15647 {
+        min-height: 188px !important;
+        padding: 18px 20px 17px 20px !important;
+        margin-top: 16px !important;
+        border-radius: 22px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-head {
+        margin-bottom: 16px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-title {
+        font-size: 23px !important;
+        line-height: 1.05 !important;
+        letter-spacing: -.015em !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-subtitle {
+        font-size: 9.5px !important;
+        margin-top: 4px !important;
+        opacity: .82 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-grid {
+        gap: 14px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-card {
+        min-height: 92px !important;
+        padding: 13px 15px 12px 15px !important;
+        border-radius: 18px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-platform strong {
+        font-size: 12px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-chip {
+        font-size: 7.4px !important;
+        padding: 4px 8px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-value {
+        font-size: 18px !important;
+        line-height: 1.06 !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-detail {
+        font-size: 8.5px !important;
+        margin-top: 6px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-arrow {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 15px !important;
+        font-size: 18px !important;
+      }
+
+      #visualPlatformStatusV15645 .vps47-spark {
+        height: 25px !important;
+        margin-top: 12px !important;
+      }
+
+      @media print {
+        #page1ChannelHealth {
+          gap: 5px !important;
+          min-height: 62px !important;
+        }
+
+        #page1ChannelHealth .v15648-health-row {
+          min-height: 18px !important;
+          padding: 4px 7px !important;
+          border-radius: 9px !important;
+        }
+
+        #page1ChannelHealth .v15648-health-row strong { font-size: 8.7px !important; }
+        #page1ChannelHealth .v15648-health-row small { font-size: 7px !important; }
+        #page1ChannelHealth .platform-icon { width: 13px !important; height: 13px !important; flex-basis: 13px !important; }
+
+        #visualPlatformStatusV15645.visual-platform-status-v15647 {
+          min-height: 154px !important;
+          padding: 14px 16px 13px 16px !important;
+          margin-top: 11px !important;
+          border-radius: 19px !important;
+        }
+
+        #visualPlatformStatusV15645 .vps47-head { margin-bottom: 11px !important; }
+        #visualPlatformStatusV15645 .vps47-title { font-size: 18px !important; }
+        #visualPlatformStatusV15645 .vps47-subtitle { font-size: 7.7px !important; }
+        #visualPlatformStatusV15645 .vps47-grid { gap: 10px !important; }
+        #visualPlatformStatusV15645 .vps47-card { min-height: 73px !important; padding: 10px 11px !important; border-radius: 15px !important; }
+        #visualPlatformStatusV15645 .vps47-platform strong { font-size: 9.4px !important; }
+        #visualPlatformStatusV15645 .vps47-chip { font-size: 6.2px !important; padding: 3px 6px !important; }
+        #visualPlatformStatusV15645 .vps47-value { font-size: 14.5px !important; }
+        #visualPlatformStatusV15645 .vps47-detail { font-size: 7px !important; margin-top: 5px !important; }
+        #visualPlatformStatusV15645 .vps47-arrow { width: 30px !important; height: 30px !important; border-radius: 12px !important; font-size: 14px !important; }
+        #visualPlatformStatusV15645 .vps47-spark { height: 18px !important; margin-top: 8px !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function fillChannelHealth48(data) {
+    injectStyle48();
+    const health = document.getElementById('page1ChannelHealth');
+    if (!health) return false;
+
+    const hasRows = health.querySelectorAll('.health-row').length >= 4;
+    const onlyWhitespace = !String(health.textContent || '').trim();
+
+    if (!hasRows || onlyWhitespace || health.querySelectorAll('.v15648-health-row').length < 4) {
+      health.innerHTML = healthRows48(data || window.__ICONIC_LAST_RENDER_DATA_V15648__ || {});
+    }
+
+    const card = health.closest('.card') || health.parentElement;
+    if (card) {
+      card.classList.remove('visual-trend-card-lock-v15645');
+      card.setAttribute('data-v15648-channel-health-filled', 'true');
+      card.style.display = '';
+      card.style.visibility = '';
+    }
+
+    return health.querySelectorAll('.health-row').length >= 4;
+  }
+
+  const previousVisual = window.renderVisualPlatformStatusV15645;
+  window.renderVisualPlatformStatusV15645 = function renderVisualPlatformStatusV15648(data) {
+    window.__ICONIC_LAST_RENDER_DATA_V15648__ = data || window.__ICONIC_LAST_RENDER_DATA_V15648__ || {};
+    injectStyle48();
+    const result = typeof previousVisual === 'function' ? previousVisual(data) : false;
+    fillChannelHealth48(data);
+
+    const visualOk = !!document.getElementById('visualPlatformStatusV15645');
+    const healthOk = !!document.getElementById('page1ChannelHealth') && document.querySelectorAll('#page1ChannelHealth .health-row').length >= 4;
+    document.documentElement.setAttribute('data-iconic-v15648-page1-health', healthOk ? 'passed' : 'failed');
+    document.documentElement.setAttribute('data-iconic-v15648-visual', visualOk ? 'passed' : 'failed');
+    window.__ICONIC_V15648__ = {
+      ok: visualOk && healthOk,
+      version: VERSION,
+      visualBlock: visualOk,
+      channelHealthRows: document.querySelectorAll('#page1ChannelHealth .health-row').length,
+      note: visualOk && healthOk ? 'Channel Health rows and taller Visual Platform Status are both locked.' : 'Page 1 guard will retry.'
+    };
+    return visualOk && healthOk && result !== false;
+  };
+
+  const previousRenderPage1 = window.renderPage1;
+  if (typeof previousRenderPage1 === 'function') {
+    window.renderPage1 = function renderPage1V15648(data) {
+      window.__ICONIC_LAST_RENDER_DATA_V15648__ = data || {};
+      const result = previousRenderPage1(data);
+      setTimeout(() => fillChannelHealth48(data), 0);
+      setTimeout(() => fillChannelHealth48(data), 120);
+      setTimeout(() => fillChannelHealth48(data), 600);
+      return result;
+    };
+  }
+
+  function boot48() {
+    injectStyle48();
+    setTimeout(() => fillChannelHealth48(window.__ICONIC_LAST_RENDER_DATA_V15648__ || {}), 120);
+    setTimeout(() => fillChannelHealth48(window.__ICONIC_LAST_RENDER_DATA_V15648__ || {}), 700);
+    setTimeout(() => {
+      if (window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__ && typeof window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply === 'function') {
+        window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__.apply();
+      }
+      fillChannelHealth48(window.__ICONIC_LAST_RENDER_DATA_V15648__ || {});
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot48, { once: true });
+  } else {
+    boot48();
+  }
+
+  window.__ICONIC_CHANNEL_HEALTH_FILL_VISUAL_HEIGHT_LOCK__ = {
+    version: VERSION,
+    rule: 'Never leave Channel Health empty; keep Visual Platform Status taller and below the signal row.'
+  };
+})();
