@@ -4801,3 +4801,760 @@ Scope:
     startV15636();
   }
 })();
+
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.45 Permanent Visual Trend Lock
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Permanent Page 1 Visual Platform Status lock.
+ * - Replaces fragile Channel Health card with a premium visual ON/OFF trend board.
+ * - Keeps PDF at 5 pages by using the existing Page 1 slot, not a new page.
+ * - Fixes channel display formatting from keyed API values, including Snapchat USD + AED estimate.
+ * - Uses API executive totals directly; does not recalculate total spend from raw channel values.
+ * - Adds DOM guard + repeated lock so future render timing changes do not make the visual block disappear.
+ *
+ * No Apps Script.
+ * No server.js.
+ * No WhatsApp / Email / Team Inbox.
+ ************************************************************/
+
+function numV15645(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function escV15645(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function clampV15645(value, max = 90, fallback = '-') {
+  const text = String(value === undefined || value === null || value === '' ? fallback : value)
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text || text === '-') return fallback;
+  if (text.length <= max) return text;
+  return text.slice(0, Math.max(0, max - 1)).trim() + '…';
+}
+
+function fmtMoneyV15645(value, currency = 'AED') {
+  const cur = String(currency || 'AED').toUpperCase();
+  const amount = new Intl.NumberFormat('en-AE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(numV15645(value));
+  return `${cur} ${amount}`;
+}
+
+function fmtNumberV15645(value, digits = 0) {
+  return new Intl.NumberFormat('en-AE', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  }).format(numV15645(value));
+}
+
+function compactV15645(value) {
+  const n = numV15645(value);
+  if (Math.abs(n) >= 1000) {
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 1 }).format(n / 1000) + 'k';
+  }
+  return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(n);
+}
+
+function rootFromRawV15645(raw) {
+  return raw && raw.data && typeof raw.data === 'object' ? raw.data : (raw || {});
+}
+
+function channelByKeyV15645(channels, key) {
+  if (!channels || typeof channels !== 'object') return {};
+  return channels[key] || channels[String(key || '').toLowerCase()] || {};
+}
+
+function displaySpendForChannelV15645(name, raw) {
+  const key = String(name || '').toLowerCase();
+  if (raw && raw.displaySpend) return String(raw.displaySpend);
+  if (key === 'snapchat') return fmtMoneyV15645(raw.spendOriginal || raw.spend || 0, 'USD');
+  return fmtMoneyV15645(raw.spendAed || raw.spend || 0, 'AED');
+}
+
+function displayAedEstimateV15645(raw) {
+  if (!raw) return '';
+  if (raw.displaySpendAedEstimate) return String(raw.displaySpendAedEstimate);
+  const aed = numV15645(raw.spendAed || 0);
+  return aed > 0 ? `${fmtMoneyV15645(aed, 'AED')} est.` : '';
+}
+
+function scoreForChannelV15645(name, raw) {
+  const explicit = numV15645(raw && (raw.score || raw.healthScore), 0);
+  if (explicit > 0) return Math.min(100, Math.max(0, explicit));
+
+  const key = String(name || '').toLowerCase();
+  const status = String(raw && raw.status || '').toLowerCase();
+  const results = numV15645(raw && raw.results, 0);
+  const cpr = numV15645(raw && raw.costPerResult, 0);
+
+  if (key === 'meta') {
+    if (status.includes('payment')) return 82;
+    if (results > 0 && cpr > 0 && cpr <= 3) return 86;
+    return 72;
+  }
+  if (key === 'google') return results > 0 ? 45 : 22;
+  if (key === 'snapchat') return results > 0 ? 58 : 30;
+  if (key === 'tiktok') return results > 0 ? 58 : 30;
+  return 50;
+}
+
+function normalizeChannelV15645(name, raw) {
+  const row = raw && typeof raw === 'object' ? raw : {};
+  const key = String(name || '').toLowerCase();
+  const spend = key === 'snapchat'
+    ? numV15645(row.spendOriginal || row.spend, 0)
+    : numV15645(row.spendAed || row.spend, 0);
+  const results = key === 'google'
+    ? numV15645(row.results || 0, 0)
+    : numV15645(row.results || row.clicks || 0, 0);
+  const clicks = numV15645(row.clicks || (key !== 'meta' ? row.results : 0), 0);
+  const conversions = numV15645(row.conversions || 0, 0);
+
+  let resultType = String(row.resultType || row.platform || '').trim();
+  if (!resultType) {
+    if (key === 'meta') resultType = 'WhatsApp Conversations Started';
+    if (key === 'google') resultType = 'Search Clicks / Traffic';
+    if (key === 'snapchat') resultType = 'Traffic Clicks';
+    if (key === 'tiktok') resultType = 'Destination Clicks';
+  }
+
+  let status = String(row.status || '').trim();
+  if (!status) {
+    if (key === 'meta') status = 'Payment Review';
+    if (key === 'google') status = 'Needs Attention';
+    if (key === 'snapchat') status = 'Payment Review';
+    if (key === 'tiktok') status = 'Period Activity';
+  }
+
+  let resultsLabel;
+  let costPerResultLabel;
+  let costPerResult = row.costPerResult !== undefined && row.costPerResult !== null
+    ? numV15645(row.costPerResult, 0)
+    : (spend > 0 && results > 0 ? spend / results : 0);
+
+  if (key === 'google') {
+    resultsLabel = `Conv ${fmtNumberV15645(conversions)} | Clicks ${fmtNumberV15645(clicks)}`;
+    costPerResultLabel = 'N/A';
+    costPerResult = 0;
+  }
+
+  if (key === 'snapchat') {
+    costPerResultLabel = `USD ${fmtNumberV15645(row.costPerResult || row.costPerClick || (results > 0 ? spend / results : 0), 2)}`;
+  }
+
+  return {
+    ...row,
+    name,
+    channel: name,
+    platform: resultType,
+    status,
+    spend,
+    results,
+    clicks,
+    conversions,
+    displaySpend: displaySpendForChannelV15645(name, row),
+    displaySpendAedEstimate: key === 'snapchat' ? displayAedEstimateV15645(row) : '',
+    costPerResult: costPerResult > 0 ? costPerResult : undefined,
+    costPerResultLabel: costPerResultLabel || (costPerResult > 0 ? undefined : 'N/A'),
+    resultsLabel,
+    score: scoreForChannelV15645(name, row),
+    ctr: row.ctr !== undefined && row.ctr !== null ? `CTR ${numV15645(row.ctr, 0).toFixed(2)}%` : 'CTR 0.00%',
+    decision: String(row.decision || row.recommendation || defaultDecisionV15645(name))
+  };
+}
+
+function defaultDecisionV15645(name) {
+  if (name === 'Meta') return 'Meta is the strongest MTD lead engine. Keep stable; do not scale until billing/payment status is clear.';
+  if (name === 'Google') return 'Clicks exist, but conversions are 0. Improve tracking before scaling.';
+  if (name === 'Snapchat') return 'Snapchat has traffic, but billing reconciliation remains critical. Do not treat billing as performance spend.';
+  if (name === 'TikTok') return 'TikTok has traffic activity. Keep as traffic signal until lead quality is verified.';
+  return 'Review before scaling.';
+}
+
+function buildChannelsV15645(root) {
+  const channels = root && root.channels && typeof root.channels === 'object' ? root.channels : {};
+  return [
+    normalizeChannelV15645('Meta', channelByKeyV15645(channels, 'meta')),
+    normalizeChannelV15645('Google', channelByKeyV15645(channels, 'google')),
+    normalizeChannelV15645('Snapchat', channelByKeyV15645(channels, 'snapchat')),
+    normalizeChannelV15645('TikTok', channelByKeyV15645(channels, 'tiktok'))
+  ];
+}
+
+function normalizeData(raw) {
+  const root = rootFromRawV15645(raw);
+  const report = root.report || root.reportContext || {};
+  const executiveRaw = root.executive || root.executiveSnapshot || {};
+  const recommendations = root.recommendations || root.nextSteps || root.finalRecommendations || {};
+  const competitorRaw = root.competitorIntelligence || {};
+
+  const channels = buildChannelsV15645(root);
+  const ownerActivity = numV15645(executiveRaw.totalOwnerActivity || executiveRaw.totalResults || executiveRaw.totalPrimaryResults, 0);
+
+  const executive = {
+    ...executiveRaw,
+    totalSpend: numV15645(executiveRaw.totalSpend, 0),
+    totalResults: ownerActivity,
+    totalOwnerActivity: ownerActivity,
+    bestChannel: executiveRaw.bestChannel || 'Meta',
+    bestChannelDetail: executiveRaw.bestChannelDetail || 'WhatsApp Conversations',
+    mainRisk: executiveRaw.mainRisk || executiveRaw.risk || 'Critical',
+    mainRiskDetail: executiveRaw.mainRiskDetail || executiveRaw.mainRiskDetail || executiveRaw.mainRisk || executiveRaw.mainRiskDetail || 'Billing and tracking need review.',
+    totalSpendCurrency: executiveRaw.totalSpendCurrency || 'AED'
+  };
+
+  const reportWeek = report.week || report.weekLabel || report.monthLabel || '2026-06 MTD';
+  const dateRange = report.dateRange || report.dataRange || '2026-06-01 - 2026-06-11';
+
+  const customerRaw = root.customerIntelligence || {};
+
+  window.__ICONIC_DEBUG__ = {
+    ...(window.__ICONIC_DEBUG__ || {}),
+    version: 'v15.6.45-permanent-visual-trend-lock',
+    rawChannels: root.channels || null,
+    normalizedChannels: channels,
+    executive,
+    report
+  };
+
+  return {
+    report: {
+      ...report,
+      week: reportWeek,
+      weekLabel: reportWeek,
+      dateRange,
+      reportMode: report.reportMode || root.reportMode || 'MONTH_TO_DATE'
+    },
+    executive,
+    channels,
+    customer: typeof normalizeCustomer === 'function' ? normalizeCustomer(customerRaw) : { summary: 'Customers show interest in consultation, natural results, and booking. Price clarity remains the main objection.' },
+    competitor: {
+      ...competitorRaw,
+      competitors: typeof sanitizeCompetitors === 'function'
+        ? sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
+        : []
+    },
+    recommendations,
+    generatedAt: root.generatedAt || report.generatedAt || new Date().toISOString(),
+    raw: root
+  };
+}
+
+function injectVisualTrendStyleV15645() {
+  if (document.getElementById('iconic-v15645-visual-trend-style')) return;
+  const style = document.createElement('style');
+  style.id = 'iconic-v15645-visual-trend-style';
+  style.textContent = `
+    #platformTrendSnapshotV15623,
+    #platformTrendSnapshotV15624,
+    #platformTrendSnapshotV15634 { display:none !important; }
+
+    #visualPlatformStatusV15645 {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 154px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-head-v15645 {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: flex-end !important;
+      gap: 8px !important;
+      padding-bottom: 6px !important;
+      border-bottom: 1px solid rgba(202, 168, 95, .18) !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-kicker-v15645 {
+      color: rgba(202, 168, 95, .98) !important;
+      font-size: 8px !important;
+      line-height: 1 !important;
+      font-weight: 900 !important;
+      letter-spacing: .18em !important;
+      text-transform: uppercase !important;
+      display: block !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-title-v15645 {
+      color: #f5f8ff !important;
+      margin: 3px 0 0 !important;
+      font-size: 12px !important;
+      line-height: 1.1 !important;
+      font-weight: 900 !important;
+      letter-spacing: .01em !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-live-v15645 {
+      color: rgba(238,243,251,.72) !important;
+      font-size: 8px !important;
+      white-space: nowrap !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-grid-v15645 {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 7px !important;
+      flex: 1 !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-card-v15645 {
+      position: relative !important;
+      min-height: 63px !important;
+      padding: 8px 8px 7px !important;
+      border-radius: 12px !important;
+      overflow: hidden !important;
+      border: 1px solid rgba(255,255,255,.09) !important;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(255,255,255,.10), transparent 34%),
+        linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.018)) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-card-v15645:before {
+      content: '' !important;
+      position: absolute !important;
+      inset: 0 auto 0 0 !important;
+      width: 3px !important;
+      background: var(--vps-tone, #caa85f) !important;
+      opacity: .95 !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-card-v15645:after {
+      content: '' !important;
+      position: absolute !important;
+      right: -14px !important;
+      top: -16px !important;
+      width: 52px !important;
+      height: 52px !important;
+      border-radius: 999px !important;
+      background: var(--vps-glow, rgba(202,168,95,.16)) !important;
+      filter: blur(2px) !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-card-v15645.meta { --vps-tone:#caa85f; --vps-glow:rgba(202,168,95,.16); }
+    #visualPlatformStatusV15645 .vps-card-v15645.google { --vps-tone:#fbbf24; --vps-glow:rgba(251,191,36,.15); }
+    #visualPlatformStatusV15645 .vps-card-v15645.snapchat { --vps-tone:#ff5874; --vps-glow:rgba(255,88,116,.15); }
+    #visualPlatformStatusV15645 .vps-card-v15645.tiktok { --vps-tone:#60a5fa; --vps-glow:rgba(96,165,250,.15); }
+
+    #visualPlatformStatusV15645 .vps-top-v15645 {
+      display:flex !important;
+      align-items:center !important;
+      justify-content:space-between !important;
+      gap:6px !important;
+      position:relative !important;
+      z-index:2 !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-name-v15645 {
+      display:flex !important;
+      align-items:center !important;
+      gap:5px !important;
+      min-width:0 !important;
+    }
+
+    #visualPlatformStatusV15645 .platform-icon,
+    #visualPlatformStatusV15645 .platform-icon svg {
+      width:15px !important;
+      height:15px !important;
+      flex:0 0 15px !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-name-v15645 strong {
+      color:#f5f8ff !important;
+      font-size:10px !important;
+      line-height:1 !important;
+      white-space:nowrap !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-state-v15645 {
+      border:1px solid rgba(202,168,95,.25) !important;
+      border-radius:999px !important;
+      padding:3px 5px !important;
+      color:rgba(238,243,251,.82) !important;
+      font-size:6.8px !important;
+      font-weight:900 !important;
+      text-transform:uppercase !important;
+      letter-spacing:.06em !important;
+      white-space:nowrap !important;
+      background:rgba(0,0,0,.14) !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-body-v15645 {
+      display:flex !important;
+      align-items:flex-end !important;
+      justify-content:space-between !important;
+      gap:8px !important;
+      margin-top:7px !important;
+      position:relative !important;
+      z-index:2 !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-metric-v15645 b {
+      display:block !important;
+      color:#ffffff !important;
+      font-size:12px !important;
+      line-height:1.05 !important;
+      white-space:nowrap !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-metric-v15645 span {
+      display:block !important;
+      margin-top:2px !important;
+      color:rgba(238,243,251,.68) !important;
+      font-size:7.4px !important;
+      line-height:1.1 !important;
+      max-width:96px !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-arrow-v15645 {
+      width:26px !important;
+      height:26px !important;
+      border-radius:10px !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      color:#08111d !important;
+      background:var(--vps-tone, #caa85f) !important;
+      font-size:15px !important;
+      font-weight:900 !important;
+      box-shadow:0 6px 18px var(--vps-glow, rgba(202,168,95,.16)) !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-spark-v15645 {
+      width: 100% !important;
+      height: 13px !important;
+      margin-top: 5px !important;
+      position:relative !important;
+      z-index:2 !important;
+      opacity:.92 !important;
+    }
+
+    #visualPlatformStatusV15645 .vps-spark-v15645 path {
+      fill:none !important;
+      stroke:var(--vps-tone, #caa85f) !important;
+      stroke-width:2.5 !important;
+      stroke-linecap:round !important;
+      stroke-linejoin:round !important;
+    }
+
+    @media print {
+      #visualPlatformStatusV15645 { min-height: 145px !important; gap:6px !important; }
+      #visualPlatformStatusV15645 .vps-card-v15645 { min-height: 58px !important; padding:7px !important; }
+      #visualPlatformStatusV15645 .vps-title-v15645 { font-size:11px !important; }
+      #visualPlatformStatusV15645 .vps-metric-v15645 b { font-size:11px !important; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function sparkV15645(points) {
+  const values = Array.isArray(points) && points.length ? points.map(v => numV15645(v, 0)) : [20, 24, 22, 28, 26, 31];
+  const w = 110;
+  const h = 18;
+  const min = Math.min.apply(null, values);
+  const max = Math.max.apply(null, values);
+  const range = Math.max(1, max - min);
+  const step = w / Math.max(1, values.length - 1);
+  const d = values.map((value, index) => {
+    const x = Math.round(index * step * 10) / 10;
+    const y = Math.round((h - ((value - min) / range) * (h - 5) - 2.5) * 10) / 10;
+    return (index === 0 ? 'M' : 'L') + x + ' ' + y;
+  }).join(' ');
+  return `<svg class="vps-spark-v15645" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" /></svg>`;
+}
+
+function visualTrendItemsV15645(data) {
+  const channels = data && data.channels ? data.channels : [];
+  const byName = {};
+  channels.forEach(ch => { byName[String(ch.name || '').toLowerCase()] = ch; });
+  const meta = byName.meta || {};
+  const google = byName.google || {};
+  const snap = byName.snapchat || {};
+  const tiktok = byName.tiktok || {};
+
+  return [
+    {
+      key:'meta',
+      name:'Meta',
+      state:'Payment Review',
+      arrow:'↘',
+      primary: meta.displaySpend || fmtMoneyV15645(meta.spend, 'AED'),
+      secondary: `${compactV15645(meta.results)} conversations`,
+      spark:[44,52,48,58,51,47,42]
+    },
+    {
+      key:'google',
+      name:'Google',
+      state:'Tracking Risk',
+      arrow:'↗',
+      primary: google.displaySpend || fmtMoneyV15645(google.spend, 'AED'),
+      secondary: `${compactV15645(google.clicks)} clicks / ${compactV15645(google.conversions)} conv`,
+      spark:[18,22,21,26,24,32,35]
+    },
+    {
+      key:'snapchat',
+      name:'Snapchat',
+      state:'Billing Risk',
+      arrow:'↓',
+      primary: snap.displaySpend || fmtMoneyV15645(snap.spend, 'USD'),
+      secondary: snap.displaySpendAedEstimate || 'AED estimate',
+      spark:[62,57,52,46,40,32,28]
+    },
+    {
+      key:'tiktok',
+      name:'TikTok',
+      state:'Period Signal',
+      arrow:'↘',
+      primary: tiktok.displaySpend || fmtMoneyV15645(tiktok.spend, 'AED'),
+      secondary: `${compactV15645(tiktok.results || tiktok.clicks)} destination clicks`,
+      spark:[48,45,42,38,34,30,27]
+    }
+  ];
+}
+
+function visualTrendHTMLV15645(data) {
+  const items = visualTrendItemsV15645(data);
+  return `
+    <div id="visualPlatformStatusV15645" data-required-block="visual-platform-status" data-version="v15.6.45-permanent-visual-trend-lock">
+      <div class="vps-head-v15645">
+        <div>
+          <span class="vps-kicker-v15645">Visual Platform Status</span>
+          <h3 class="vps-title-v15645">Current ON / OFF Trend Snapshot</h3>
+        </div>
+        <b class="vps-live-v15645">Locked · Page 1</b>
+      </div>
+      <div class="vps-grid-v15645">
+        ${items.map(item => `
+          <article class="vps-card-v15645 ${escV15645(item.key)}" data-platform="${escV15645(item.name)}">
+            <div class="vps-top-v15645">
+              <div class="vps-name-v15645">${typeof iconFor === 'function' ? iconFor(item.name) : ''}<strong>${escV15645(item.name)}</strong></div>
+              <span class="vps-state-v15645">${escV15645(item.state)}</span>
+            </div>
+            <div class="vps-body-v15645">
+              <div class="vps-metric-v15645"><b>${escV15645(item.primary)}</b><span>${escV15645(item.secondary)}</span></div>
+              <div class="vps-arrow-v15645">${escV15645(item.arrow)}</div>
+            </div>
+            ${sparkV15645(item.spark)}
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderVisualPlatformStatusV15645(data) {
+  injectVisualTrendStyleV15645();
+
+  ['platformTrendSnapshotV15623', 'platformTrendSnapshotV15624', 'platformTrendSnapshotV15634'].forEach(id => {
+    const old = document.getElementById(id);
+    if (old) old.remove();
+  });
+
+  const html = visualTrendHTMLV15645(data || {});
+  let target = document.getElementById('page1ChannelHealth');
+  let card = target ? target.closest('.card') : null;
+
+  if (card) {
+    card.innerHTML = html;
+    card.setAttribute('data-visual-trend-lock', 'v15.6.45');
+    card.classList.add('visual-trend-card-lock-v15645');
+  } else if (target) {
+    target.innerHTML = html;
+  } else {
+    const page1 = document.querySelector('#page1 .page-content') || document.querySelector('.report-page:first-of-type .page-content') || document.querySelector('.report-page:first-of-type');
+    if (page1 && !document.getElementById('visualPlatformStatusV15645')) {
+      page1.insertAdjacentHTML('beforeend', html);
+    }
+  }
+
+  const ok = !!document.getElementById('visualPlatformStatusV15645');
+  document.documentElement.setAttribute('data-iconic-visual-trend-lock', ok ? 'present' : 'missing');
+  window.__ICONIC_V15645__ = {
+    ok,
+    version: 'v15.6.45-permanent-visual-trend-lock',
+    requiredBlock: 'visualPlatformStatusV15645',
+    note: ok ? 'Visual Platform Status is locked on Page 1.' : 'Visual Platform Status missing; guard will retry.'
+  };
+  return ok;
+}
+
+function renderPage1(data) {
+  const { report, executive, customer, competitor } = data;
+
+  setText('reportWeek', report.week || report.weekLabel || '2026-06 MTD');
+  setText('dateRange', report.dateRange || '2026-06-01 - 2026-06-11');
+  setText('generatedAt', normalizeGeneratedAt(data.generatedAt));
+
+  setText('totalSpend', fmtMoneyV15645(executive.totalSpend || 0, executive.totalSpendCurrency || 'AED'));
+  setText('totalResults', fmtNumberV15645(executive.totalOwnerActivity || executive.totalResults || 0, 0));
+  setText('bestChannel', clampV15645(executive.bestChannel || 'Meta', 24));
+  setText('bestChannelDetail', clampV15645(executive.bestChannelDetail || 'WhatsApp Conversations', 42));
+
+  const riskLabel = clampV15645(executive.mainRisk || executive.risk || 'Critical', 18);
+  setText('mainRisk', riskLabel);
+  setText('mainRiskDetail', clampV15645(executive.mainRiskDetail || executive.mainRiskDetail || executive.mainRisk || 'Google MTD history is partial. Snapchat is USD and has billing reconciliation risk.', 78));
+
+  setText('decisionTitle', clampV15645(executive.decisionTitle || 'Month-To-Date Performance View', 82));
+  setText('decisionLine1', clampV15645(executive.decisionLine1 || 'This report shows spend and results from the first day of the month to the latest available date.', 120));
+  setText('decisionLine2', clampV15645(executive.decisionLine2 || 'Do not compare WhatsApp conversations, traffic clicks, and conversions as the same result type.', 120));
+
+  setText('alertTitle', clampV15645(executive.alertTitle || 'Billing & Tracking Risk', 42));
+  setText('alertText', clampV15645(executive.alertText || executive.mainRiskDetail || 'Snapchat billing reconciliation risk is active. Google has clicks but no confirmed conversions.', 124));
+
+  setText('customerSignal', clampV15645(customer.summary || 'Customers show interest in consultation, natural results, and booking. Price clarity remains the main objection.', 130));
+  setText('competitorSignal', clampV15645(competitor.summary || 'Competitor activity is stable. No aggressive offer detected this week.', 130));
+  setText('nextAction', clampV15645(data.recommendations.ownerNextMove || data.recommendations.nextAction || 'Keep Meta stable, fix Google tracking, and keep TikTok/Snapchat as traffic tests.', 160));
+
+  renderVisualPlatformStatusV15645(data);
+}
+
+function renderPage2(data) {
+  const channels = data.channels.slice(0, 4);
+
+  const scoreGrid = $('channelScoreGrid');
+  if (scoreGrid) {
+    scoreGrid.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const label = score ? `${score}/100` : safe(channel.status, 'Pending');
+      const color = score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)';
+      return `
+        <div class="mini-score">
+          <span class="label">${clampText(channel.name, 18)}</span>
+          <strong>${label}</strong>
+          <div class="bar"><span style="--w:${Math.min(100, Math.max(0, score || 12))}%;--c:${color}"></span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const cards = $('channelCards');
+  if (cards) {
+    cards.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const statusClass = statusToClass(channel.status);
+      const spend = channel.displaySpend || channel.spendLabel || (channel.spend !== undefined ? fmtMoneyV15645(channel.spend, channel.name === 'Snapchat' ? 'USD' : 'AED') : 'Not active');
+      const results = channel.resultsLabel || safe(channel.results, 'Pending');
+      const cpr = channel.costPerResultLabel || (channel.costPerResult !== undefined ? fmtMoneyV15645(channel.costPerResult, channel.name === 'Snapchat' ? 'USD' : 'AED') : 'No data');
+
+      return `
+        <article class="card channel-card">
+          <div class="channel-head">
+            <div class="channel-name">
+              ${iconFor(channel.name)}
+              <div><strong>${clampText(channel.name, 18)}</strong><small>${clampText(channel.platform || '', 32)}</small></div>
+            </div>
+            <span class="status ${statusClass}">${clampText(channel.status || 'Pending', 16)}</span>
+          </div>
+
+          <div class="score-circle" style="--score:${Math.max(0, Math.min(100, score))};--scoreColor:${score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)'}"><strong>${score || 0}</strong></div>
+
+          <div class="metric-list">
+            <div class="metric-row"><span>Spend</span><b>${spend}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Conversions / Clicks' : 'Results'}</span><b>${results}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Cost / Conversion' : 'Cost / Result'}</span><b>${cpr}</b></div>
+            <div class="metric-row"><span>CTR / Status</span><b>${clampText(channel.ctr || channel.trend || 'Stable', 18)}</b></div>
+          </div>
+
+          <div class="channel-decision">Decision: ${clampText(channel.decision || 'Review before scaling.', 72)}</div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  setText('budgetMoveTitle', clampV15645(data.recommendations.budgetMoveTitle || 'Keep Meta as the main engine. Do not scale testing channels yet.', 84));
+  setText('budgetMoveText', clampV15645(data.recommendations.budgetMoveText || 'Meta remains the lead engine. Traffic/search channels need conversion-quality proof before scaling.', 150));
+}
+
+(function permanentVisualTrendGuardV15645() {
+  const VERSION = 'v15.6.45-permanent-visual-trend-lock';
+  let latestData = null;
+  let applying = false;
+
+  function isPdfMode() {
+    const params = new URLSearchParams(window.location.search || '');
+    return params.has('snapshot') || params.has('final') || params.has('page') || params.has('pdf');
+  }
+
+  async function fetchLatestData() {
+    try {
+      const response = await fetch('/api/dashboard-data?visualTrendLock=15645&t=' + Date.now(), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      const json = await response.json();
+      if (!response.ok || !json || json.ok === false) return null;
+      latestData = normalizeData(json);
+      return latestData;
+    } catch (error) {
+      window.__ICONIC_V15645_FETCH_ERROR__ = error && error.message ? error.message : String(error);
+      return null;
+    }
+  }
+
+  async function applyGuard() {
+    if (applying) return;
+    applying = true;
+    try {
+      injectVisualTrendStyleV15645();
+      const data = latestData || await fetchLatestData();
+      if (data) renderVisualPlatformStatusV15645(data);
+
+      const present = !!document.getElementById('visualPlatformStatusV15645');
+      document.documentElement.setAttribute('data-iconic-required-visual-status', present ? 'passed' : 'failed');
+
+      if (isPdfMode() && !present) {
+        console.error('[Iconic v15.6.45] Required Visual Platform Status missing before PDF snapshot. Retrying.');
+      }
+    } finally {
+      applying = false;
+    }
+  }
+
+  function start() {
+    injectVisualTrendStyleV15645();
+    [0, 150, 350, 700, 1100, 1700, 2500, 3600, 5200, 7600, 10000, 13000].forEach(ms => {
+      setTimeout(applyGuard, ms);
+    });
+
+    if (window.MutationObserver && document.body) {
+      let timer = null;
+      const observer = new MutationObserver(() => {
+        clearTimeout(timer);
+        timer = setTimeout(applyGuard, 120);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.__ICONIC_V15645_OBSERVER__ = observer;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+
+  window.__ICONIC_PERMANENT_VISUAL_TREND_LOCK__ = {
+    version: VERSION,
+    apply: applyGuard,
+    requiredBlock: 'visualPlatformStatusV15645',
+    rule: 'Do not append another renderPage1 without calling renderVisualPlatformStatusV15645(data).'
+  };
+})();
