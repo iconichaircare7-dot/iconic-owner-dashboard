@@ -3394,3 +3394,569 @@ Scope:
 Iconic Owner Dashboard — v15.6.25 Colored DO / DO NOT Visual Cards
 Scope: no behavior change. Uses style.css to improve Page 5 DO THIS / DO NOT DO visual separation.
 */
+
+
+
+/************************************************************
+ * Iconic Owner Dashboard — v15.6.33 Frontend MTD + Currency Lock
+ * FILE: public/app.js
+ *
+ * Purpose:
+ * - Render MONTH_TO_DATE data exactly as provided by /api/dashboard-data.
+ * - Do NOT recalculate executive.totalSpend from channel.spend.
+ * - Use executive.totalSpend = AED MTD total from API.
+ * - Preserve report.dateRange / report.weekLabel from API.
+ * - Show Snapchat as USD original spend, with AED estimate only where needed.
+ * - Keep Google partial-history warning in data, but do not treat it as a code error.
+ * - Compact Platform Trend Snapshot to prevent PDF page 1 from spilling into a 6th page.
+ *
+ * No Apps Script.
+ * No server.js.
+ * No PDF delivery.
+ * No WhatsApp / Email / Team Inbox.
+ ************************************************************/
+
+function numberFromAny_V15633_(value, fallback = 0) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = Number(String(value).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function roundMoney_V15633_(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function currencyCode_V15633_(value, fallback = 'AED') {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+  if (raw.includes('/')) return raw.split('/')[0].trim().toUpperCase() || fallback;
+  return raw.toUpperCase();
+}
+
+function formatCurrency_V15633_(value, currency = 'AED') {
+  const cur = currencyCode_V15633_(currency, 'AED');
+  const amount = new Intl.NumberFormat('en-AE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(numberFromAny_V15633_(value, 0));
+
+  return `${cur} ${amount}`;
+}
+
+function formatDateForOwner_V15633_(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return text;
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const year = match[1];
+  const monthIndex = Number(match[2]) - 1;
+  const day = match[3];
+
+  return `${day} ${months[monthIndex] || match[2]} ${year}`;
+}
+
+function formatDateRangeForOwner_V15633_(value, startDate, endDate) {
+  const direct = String(value || '').trim();
+  const parts = direct.split(' - ').map(x => x.trim()).filter(Boolean);
+
+  if (parts.length === 2 && /^\d{4}-\d{2}-\d{2}$/.test(parts[0]) && /^\d{4}-\d{2}-\d{2}$/.test(parts[1])) {
+    return `${formatDateForOwner_V15633_(parts[0])} - ${formatDateForOwner_V15633_(parts[1])}`;
+  }
+
+  if (startDate && endDate) {
+    return `${formatDateForOwner_V15633_(startDate)} - ${formatDateForOwner_V15633_(endDate)}`;
+  }
+
+  return direct || 'Date range';
+}
+
+function isMonthlyMTD_V15633_(data) {
+  if (!data || typeof data !== 'object') return false;
+
+  return data.reportMode === 'MONTH_TO_DATE' ||
+    (data.report && data.report.reportMode === 'MONTH_TO_DATE') ||
+    (data.health && data.health.monthlyMTDSynced === true) ||
+    !!data.monthlyMTDSync;
+}
+
+function normalizeMainRisk(value) {
+  const raw = String(safe(value, 'Low')).trim();
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('critical')) return { label: 'Critical', detail: raw };
+  if (lower.includes('high')) return { label: 'High', detail: raw };
+  if (lower.includes('medium')) return { label: 'Medium', detail: raw };
+  if (lower.includes('low')) return { label: 'Low', detail: raw };
+
+  if (lower.includes('no major') || lower.includes('no critical') || lower === 'stable') {
+    return { label: 'Low', detail: raw };
+  }
+
+  return { label: raw.length > 12 ? 'Low' : raw, detail: raw.length > 12 ? raw : 'Stable' };
+}
+
+function mapDirectKeyedChannel_V1506(name, row) {
+  const fallback = emptyChannelTemplate(name);
+
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    return fallback;
+  }
+
+  const currency = currencyCode_V15633_(row.currency || row.spendCurrency || row.currencyCode, name === 'Snapchat' ? 'USD' : 'AED');
+  const spend = numberFromAny_V15633_(pick(row, ['spend', 'spendOriginal', 'totalSpend', 'amountSpent'], 0));
+  const spendAed = numberFromAny_V15633_(pick(row, ['spendAed'], currency === 'AED' ? spend : 0), currency === 'AED' ? spend : 0);
+
+  let results = numberFromAny_V15633_(pick(row, ['results', 'totalResults'], 0));
+  let clicks = numberFromAny_V15633_(pick(row, ['clicks', 'totalClicks'], 0));
+  let conversions = numberFromAny_V15633_(pick(row, ['conversions', 'totalConversions'], 0));
+
+  let resultType = textValue_V1506(pick(row, [
+    'resultType',
+    'result_type',
+    'metricType',
+    'objective',
+    'conversionType',
+    'platform',
+    'detail',
+    'subtitle'
+  ], ''), '');
+
+  let status = prettyStatus_V1506(row.status || row.health || row.state, fallback.status);
+  let decision = decisionForChannel_V1506(name, row);
+
+  let costPerResult = numberFromAny_V15633_(pick(row, [
+    'costPerResult',
+    'cost_per_result',
+    'cpr',
+    'costPerConversion',
+    'cost_per_conversion'
+  ], 0));
+
+  let resultsLabel;
+  let costPerResultLabel;
+
+  if (name === 'Google') {
+    const clickOnly =
+      conversions <= 0 &&
+      (
+        clicks > 0 ||
+        String(resultType || '').toLowerCase().includes('click') ||
+        String(status || '').toLowerCase().includes('attention') ||
+        String(decision || '').toLowerCase().includes('tracking')
+      );
+
+    if (clickOnly) {
+      if (clicks <= 0) clicks = results;
+      conversions = 0;
+      results = 0;
+      resultType = 'Search Clicks / Traffic';
+      resultsLabel = `Conv 0 | Clicks ${number.format(clicks)}`;
+      costPerResult = 0;
+      costPerResultLabel = 'N/A';
+      status = 'Needs Attention';
+      decision = row.decision || 'Clicks exist, but conversions are 0. Improve tracking before scaling.';
+    }
+  }
+
+  if (name === 'Snapchat') {
+    resultType = resultType || 'Traffic Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'TikTok') {
+    resultType = resultType || 'Destination Clicks';
+    if (results <= 0 && clicks > 0) results = clicks;
+  }
+
+  if (name === 'Meta') {
+    resultType = resultType || 'WhatsApp Conversations';
+  }
+
+  if ((!costPerResult || costPerResult <= 0) && spend > 0 && results > 0) {
+    costPerResult = spend / results;
+  }
+
+  const normalizedRow = {
+    ...row,
+    spend,
+    results,
+    clicks,
+    conversions,
+    costPerResult
+  };
+
+  return {
+    ...fallback,
+    ...row,
+    name,
+    channel: name,
+    platform: resultType || fallback.platform,
+    status,
+    spend,
+    spendAed,
+    spendOriginal: numberFromAny_V15633_(row.spendOriginal, spend),
+    currency,
+    displaySpend: row.displaySpend || formatCurrency_V15633_(spend, currency),
+    displaySpendAedEstimate: row.displaySpendAedEstimate || (currency !== 'AED' && spendAed > 0 ? `${formatCurrency_V15633_(spendAed, 'AED')} est.` : ''),
+    results,
+    clicks,
+    conversions,
+    spendLabel: undefined,
+    resultsLabel,
+    costPerResult: costPerResult > 0 ? costPerResult : undefined,
+    costPerResultLabel: costPerResult > 0 ? undefined : (costPerResultLabel || fallback.costPerResultLabel),
+    ctr: formatCtr_V1506(pick(row, ['ctr', 'clickThroughRate', 'trend', 'statusDetail'], fallback.ctr), fallback.ctr),
+    score: Number(pick(row, ['score', 'healthScore'], 0)) || scoreForChannel_V1506(name, normalizedRow) || fallback.score,
+    decision,
+    warning: row.warning || ''
+  };
+}
+
+function normalizeData(raw) {
+  const data = raw && raw.data && typeof raw.data === 'object' ? raw.data : (raw || {});
+  const report = data.report || data.reportContext || {};
+  const executive = data.executive || data.executiveSnapshot || {};
+  const customerRaw = data.customerIntelligence || {};
+  const competitorRaw = data.competitorIntelligence || {};
+  const recommendations = data.recommendations || data.nextSteps || data.finalRecommendations || {};
+
+  const keyedChannels =
+    data.channels && typeof data.channels === 'object' && !Array.isArray(data.channels)
+      ? data.channels
+      : {};
+
+  const channels = hasDirectKeyedChannels_V1506(keyedChannels)
+    ? buildChannelsFromKeyedObject_V1506(keyedChannels)
+    : mergeChannelRows(data.channelsSummary || data.channelSummary || []);
+
+  const generatedAt = data.generatedAt || report.generatedAt || new Date().toISOString();
+  const isMTD = isMonthlyMTD_V15633_(data);
+
+  const dateRangeRaw =
+    (data.monthlyMTDSync && data.monthlyMTDSync.dateRange) ||
+    report.dateRange ||
+    report.dataRange ||
+    '';
+
+  const startDate =
+    report.startDate ||
+    (data.monthlyMTDSync && data.monthlyMTDSync.startDate) ||
+    '';
+
+  const endDate =
+    report.endDate ||
+    (data.monthlyMTDSync && data.monthlyMTDSync.endDate) ||
+    '';
+
+  const monthLabel =
+    report.monthLabel ||
+    (startDate ? String(startDate).slice(0, 7) : '') ||
+    '';
+
+  const reportWeek =
+    isMTD
+      ? (report.week || report.weekLabel || (monthLabel ? `${monthLabel} MTD` : 'MTD'))
+      : (report.week || report.weekLabel || 'Week');
+
+  const patchedReport = {
+    ...report,
+    week: reportWeek,
+    weekLabel: reportWeek,
+    dateRange: isMTD
+      ? formatDateRangeForOwner_V15633_(dateRangeRaw, startDate, endDate)
+      : (report.dateRange || 'Date range'),
+    dataRange: isMTD
+      ? formatDateRangeForOwner_V15633_(dateRangeRaw, startDate, endDate)
+      : (report.dataRange || report.dateRange || 'Date range'),
+    startDate: startDate || report.startDate,
+    endDate: endDate || report.endDate,
+    monthLabel,
+    reportMode: isMTD ? 'MONTH_TO_DATE' : (report.reportMode || data.reportMode || ''),
+    resetRule: report.resetRule || data.resetRule || 'New month starts from zero automatically.'
+  };
+
+  const google = channels.find(channel => channel.name === 'Google');
+  const googleHasClickNoConversion =
+    google && numberFromAny_V15633_(google.clicks, 0) > 0 && numberFromAny_V15633_(google.results, 0) <= 0;
+
+  const apiTotalSpend =
+    executive.totalSpend !== undefined && executive.totalSpend !== null
+      ? numberFromAny_V15633_(executive.totalSpend, 0)
+      : channels.reduce((sum, channel) => sum + numberFromAny_V15633_(channel.spend, 0), 0);
+
+  const apiTotalResults =
+    executive.totalResults !== undefined && executive.totalResults !== null
+      ? numberFromAny_V15633_(executive.totalResults, 0)
+      : channels.reduce((sum, channel) => sum + numberFromAny_V15633_(channel.results, 0), 0);
+
+  const patchedExecutive = {
+    ...executive,
+    totalSpend: roundMoney_V15633_(apiTotalSpend),
+    totalResults: Math.round(apiTotalResults),
+    totalSpendCurrency: executive.totalSpendCurrency || 'AED',
+    totalSpendLabel: executive.totalSpendLabel || (isMTD ? 'Total MTD Spend AED' : 'Total Spend'),
+    totalResultsLabel: executive.totalResultsLabel || (isMTD ? 'MTD Owner Activity' : 'Total Results'),
+    mainRisk: executive.mainRisk || executive.risk || (googleHasClickNoConversion ? 'Medium' : 'Low'),
+    risk: executive.risk || executive.mainRisk || (googleHasClickNoConversion ? 'Medium' : 'Low'),
+    bestChannel: executive.bestChannel || 'Meta',
+    bestChannelDetail: executive.bestChannelDetail || 'WhatsApp Conversations'
+  };
+
+  if (isMTD) {
+    patchedExecutive.decisionTitle = executive.decisionTitle || 'Month-To-Date Performance View';
+    patchedExecutive.decisionLine1 = executive.decisionLine1 || 'This report shows spend and results from the first day of the month to the latest available date.';
+    patchedExecutive.decisionLine2 = executive.decisionLine2 || 'Do not compare WhatsApp conversations, traffic clicks, and conversions as the same result type.';
+  } else if (googleHasClickNoConversion) {
+    patchedExecutive.mainRisk = 'Medium';
+    patchedExecutive.risk = 'Medium';
+    patchedExecutive.mainRiskDetail = executive.mainRiskDetail || 'Google tracking needs review.';
+    patchedExecutive.alertTitle = executive.alertTitle || 'Tracking Needs Review';
+    patchedExecutive.alertText = executive.alertText || 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.';
+    patchedExecutive.decisionTitle = executive.decisionTitle || 'Keep Meta as the main engine.';
+    patchedExecutive.decisionLine1 = executive.decisionLine1 || 'Google clicks are useful, but they are not confirmed conversions yet.';
+    patchedExecutive.decisionLine2 = executive.decisionLine2 || 'Do not compare Google traffic clicks with WhatsApp conversations.';
+  }
+
+  window.__ICONIC_DEBUG__ = {
+    version: 'v15.6.33-frontend-monthly-mtd-currency-lock',
+    rawChannels: data.channels || null,
+    normalizedChannels: channels,
+    report: patchedReport,
+    reportMode: isMTD ? 'MONTH_TO_DATE' : '',
+    totalSpendFromApi: apiTotalSpend,
+    googleWarning: google && google.warning ? google.warning : ''
+  };
+
+  return {
+    report: patchedReport,
+    executive: patchedExecutive,
+    channels,
+    customer: normalizeCustomer(customerRaw),
+    competitor: {
+      ...competitorRaw,
+      competitors: sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
+    },
+    recommendations: {
+      ...recommendations,
+      nextReportDate: isMTD ? (recommendations.nextReportDate || 'MTD Review<br>Next Monday 10:00 AM') : nextReportText_V1529_(patchedReport)
+    },
+    campaignActivityAlert: data.campaignActivityAlert || (data.paidChannelActivity && data.paidChannelActivity.alert) || null,
+    paidChannelActivity: data.paidChannelActivity || null,
+    renderCampaignActivitySyncVersion: data.renderCampaignActivitySyncVersion || (data.executive && data.executive.renderCampaignActivitySyncVersion) || '',
+    currencySummary: data.currencySummary || null,
+    monthlyMTDSync: data.monthlyMTDSync || null,
+    __raw: data,
+    generatedAt
+  };
+}
+
+function renderPage1(data) {
+  const { report, executive, customer, competitor, channels } = data;
+
+  setText('reportWeek', report.week || report.weekLabel || 'Week');
+  setText('dateRange', report.dateRange || 'Date range');
+  setText('generatedAt', normalizeGeneratedAt(data.generatedAt));
+
+  setText('totalSpend', formatCurrency_V15633_(executive.totalSpend || 0, executive.totalSpendCurrency || 'AED'));
+  setText('totalResults', number.format(Number(executive.totalResults || 0)));
+  setText('bestChannel', clampText(executive.bestChannel || 'Meta', 24));
+  setText('bestChannelDetail', clampText(executive.bestChannelDetail || 'Strong performance', 42));
+
+  const risk = normalizeMainRisk(executive.mainRisk || executive.risk || 'Low');
+  setText('mainRisk', risk.label);
+  setText('mainRiskDetail', clampText(executive.mainRiskDetail || risk.detail, 78));
+
+  setText('decisionTitle', clampText(executive.decisionTitle || executive.title || 'Month-To-Date Performance View', 82));
+  setText('decisionLine1', clampText(executive.decisionLine1 || 'This report shows spend and results from the first day of the month to the latest available date.', 120));
+  setText('decisionLine2', clampText(executive.decisionLine2 || 'Do not compare WhatsApp conversations, traffic clicks, and conversions as the same result type.', 120));
+
+  const riskLower = String(risk.label || '').toLowerCase();
+  const isCriticalRisk = riskLower.includes('critical');
+  const isHighRisk = riskLower.includes('high') || isCriticalRisk;
+  const isMediumRisk = riskLower.includes('medium');
+
+  setText(
+    'alertTitle',
+    clampText(
+      isCriticalRisk
+        ? (executive.alertTitle || 'Critical Billing Risk')
+        : isHighRisk
+          ? (executive.alertTitle || 'Tracking Risk Detected')
+          : isMediumRisk
+            ? (executive.alertTitle || 'Tracking Needs Review')
+            : (executive.alertTitle || 'No Critical Risk Detected'),
+      42
+    )
+  );
+
+  setText(
+    'alertText',
+    clampText(
+      isHighRisk || isMediumRisk
+        ? (executive.alertText || executive.mainRiskDetail || 'Review before scaling.')
+        : (executive.alertText || 'Performance is stable. No urgent action required.'),
+      140
+    )
+  );
+
+  const alertCard = $('alertCard');
+  if (alertCard) {
+    alertCard.classList.toggle('risk-alert', isHighRisk);
+    alertCard.classList.toggle('medium-alert', isMediumRisk && !isHighRisk);
+  }
+
+  if (typeof applyCampaignActivityToExecutiveAlertV15612 === 'function') {
+    applyCampaignActivityToExecutiveAlertV15612(data, executive, risk);
+  }
+
+  if (typeof renderCampaignActivityAlertV15612 === 'function') {
+    renderCampaignActivityAlertV15612(data);
+  }
+
+  setText('customerSignal', clampText(customer.summary || 'Most customer questions this week are about price, consultation, and booking availability.', 130));
+  setText('competitorSignal', clampText(competitor.summary || 'Competitor activity is stable. No aggressive offer detected this week.', 130));
+  setText('nextAction', clampText(data.recommendations.ownerNextMove || data.recommendations.nextAction || 'Keep Meta stable, fix Google tracking, and keep traffic tests controlled.', 160));
+
+  const health = $('page1ChannelHealth');
+  if (health) {
+    health.innerHTML = channels.slice(0, 4).map(channel => `
+      <div class="health-row">
+        <div class="health-name">${iconFor(channel.name)}<strong>${clampText(channel.name, 18)}</strong></div>
+        <small>${clampText(channel.status || 'Pending', 18)}</small>
+      </div>
+    `).join('');
+  }
+}
+
+function spendDisplayForChannel_V15633_(channel) {
+  if (!channel || typeof channel !== 'object') return 'Not active';
+  if (channel.displaySpend) return channel.displaySpend;
+  const currency = channel.currency || (channel.name === 'Snapchat' ? 'USD' : 'AED');
+  return formatCurrency_V15633_(channel.spend || 0, currency);
+}
+
+function cprDisplayForChannel_V15633_(channel) {
+  if (!channel || typeof channel !== 'object') return 'No data';
+  if (channel.costPerResultLabel) return channel.costPerResultLabel;
+  if (channel.costPerResult === undefined || channel.costPerResult === null) return 'No data';
+  const currency = channel.currency || (channel.name === 'Snapchat' ? 'USD' : 'AED');
+  return formatCurrency_V15633_(channel.costPerResult, currency);
+}
+
+function renderPage2(data) {
+  const channels = data.channels.slice(0, 4);
+
+  const scoreGrid = $('channelScoreGrid');
+  if (scoreGrid) {
+    scoreGrid.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const label = score ? `${score}/100` : safe(channel.status, 'Pending');
+      const color = score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)';
+      return `
+        <div class="mini-score">
+          <span class="label">${clampText(channel.name, 18)}</span>
+          <strong>${label}</strong>
+          <div class="bar"><span style="--w:${Math.min(100, Math.max(0, score || 12))}%;--c:${color}"></span></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const cards = $('channelCards');
+  if (cards) {
+    cards.innerHTML = channels.map(channel => {
+      const score = Number(channel.score ?? 0);
+      const statusClass = statusToClass(channel.status);
+      const spend = channel.spendLabel || spendDisplayForChannel_V15633_(channel);
+      const results = channel.resultsLabel || safe(channel.results, 'Pending');
+      const cpr = cprDisplayForChannel_V15633_(channel);
+
+      return `
+        <article class="card channel-card">
+          <div class="channel-head">
+            <div class="channel-name">
+              ${iconFor(channel.name)}
+              <div><strong>${clampText(channel.name, 18)}</strong><small>${clampText(channel.platform || '', 32)}</small></div>
+            </div>
+            <span class="status ${statusClass}">${clampText(channel.status || 'Pending', 16)}</span>
+          </div>
+
+          <div class="score-circle" style="--score:${Math.max(0, Math.min(100, score))};--scoreColor:${score >= 80 ? 'var(--success)' : score >= 50 ? 'var(--info)' : score > 10 ? 'var(--gold)' : 'var(--inactive)'}"><strong>${score || 0}</strong></div>
+
+          <div class="metric-list">
+            <div class="metric-row"><span>Spend</span><b>${spend}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Conversions / Clicks' : 'Results'}</span><b>${results}</b></div>
+            <div class="metric-row"><span>${channel.name === 'Google' ? 'Cost / Conversion' : 'Cost / Result'}</span><b>${cpr}</b></div>
+            <div class="metric-row"><span>CTR / Status</span><b>${clampText(channel.ctr || channel.trend || 'Stable', 18)}</b></div>
+          </div>
+
+          <div class="channel-decision">Decision: ${clampText(channel.decision || 'Review before scaling.', 72)}</div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  setText('budgetMoveTitle', clampText(data.recommendations.budgetMoveTitle || 'Keep Meta as the main engine. Do not scale testing channels yet.', 84));
+  setText('budgetMoveText', clampText(data.recommendations.budgetMoveText || 'Meta remains the lead engine. Traffic/search channels need conversion-quality proof before scaling.', 150));
+}
+
+(function iconicMTDPlatformTrendCompactV15633() {
+  const VERSION = 'v15.6.33-frontend-monthly-mtd-currency-lock';
+
+  function injectStyle() {
+    if (document.getElementById('mtdCompactStyleV15633')) return;
+
+    const style = document.createElement('style');
+    style.id = 'mtdCompactStyleV15633';
+    style.textContent = `
+      #platformTrendSnapshotV15624 {
+        margin-top: 10px !important;
+        padding: 10px 12px !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-trend-head-v15624 {
+        margin-bottom: 8px !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-trend-grid-v15624 {
+        gap: 8px !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-trend-card-v15624 {
+        min-height: auto !important;
+        padding: 8px 10px !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-mini-trend-v15624,
+      #platformTrendSnapshotV15624 .platform-trend-card-v15624 h4,
+      #platformTrendSnapshotV15624 .platform-trend-card-v15624 p {
+        display: none !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-trend-metrics-v15624 {
+        margin-top: 4px !important;
+      }
+
+      #platformTrendSnapshotV15624 .platform-trend-arrow-v15624 {
+        transform: scale(.82) !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function mark() {
+    injectStyle();
+    const board = document.getElementById('platformTrendSnapshotV15624');
+    if (board) board.setAttribute('data-mtd-compact', VERSION);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mark, { once: true });
+  } else {
+    mark();
+  }
+
+  [900, 1900, 3300, 4300].forEach(ms => setTimeout(mark, ms));
+})();
+
