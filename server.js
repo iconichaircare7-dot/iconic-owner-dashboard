@@ -1,4 +1,5 @@
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const chromiumModule = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
@@ -17,6 +18,11 @@ const PDF_HEIGHT = 1800;
 const REPORT_WIDTH = 1220;
 const PAGE_SELECTOR = '.report-page';
 const TOTAL_REPORT_PAGES = 5;
+const PDF_DEVICE_SCALE_FACTOR = Number(process.env.PDF_DEVICE_SCALE_FACTOR || 2);
+const PDF_CACHE_TTL_MS = Number(process.env.PDF_CACHE_TTL_MS || 10 * 60 * 1000);
+const PDF_CACHE_MAX_ITEMS = Number(process.env.PDF_CACHE_MAX_ITEMS || 3);
+const PDF_BUILD_VERSION = 'v15.6.51-pdf-speed-quality-lock';
+const finalPdfCache = new Map();
 
 app.set('trust proxy', true);
 
@@ -735,7 +741,9 @@ function chromiumArgs() {
     '--disable-dev-shm-usage',
     '--disable-gpu',
     '--no-first-run',
-    '--no-zygote'
+    '--no-zygote',
+    '--force-color-profile=srgb',
+    '--font-render-hinting=medium'
   ];
 }
 
@@ -752,7 +760,7 @@ async function launchPdfBrowser() {
     defaultViewport: {
       width: PDF_WIDTH,
       height: PDF_HEIGHT,
-      deviceScaleFactor: 1
+      deviceScaleFactor: PDF_DEVICE_SCALE_FACTOR
     },
     executablePath,
     headless: chromiumHeadlessValue()
@@ -770,7 +778,7 @@ async function prepareReportPage(page, reportUrl) {
   await page.setViewport({
     width: PDF_WIDTH,
     height: PDF_HEIGHT,
-    deviceScaleFactor: 1
+    deviceScaleFactor: PDF_DEVICE_SCALE_FACTOR
   });
 
   /*
@@ -963,6 +971,39 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
+
+      .report-page,
+      .report-page * {
+        -webkit-font-smoothing: antialiased !important;
+        text-rendering: geometricPrecision !important;
+      }
+
+      .report-page h1,
+      .report-page h2,
+      .report-page h3,
+      .report-page strong,
+      .report-page b,
+      .report-page small,
+      .report-page .metric-row,
+      .report-page .kpi-value,
+      .report-page .truth-card,
+      .report-page .visual-platform-status,
+      .report-page [data-visual-platform-status-lock="true"] {
+        text-shadow: none !important;
+      }
+
+      .report-page svg,
+      .report-page path,
+      .report-page polyline,
+      .report-page line {
+        shape-rendering: geometricPrecision !important;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .report-page canvas,
+      .report-page img {
+        image-rendering: auto !important;
+      }
     `
   });
 
@@ -1005,6 +1046,122 @@ async function mergePdfBuffers(pdfBuffers) {
   }
 
   return Buffer.from(await mergedDoc.save());
+}
+
+
+/************************************************************
+ * v15.6.51 PDF Speed + Quality Lock
+ *
+ * Scope:
+ * - Adds final PDF cache for repeated owner/PDF preview requests.
+ * - Adds timing diagnostics in response headers and console.
+ * - Raises browser device scale factor for rasterized visual details.
+ * - Adds print anti-blur CSS while keeping the 5-page final PDF flow.
+ *
+ * No Apps Script.
+ * No Email.
+ * No WhatsApp.
+ * No Team Inbox.
+ ************************************************************/
+
+function hashTextV15651_(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex').slice(0, 24);
+}
+
+function compactForPdfCacheKeyV15651_(json) {
+  const root = json && json.data && typeof json.data === 'object' ? json.data : (json || {});
+  return {
+    build: PDF_BUILD_VERSION,
+    reportMode: root.reportMode || '',
+    generatedAt: root.generatedAt || '',
+    report: root.report || {},
+    executive: root.executive || {},
+    channels: root.channels || {},
+    billingRisk: root.billingRisk || {},
+    billingPlatformStatuses: root.billingPlatformStatuses || [],
+    currencySummary: root.currencySummary || {},
+    monthlyMTDSync: root.monthlyMTDSync || {}
+  };
+}
+
+async function getFinalPdfCacheKeyV15651_(req) {
+  const baseUrl = getBaseUrl(req);
+  const url = `${baseUrl}/api/dashboard-data?pdfCacheKey=1`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: authHeaderValue(),
+      'Cache-Control': 'no-cache'
+    }
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`PDF cache key dashboard-data failed: HTTP ${response.status} ${text.slice(0, 240)}`);
+  }
+
+  const json = JSON.parse(text);
+  const compact = compactForPdfCacheKeyV15651_(json);
+  return {
+    key: `final:${hashTextV15651_(JSON.stringify(compact))}`,
+    sourceVersion: json.version || (json.data && json.data.version) || ''
+  };
+}
+
+function getCachedFinalPdfV15651_(key) {
+  if (!key || !finalPdfCache.has(key)) return null;
+
+  const item = finalPdfCache.get(key);
+  const ageMs = Date.now() - Number(item.createdAt || 0);
+
+  if (ageMs > PDF_CACHE_TTL_MS) {
+    finalPdfCache.delete(key);
+    return null;
+  }
+
+  return {
+    ...item,
+    ageMs
+  };
+}
+
+function storeCachedFinalPdfV15651_(key, buffer, meta) {
+  if (!key || !buffer) return;
+
+  while (finalPdfCache.size >= PDF_CACHE_MAX_ITEMS) {
+    const firstKey = finalPdfCache.keys().next().value;
+    if (!firstKey) break;
+    finalPdfCache.delete(firstKey);
+  }
+
+  finalPdfCache.set(key, {
+    buffer,
+    createdAt: Date.now(),
+    meta: meta || {}
+  });
+}
+
+function noCacheRequestedV15651_(req) {
+  const q = String(req.query.refresh || req.query.nocache || '').toLowerCase();
+  const header = String(req.headers['cache-control'] || '').toLowerCase();
+  return q === '1' || q === 'true' || header.includes('no-cache');
+}
+
+function timingHeaderV15651_(timing) {
+  return Object.entries(timing || {})
+    .filter(([, value]) => value !== undefined && value !== null)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('; ');
+}
+
+function logPdfTimingV15651_(timing) {
+  try {
+    console.log('V15651_PDF_TIMING=' + JSON.stringify(timing));
+  } catch (_) {
+    console.log('V15651_PDF_TIMING_LOG_FAILED');
+  }
 }
 
 
@@ -1147,7 +1304,7 @@ function applyMonthlyMTDRenderHardSyncV15632(payload) {
 
   root.monthlyMTDSync = Object.assign({}, existingSync, {
     ok: true,
-    version: 'v15.6.32-render-monthly-mtd-hard-sync',
+    version: PDF_BUILD_VERSION,
     reportMode: 'MONTH_TO_DATE',
     dateRange: dateRange,
     totalAedSpend: totalAedSpend,
@@ -1389,43 +1546,121 @@ Implementation:
 */
 app.get('/api/report-final-pdf', async (req, res) => {
   let browser;
+  const timing = {
+    version: PDF_BUILD_VERSION,
+    cache: 'MISS'
+  };
+  const totalStart = Date.now();
 
   try {
+    const cacheKeyStart = Date.now();
+    let cacheKey = '';
+    let sourceVersion = '';
+
+    try {
+      const cacheInfo = await getFinalPdfCacheKeyV15651_(req);
+      cacheKey = cacheInfo.key;
+      sourceVersion = cacheInfo.sourceVersion;
+      timing.cacheKeyMs = Date.now() - cacheKeyStart;
+      timing.sourceVersion = sourceVersion || 'unknown';
+    } catch (cacheError) {
+      timing.cacheKeyMs = Date.now() - cacheKeyStart;
+      timing.cacheKeyError = String(cacheError.message || cacheError).slice(0, 140);
+    }
+
+    if (cacheKey && !noCacheRequestedV15651_(req)) {
+      const cached = getCachedFinalPdfV15651_(cacheKey);
+
+      if (cached && cached.buffer) {
+        timing.cache = 'HIT';
+        timing.cacheAgeMs = cached.ageMs;
+        timing.totalMs = Date.now() - totalStart;
+        logPdfTimingV15651_(timing);
+
+        res.status(200);
+        res.set({
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_12_FINAL.pdf"',
+          'Content-Length': cached.buffer.length,
+          'Cache-Control': 'private, max-age=600',
+          'X-Iconic-Pages': String(TOTAL_REPORT_PAGES),
+          'X-Iconic-Page-Heights': cached.meta && cached.meta.heights ? cached.meta.heights.join(',') : '',
+          'X-Iconic-Pdf-Cache': 'HIT',
+          'X-Iconic-Pdf-Cache-Age-Ms': String(cached.ageMs),
+          'X-Iconic-Pdf-Build': PDF_BUILD_VERSION,
+          'X-Iconic-Pdf-Timing': timingHeaderV15651_(timing)
+        });
+
+        return res.end(cached.buffer);
+      }
+    }
+
     const baseUrl = getBaseUrl(req);
     const reportUrl = `${baseUrl}/?snapshot=pdf&final=1`;
 
+    const launchStart = Date.now();
     browser = await launchPdfBrowser();
+    timing.launchMs = Date.now() - launchStart;
+
     const page = await browser.newPage();
 
+    const prepareStart = Date.now();
     await prepareReportPage(page, reportUrl);
+    timing.prepareMs = Date.now() - prepareStart;
 
     const pdfBuffers = [];
     const heights = [];
+    const pageMs = [];
 
     for (let pageNumber = 1; pageNumber <= TOTAL_REPORT_PAGES; pageNumber += 1) {
+      const pageStart = Date.now();
       const result = await renderSinglePagePdfBuffer(page, pageNumber);
       pdfBuffers.push(result.pdfBuffer);
       heights.push(result.pageHeight);
+      pageMs.push(Date.now() - pageStart);
     }
 
+    timing.pageMs = pageMs.join(',');
+
+    const mergeStart = Date.now();
     const finalPdfBuffer = await mergePdfBuffers(pdfBuffers);
+    timing.mergeMs = Date.now() - mergeStart;
+    timing.totalMs = Date.now() - totalStart;
+
+    if (cacheKey) {
+      storeCachedFinalPdfV15651_(cacheKey, finalPdfBuffer, {
+        heights,
+        sourceVersion,
+        timing
+      });
+    }
+
+    logPdfTimingV15651_(timing);
 
     res.status(200);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'attachment; filename="Iconic_AI_CMO_Owner_Report_v15_1_12_FINAL.pdf"',
       'Content-Length': finalPdfBuffer.length,
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'private, max-age=600',
       'X-Iconic-Pages': String(TOTAL_REPORT_PAGES),
-      'X-Iconic-Page-Heights': heights.join(',')
+      'X-Iconic-Page-Heights': heights.join(','),
+      'X-Iconic-Pdf-Cache': 'MISS',
+      'X-Iconic-Pdf-Build': PDF_BUILD_VERSION,
+      'X-Iconic-Pdf-Device-Scale-Factor': String(PDF_DEVICE_SCALE_FACTOR),
+      'X-Iconic-Pdf-Timing': timingHeaderV15651_(timing)
     });
 
     return res.end(finalPdfBuffer);
   } catch (error) {
+    timing.error = String(error.message || error).slice(0, 220);
+    timing.totalMs = Date.now() - totalStart;
+    logPdfTimingV15651_(timing);
+
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
-      version: 'v15.6.21-pdf-dynamic-page-height-fix'
+      version: PDF_BUILD_VERSION
     });
   } finally {
     if (browser) {
