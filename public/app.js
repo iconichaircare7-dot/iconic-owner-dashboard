@@ -4611,3 +4611,193 @@ Scope:
     startV15635();
   }
 })();
+
+/*
+Iconic Owner Dashboard — v15.6.36 MTD Copy + Page 1 Compact Lock
+Scope:
+- Fixes v15.6.35 copy polish timing by applying replacements immediately and via MutationObserver.
+- Keeps Visual Platform Status / Trend Snapshot.
+- Compresses Page 1 visual/billing blocks in PDF snapshot mode to prevent Page 1 splitting into an extra PDF page.
+- Does not touch Apps Script, server.js, API values, WhatsApp, Email, or delivery.
+*/
+(function () {
+  const VERSION = 'v15.6.36-mtd-copy-page1-compact-lock';
+
+  const REPLACEMENTS = [
+    ['All active channels this week', 'All channels month-to-date'],
+    ['Primary results from active channels', 'MTD owner activity'],
+    ['FINAL WEEKLY DECISION', 'FINAL MTD DECISION'],
+    ['Final Weekly Decision', 'Final MTD Decision'],
+    ['final weekly decision', 'final MTD decision'],
+    ['Next weekly review', 'Next MTD review'],
+    ['Next Weekly Review', 'Next MTD Review']
+  ];
+
+  function isSnapshotModeV15636() {
+    const params = new URLSearchParams(window.location.search || '');
+    return params.has('snapshot') || params.has('final') || params.has('page');
+  }
+
+  function replaceTextValueV15636(value) {
+    let output = String(value || '');
+    REPLACEMENTS.forEach(([from, to]) => {
+      output = output.split(from).join(to);
+    });
+    return output;
+  }
+
+  function shouldIgnoreNodeV15636(node) {
+    let current = node && node.parentNode;
+    while (current && current.nodeType === 1) {
+      const tag = String(current.tagName || '').toLowerCase();
+      if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'svg') return true;
+      current = current.parentNode;
+    }
+    return false;
+  }
+
+  function applyCopyLockV15636(root) {
+    const start = root || document.body;
+    if (!start) return 0;
+
+    let changed = 0;
+    const walker = document.createTreeWalker(start, NodeFilter.SHOW_TEXT, null);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (!shouldIgnoreNodeV15636(node)) {
+        const before = node.nodeValue || '';
+        const after = replaceTextValueV15636(before);
+        if (after !== before) {
+          node.nodeValue = after;
+          changed += 1;
+        }
+      }
+      node = walker.nextNode();
+    }
+
+    return changed;
+  }
+
+  function injectCompactCssV15636() {
+    if (document.getElementById('iconic-v15636-compact-style')) return;
+
+    const style = document.createElement('style');
+    style.id = 'iconic-v15636-compact-style';
+    style.textContent = `
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 {
+        margin-top: 10px !important;
+        margin-bottom: 10px !important;
+        padding: 12px 14px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 .billing-risk-main-v1552 {
+        margin-bottom: 6px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 .billing-risk-highlight-v1552 {
+        padding: 8px 10px !important;
+        min-height: 0 !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 .billing-risk-platforms-v1552 {
+        gap: 8px !important;
+        margin-top: 8px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 .billing-risk-platform-row-v1552 {
+        min-height: 34px !important;
+        padding: 6px 8px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #billingRiskCardV1552 .billing-risk-owner-action-v1552 {
+        margin-top: 8px !important;
+        padding-top: 6px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 {
+        margin-top: 10px !important;
+        padding: 10px 12px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-trend-head-v15624 {
+        margin-bottom: 8px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-trend-grid-v15624 {
+        gap: 8px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-trend-card-v15624 {
+        padding: 8px !important;
+        min-height: 74px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-trend-card-v15624 h4,
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-trend-card-v15624 p {
+        display: none !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] #platformTrendSnapshotV15624 .platform-mini-trend-v15624 {
+        height: 18px !important;
+        max-height: 18px !important;
+      }
+
+      html[data-iconic-pdf-compact="v15.6.36-mtd-copy-page1-compact-lock"] .report-page:first-of-type {
+        overflow: visible !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function applyV15636() {
+    if (!document.body) return false;
+
+    injectCompactCssV15636();
+
+    if (isSnapshotModeV15636()) {
+      document.documentElement.setAttribute('data-iconic-pdf-compact', VERSION);
+    }
+
+    const changed = applyCopyLockV15636(document.body);
+
+    window.__ICONIC_V15636__ = {
+      ok: true,
+      version: VERSION,
+      changedTextNodes: changed,
+      snapshotMode: isSnapshotModeV15636(),
+      note: 'MTD copy lock and compact Page 1 PDF lock applied.'
+    };
+
+    if (window.__ICONIC_DEBUG__ && typeof window.__ICONIC_DEBUG__ === 'object') {
+      window.__ICONIC_DEBUG__.frontendV15636 = window.__ICONIC_V15636__;
+    }
+
+    document.documentElement.setAttribute('data-iconic-v15636', VERSION);
+    return true;
+  }
+
+  function startV15636() {
+    applyV15636();
+
+    const runTimes = [0, 50, 120, 250, 500, 900, 1300, 1900, 2800, 4200, 5600, 7600, 10000];
+    runTimes.forEach(ms => setTimeout(applyV15636, ms));
+
+    if (window.MutationObserver && document.body) {
+      const observer = new MutationObserver(() => applyV15636());
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+      setTimeout(() => observer.disconnect(), 15000);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startV15636, { once: true });
+  } else {
+    startV15636();
+  }
+})();
