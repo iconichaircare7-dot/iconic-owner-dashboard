@@ -8076,3 +8076,186 @@ Why:
     start();
   }
 })();
+/*
+Iconic Owner Dashboard — v15.6.56 Brand Accent + Logo Polish
+Scope:
+- public/app.js only.
+- No calculations changed.
+- No server.js.
+- No Apps Script.
+Purpose:
+- Brand-color the Page 2 score circles by platform identity.
+- Improve Page 1 logo polish and row styling hooks.
+- Clean the Google micro-copy under the Page 1 truth trend card.
+- Keep all numbers exactly as they are.
+*/
+(function iconicBrandAccentLogoPolishV15656() {
+  'use strict';
+
+  const VERSION = 'v15.6.56-brand-accent-logo-polish';
+  let patching = false;
+  let observerStarted = false;
+
+  function text(el) {
+    return String(el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizePlatform(value) {
+    const raw = String(value || '').toLowerCase();
+    if (raw.includes('meta')) return 'Meta';
+    if (raw.includes('google')) return 'Google';
+    if (raw.includes('snap')) return 'Snapchat';
+    if (raw.includes('tik')) return 'TikTok';
+    return '';
+  }
+
+  function setPlatformData(el, platform) {
+    if (!el) return;
+    const name = normalizePlatform(platform);
+    if (!name) return;
+    el.setAttribute('data-platform', name);
+    el.setAttribute('data-platform-key', name.toLowerCase());
+  }
+
+  function normalizeGoogleDetail(value) {
+    let detail = String(value || '');
+    if (!detail) return detail;
+    detail = detail.replace(/[–—]/g, '-');
+    detail = detail.replace(/\s*-\s*/g, ' ');
+    detail = detail.replace(/\s*\/\s*/g, ' • ');
+    detail = detail.replace(/\bconversions?\b/gi, 'conv');
+    detail = detail.replace(/\bconv\.\b/gi, 'conv');
+    detail = detail.replace(/\bclicks?\b/gi, 'clicks');
+    detail = detail.replace(/\s+/g, ' ').trim();
+    detail = detail.replace(/^(\d+)\s*clicks?\s*[•|]?\s*(\d+)\s*conv\.?$/i, '$1 clicks • $2 conv');
+    detail = detail.replace(/^(\d+)\s*clicks?\s+(\d+)\s*conv\.?$/i, '$1 clicks • $2 conv');
+    return detail;
+  }
+
+  function patchChannelHealth() {
+    const root = document.getElementById('page1ChannelHealth');
+    if (!root) return 0;
+    let count = 0;
+    root.querySelectorAll('.health-row').forEach(row => {
+      const platform = normalizePlatform(text(row.querySelector('.health-name strong')) || text(row));
+      if (!platform) return;
+      setPlatformData(row, platform);
+      const icon = row.querySelector('.platform-icon');
+      if (icon) {
+        setPlatformData(icon, platform);
+        icon.classList.add('brand-icon-v15656');
+      }
+      const status = row.querySelector('small');
+      if (status) status.classList.add('brand-status-v15656');
+      count += 1;
+    });
+    return count;
+  }
+
+  function patchPage2ScoreGrid() {
+    const grid = document.getElementById('channelScoreGrid');
+    if (!grid) return 0;
+    let count = 0;
+    grid.querySelectorAll('.mini-score').forEach(card => {
+      const platform = normalizePlatform(text(card.querySelector('.label')) || text(card));
+      if (!platform) return;
+      setPlatformData(card, platform);
+      count += 1;
+    });
+    return count;
+  }
+
+  function patchPage2ChannelCards() {
+    const cards = document.querySelectorAll('#channelCards .channel-card');
+    let count = 0;
+    cards.forEach(card => {
+      const platform = normalizePlatform(text(card.querySelector('.channel-name strong')) || text(card));
+      if (!platform) return;
+      setPlatformData(card, platform);
+      const icon = card.querySelector('.platform-icon');
+      if (icon) {
+        setPlatformData(icon, platform);
+        icon.classList.add('brand-icon-v15656');
+      }
+      const circle = card.querySelector('.score-circle');
+      if (circle) {
+        setPlatformData(circle, platform);
+        circle.classList.add('brand-score-circle-v15656');
+      }
+      const subtitle = card.querySelector('.channel-name small');
+      if (subtitle && platform === 'Google') subtitle.textContent = text(subtitle).replace(/\s*\/\s*/g, ' • ');
+      count += 1;
+    });
+    return count;
+  }
+
+  function patchVisualTrendBoard() {
+    const board = document.getElementById('visualPlatformStatusV15645');
+    if (!board) return 0;
+    let count = 0;
+    const cards = board.querySelectorAll('.vps49-card, .vps47-card, .vps46-card');
+    cards.forEach(card => {
+      const platform = normalizePlatform(card.getAttribute('data-platform') || text(card.querySelector('strong')) || text(card));
+      if (!platform) return;
+      setPlatformData(card, platform);
+      const icon = card.querySelector('.platform-icon');
+      if (icon) {
+        setPlatformData(icon, platform);
+        icon.classList.add('brand-icon-v15656');
+      }
+      const detail = card.querySelector('.vps49-detail, .vps47-detail, .vps46-detail');
+      if (detail && platform === 'Google') {
+        const next = normalizeGoogleDetail(text(detail));
+        if (next) detail.textContent = next;
+      }
+      count += 1;
+    });
+    return count;
+  }
+
+  function patchAll() {
+    if (patching || !document.body) return;
+    patching = true;
+    try {
+      const healthRows = patchChannelHealth();
+      const scoreGridCards = patchPage2ScoreGrid();
+      const page2Cards = patchPage2ChannelCards();
+      const trendCards = patchVisualTrendBoard();
+      document.documentElement.setAttribute('data-iconic-v15656-brand-polish', 'passed');
+      window.__ICONIC_V15656__ = {
+        ok: true,
+        version: VERSION,
+        healthRows,
+        scoreGridCards,
+        page2Cards,
+        trendCards,
+        rule: 'Brand-accent circles + Page 1 icon polish only. Numbers and calculations unchanged.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-iconic-v15656-brand-polish', 'failed');
+      window.__ICONIC_V15656__ = { ok: false, version: VERSION, error: error && error.message ? error.message : String(error) };
+    } finally {
+      patching = false;
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15656_MUTATION_TIMER__);
+      window.__ICONIC_V15656_MUTATION_TIMER__ = setTimeout(patchAll, 90);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.__ICONIC_V15656_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+    [120, 360, 800, 1400, 2200, 3400, 5200, 7600, 10500].forEach(ms => setTimeout(patchAll, ms));
+    window.addEventListener('beforeprint', patchAll);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
