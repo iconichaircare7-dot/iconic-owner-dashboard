@@ -7887,3 +7887,192 @@ Why:
     start();
   }
 })();
+
+/*
+ * Iconic Owner Dashboard — v15.6.55 Main Risk Tracking Consistency Lock
+ *
+ * Scope:
+ * - public/app.js only.
+ * - No Apps Script.
+ * - No server.js.
+ * - No style.css.
+ * - No calculation changes.
+ *
+ * Purpose:
+ * - Align Page 1 MAIN RISK with the currently displayed Tracking Needs Review alert.
+ * - Avoid showing MAIN RISK = Critical when the Billing Reconciliation Risk card is not displayed.
+ * - Keep Google tracking as the primary visible risk: clicks exist, conversions remain 0.
+ */
+(function iconicV15655MainRiskTrackingConsistencyLock() {
+  'use strict';
+
+  const VERSION = 'v15.6.55-main-risk-tracking-consistency-lock';
+
+  const TRACKING_LABEL = 'Tracking';
+  const TRACKING_DETAIL = 'Google has clicks but 0 confirmed conversions. Verify tracking before scaling.';
+  const TRACKING_TITLE = 'Tracking Needs Review';
+  const TRACKING_TEXT = 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.';
+
+  let patching = false;
+  let observerStarted = false;
+
+  function setTextById(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    if (String(el.textContent || '').trim() !== value) {
+      el.textContent = value;
+      return true;
+    }
+    return false;
+  }
+
+  function walkTextNodes(root, callback) {
+    if (!root) return 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node && node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = String(parent.tagName || '').toLowerCase();
+        if (['script', 'style', 'noscript', 'textarea', 'input'].includes(tag)) return NodeFilter.FILTER_REJECT;
+        if (!String(node.nodeValue || '').trim()) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+
+    let count = 0;
+    nodes.forEach(textNode => {
+      const original = String(textNode.nodeValue || '');
+      const updated = callback(original);
+      if (updated !== original) {
+        textNode.nodeValue = updated;
+        count += 1;
+      }
+    });
+    return count;
+  }
+
+  function replaceRiskCopy() {
+    return walkTextNodes(document.body, text => {
+      let out = text;
+
+      out = out.replace(
+        /Google MTD history is partial\. Snapchat is USD and has billing reconciliation(?: risk)?\.?(?: Do not treat Snapchat billing as final performance spend until reconciled\.)?/gi,
+        TRACKING_DETAIL
+      );
+
+      out = out.replace(
+        /Google MTD history is partial\. Snapchat\s+is USD and has billing reconciliation[\s\S]{0,80}?/gi,
+        TRACKING_DETAIL
+      );
+
+      out = out.replace(
+        /Critical Billing Risk/gi,
+        TRACKING_TITLE
+      );
+
+      return out;
+    });
+  }
+
+  function patchMainRiskElements() {
+    let count = 0;
+
+    if (setTextById('mainRisk', TRACKING_LABEL)) count += 1;
+    if (setTextById('mainRiskDetail', TRACKING_DETAIL)) count += 1;
+    if (setTextById('alertTitle', TRACKING_TITLE)) count += 1;
+    if (setTextById('alertText', TRACKING_TEXT)) count += 1;
+
+    return count;
+  }
+
+  function patchRiskCardVisualState() {
+    let count = 0;
+
+    const mainRisk = document.getElementById('mainRisk');
+    if (mainRisk) {
+      const card = mainRisk.closest('.kpi-card, .card, [class*="kpi"]');
+      if (card) {
+        card.setAttribute('data-v15655-main-risk', 'tracking');
+        card.classList.remove('critical', 'risk', 'danger');
+        card.classList.add('tracking-risk-v15655');
+        count += 1;
+      }
+    }
+
+    const alertTitle = document.getElementById('alertTitle');
+    if (alertTitle) {
+      const alert = alertTitle.closest('.alert-card, [class*="alert"]');
+      if (alert) {
+        alert.setAttribute('data-v15655-alert', 'tracking');
+        alert.classList.remove('risk-alert', 'campaign-alert-v15612', 'page1-risk-truth-v15620');
+        count += 1;
+      }
+    }
+
+    return count;
+  }
+
+  function patchAll() {
+    if (patching || !document.body) return;
+    patching = true;
+
+    try {
+      const elementPatches = patchMainRiskElements();
+      const copyPatches = replaceRiskCopy();
+      const visualPatches = patchRiskCardVisualState();
+
+      document.documentElement.setAttribute('data-v15655-main-risk-tracking-lock', 'passed');
+      window.__ICONIC_V15655__ = {
+        ok: true,
+        version: VERSION,
+        elementPatches,
+        copyPatches,
+        visualPatches,
+        rule: 'When billing card is not displayed, Page 1 MAIN RISK is aligned to Google tracking review instead of Critical billing wording.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-v15655-main-risk-tracking-lock', 'failed');
+      window.__ICONIC_V15655__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    } finally {
+      patching = false;
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15655_MUTATION_TIMER__);
+      window.__ICONIC_V15655_MUTATION_TIMER__ = setTimeout(patchAll, 90);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    window.__ICONIC_V15655_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+    [120, 360, 800, 1300, 2100, 3300, 5200, 7600, 10500].forEach(ms => setTimeout(patchAll, ms));
+    window.addEventListener('beforeprint', patchAll);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
