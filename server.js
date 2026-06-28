@@ -21,7 +21,7 @@ const TOTAL_REPORT_PAGES = 5;
 const PDF_DEVICE_SCALE_FACTOR = Number(process.env.PDF_DEVICE_SCALE_FACTOR || 2);
 const PDF_CACHE_TTL_MS = Number(process.env.PDF_CACHE_TTL_MS || 10 * 60 * 1000);
 const PDF_CACHE_MAX_ITEMS = Number(process.env.PDF_CACHE_MAX_ITEMS || 3);
-const PDF_BUILD_VERSION = 'v15.6.51-pdf-speed-quality-lock';
+const PDF_BUILD_VERSION = 'v15.6.53-pdf-single-page-clamp-quality-lock';
 const finalPdfCache = new Map();
 
 app.set('trust proxy', true);
@@ -916,7 +916,7 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
    *   dashboard data, email, WhatsApp, or owner-send logic.
    */
   const measuredHeight = Number(info.height || 0);
-  const calculatedHeight = Math.max(900, Math.ceil(measuredHeight + 140));
+  const calculatedHeight = Math.max(900, Math.ceil(measuredHeight + 220));
 
   await page.addStyleTag({
     content: `
@@ -929,8 +929,12 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
       body {
         width: ${PDF_WIDTH}px !important;
         min-width: ${PDF_WIDTH}px !important;
+        height: ${calculatedHeight}px !important;
+        min-height: ${calculatedHeight}px !important;
+        max-height: ${calculatedHeight}px !important;
         margin: 0 !important;
         padding: 0 !important;
+        overflow: hidden !important;
         background: #07111F !important;
         -webkit-font-smoothing: antialiased !important;
         text-rendering: geometricPrecision !important;
@@ -945,10 +949,14 @@ async function applySinglePagePrintMode(page, requestedPageNumber) {
       .report-shell {
         width: ${REPORT_WIDTH}px !important;
         max-width: none !important;
+        height: ${calculatedHeight}px !important;
+        min-height: 0 !important;
+        max-height: ${calculatedHeight}px !important;
         margin: 0 auto !important;
         padding: 20px 0 !important;
         gap: 0 !important;
         display: block !important;
+        overflow: hidden !important;
       }
 
       .report-page {
@@ -1030,9 +1038,46 @@ async function renderSinglePagePdfBuffer(page, requestedPageNumber) {
     }
   });
 
+  const rawBuffer = Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData);
+  const normalized = await normalizeSinglePagePdfBufferV15653_(rawBuffer, requestedPageNumber);
+
   return {
     ...result,
-    pdfBuffer: Buffer.isBuffer(pdfData) ? pdfData : Buffer.from(pdfData)
+    pdfBuffer: normalized.pdfBuffer,
+    singlePageInputPageCount: normalized.inputPageCount,
+    singlePageStripped: normalized.stripped
+  };
+}
+
+async function normalizeSinglePagePdfBufferV15653_(pdfBuffer, requestedPageNumber) {
+  const srcDoc = await PDFDocument.load(pdfBuffer);
+  const inputPageCount = srcDoc.getPageCount();
+
+  if (inputPageCount <= 1) {
+    return {
+      pdfBuffer,
+      inputPageCount,
+      stripped: false
+    };
+  }
+
+  const cleanDoc = await PDFDocument.create();
+  const [firstPage] = await cleanDoc.copyPages(srcDoc, [0]);
+  cleanDoc.addPage(firstPage);
+
+  const cleanBuffer = Buffer.from(await cleanDoc.save());
+
+  console.log('V15653_SINGLE_PAGE_CLAMP=' + JSON.stringify({
+    requestedPageNumber,
+    inputPageCount,
+    keptPages: 1,
+    reason: 'Single-page render produced extra blank/overflow page. Kept first page before final merge.'
+  }));
+
+  return {
+    pdfBuffer: cleanBuffer,
+    inputPageCount,
+    stripped: true
   };
 }
 
@@ -1048,9 +1093,14 @@ async function mergePdfBuffers(pdfBuffers) {
   return Buffer.from(await mergedDoc.save());
 }
 
+async function countPdfPagesV15653_(pdfBuffer) {
+  const doc = await PDFDocument.load(pdfBuffer);
+  return doc.getPageCount();
+}
+
 
 /************************************************************
- * v15.6.51 PDF Speed + Quality Lock
+ * v15.6.53 PDF Single Page Clamp + Quality Lock
  *
  * Scope:
  * - Adds final PDF cache for repeated owner/PDF preview requests.
@@ -1105,7 +1155,7 @@ async function getFinalPdfCacheKeyV15651_(req) {
   const json = JSON.parse(text);
   const compact = compactForPdfCacheKeyV15651_(json);
   return {
-    key: `final:${hashTextV15651_(JSON.stringify(compact))}`,
+    key: `final:${PDF_BUILD_VERSION}:${hashTextV15651_(JSON.stringify(compact))}`,
     sourceVersion: json.version || (json.data && json.data.version) || ''
   };
 }
@@ -1585,6 +1635,8 @@ app.get('/api/report-final-pdf', async (req, res) => {
           'Cache-Control': 'private, max-age=600',
           'X-Iconic-Pages': String(TOTAL_REPORT_PAGES),
           'X-Iconic-Page-Heights': cached.meta && cached.meta.heights ? cached.meta.heights.join(',') : '',
+          'X-Iconic-Single-Page-Counts': cached.meta && cached.meta.singlePageCounts ? cached.meta.singlePageCounts.join(',') : '',
+          'X-Iconic-Single-Page-Stripped': cached.meta && cached.meta.singlePageStripped ? cached.meta.singlePageStripped.join(',') : '',
           'X-Iconic-Pdf-Cache': 'HIT',
           'X-Iconic-Pdf-Cache-Age-Ms': String(cached.ageMs),
           'X-Iconic-Pdf-Build': PDF_BUILD_VERSION,
@@ -1611,6 +1663,8 @@ app.get('/api/report-final-pdf', async (req, res) => {
     const pdfBuffers = [];
     const heights = [];
     const pageMs = [];
+    const singlePageCounts = [];
+    const singlePageStripped = [];
 
     for (let pageNumber = 1; pageNumber <= TOTAL_REPORT_PAGES; pageNumber += 1) {
       const pageStart = Date.now();
@@ -1618,18 +1672,29 @@ app.get('/api/report-final-pdf', async (req, res) => {
       pdfBuffers.push(result.pdfBuffer);
       heights.push(result.pageHeight);
       pageMs.push(Date.now() - pageStart);
+      singlePageCounts.push(Number(result.singlePageInputPageCount || 1));
+      if (result.singlePageStripped) singlePageStripped.push(pageNumber);
     }
 
     timing.pageMs = pageMs.join(',');
+    timing.singlePageCounts = singlePageCounts.join(',');
+    timing.singlePageStripped = singlePageStripped.join(',') || 'none';
 
     const mergeStart = Date.now();
     const finalPdfBuffer = await mergePdfBuffers(pdfBuffers);
+    const finalPageCount = await countPdfPagesV15653_(finalPdfBuffer);
+    timing.finalPageCount = finalPageCount;
+    if (finalPageCount !== TOTAL_REPORT_PAGES) {
+      throw new Error(`Final PDF page count mismatch after clamp. Expected ${TOTAL_REPORT_PAGES}, got ${finalPageCount}.`);
+    }
     timing.mergeMs = Date.now() - mergeStart;
     timing.totalMs = Date.now() - totalStart;
 
     if (cacheKey) {
       storeCachedFinalPdfV15651_(cacheKey, finalPdfBuffer, {
         heights,
+        singlePageCounts,
+        singlePageStripped,
         sourceVersion,
         timing
       });
@@ -1645,6 +1710,8 @@ app.get('/api/report-final-pdf', async (req, res) => {
       'Cache-Control': 'private, max-age=600',
       'X-Iconic-Pages': String(TOTAL_REPORT_PAGES),
       'X-Iconic-Page-Heights': heights.join(','),
+      'X-Iconic-Single-Page-Counts': singlePageCounts.join(','),
+      'X-Iconic-Single-Page-Stripped': singlePageStripped.join(',') || 'none',
       'X-Iconic-Pdf-Cache': 'MISS',
       'X-Iconic-Pdf-Build': PDF_BUILD_VERSION,
       'X-Iconic-Pdf-Device-Scale-Factor': String(PDF_DEVICE_SCALE_FACTOR),
