@@ -2999,20 +2999,28 @@ body[data-pdf-clarity-lock="true"] * {
   text-shadow: none !important;
 }
 
+
 /*
-Iconic Owner Dashboard — v15.6.56 Brand Accent + Logo Polish
+Iconic Owner Dashboard — v15.6.56B SAFE Brand Polish CSS-Only
 Scope:
 - public/style.css only.
-- No layout or calculation logic changed.
-- Focus: Page 1 logo polish + Page 2 brand-colored score circles.
+- No app.js dependency.
+- No calculation changes.
+- No PDF/server changes.
+Purpose:
+- Brand-color Page 2 score circles and bars using fixed platform order:
+  Meta, Google, Snapchat, TikTok.
+- Polish Page 1 Channel Health logo chips using fixed row order.
+- Polish Page 1 Visual Platform Status cards using fixed card order.
 */
 
-#page1ChannelHealth .v15648-health-row[data-platform] {
+/* Page 1 — Channel Health brand accents */
+#page1ChannelHealth .health-row {
   position: relative !important;
   overflow: hidden !important;
 }
 
-#page1ChannelHealth .v15648-health-row[data-platform]::before {
+#page1ChannelHealth .health-row::before {
   content: "" !important;
   position: absolute !important;
   left: 0 !important;
@@ -3023,122 +3031,148 @@ Scope:
   opacity: .95 !important;
 }
 
-#page1ChannelHealth .v15648-health-row[data-platform="Meta"]::before { background: #60A5FA !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="Google"]::before { background: #FBBF24 !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="Snapchat"]::before { background: #FFFC00 !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="TikTok"]::before { background: linear-gradient(180deg,#25F4EE 0%,#FE2C55 100%) !important; }
+#page1ChannelHealth .health-row:nth-child(1)::before { background:#60A5FA !important; }
+#page1ChannelHealth .health-row:nth-child(2)::before { background:#FBBF24 !important; }
+#page1ChannelHealth .health-row:nth-child(3)::before { background:#FFFC00 !important; }
+#page1ChannelHealth .health-row:nth-child(4)::before { background:linear-gradient(180deg,#25F4EE 0%,#FE2C55 100%) !important; }
 
-#page1ChannelHealth .brand-icon-v15656,
-#visualPlatformStatusV15645 .brand-icon-v15656,
-#channelCards .brand-icon-v15656 {
+#page1ChannelHealth .health-row .platform-icon,
+#visualPlatformStatusV15645 .platform-icon,
+#channelCards .channel-card .platform-icon {
   border-radius: 999px !important;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.18) !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 6px 16px rgba(0,0,0,.18) !important;
 }
 
-#page1ChannelHealth .platform-icon[data-platform-key="meta"],
-#visualPlatformStatusV15645 .platform-icon[data-platform-key="meta"],
-#channelCards .platform-icon[data-platform-key="meta"] {
+#page1ChannelHealth .health-row:nth-child(1) .platform-icon,
+#channelCards .channel-card:nth-child(1) .platform-icon,
+#visualPlatformStatusV15645 .vps49-card:nth-child(1) .platform-icon,
+#visualPlatformStatusV15645 .vps47-card:nth-child(1) .platform-icon,
+#visualPlatformStatusV15645 .vps46-card:nth-child(1) .platform-icon {
   background: radial-gradient(circle at 30% 30%, rgba(96,165,250,.34), transparent 62%), linear-gradient(135deg,#0E1B34 0%,#193A7A 100%) !important;
   border: 1px solid rgba(96,165,250,.36) !important;
 }
 
-#page1ChannelHealth .platform-icon[data-platform-key="google"],
-#visualPlatformStatusV15645 .platform-icon[data-platform-key="google"],
-#channelCards .platform-icon[data-platform-key="google"] {
+#page1ChannelHealth .health-row:nth-child(2) .platform-icon,
+#channelCards .channel-card:nth-child(2) .platform-icon,
+#visualPlatformStatusV15645 .vps49-card:nth-child(2) .platform-icon,
+#visualPlatformStatusV15645 .vps47-card:nth-child(2) .platform-icon,
+#visualPlatformStatusV15645 .vps46-card:nth-child(2) .platform-icon {
   background: #fff !important;
   border: 1px solid rgba(255,255,255,.38) !important;
 }
 
-#page1ChannelHealth .platform-icon[data-platform-key="snapchat"],
-#visualPlatformStatusV15645 .platform-icon[data-platform-key="snapchat"],
-#channelCards .platform-icon[data-platform-key="snapchat"] {
+#page1ChannelHealth .health-row:nth-child(3) .platform-icon,
+#channelCards .channel-card:nth-child(3) .platform-icon,
+#visualPlatformStatusV15645 .vps49-card:nth-child(3) .platform-icon,
+#visualPlatformStatusV15645 .vps47-card:nth-child(3) .platform-icon,
+#visualPlatformStatusV15645 .vps46-card:nth-child(3) .platform-icon {
   background: #FFFC00 !important;
   border: 1px solid rgba(255,252,0,.55) !important;
 }
 
-#page1ChannelHealth .platform-icon[data-platform-key="tiktok"],
-#visualPlatformStatusV15645 .platform-icon[data-platform-key="tiktok"],
-#channelCards .platform-icon[data-platform-key="tiktok"] {
+#page1ChannelHealth .health-row:nth-child(4) .platform-icon,
+#channelCards .channel-card:nth-child(4) .platform-icon,
+#visualPlatformStatusV15645 .vps49-card:nth-child(4) .platform-icon,
+#visualPlatformStatusV15645 .vps47-card:nth-child(4) .platform-icon,
+#visualPlatformStatusV15645 .vps46-card:nth-child(4) .platform-icon {
   background: radial-gradient(circle at 28% 22%, rgba(37,244,238,.22), transparent 45%), radial-gradient(circle at 72% 72%, rgba(254,44,85,.20), transparent 48%), #09090B !important;
   border: 1px solid rgba(96,165,250,.22) !important;
 }
 
-#page1ChannelHealth .v15648-health-row[data-platform="Meta"] .brand-status-v15656 { color:#73B4FF !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="Google"] .brand-status-v15656 { color:#F7C85E !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="Snapchat"] .brand-status-v15656 { color:#FFE44D !important; }
-#page1ChannelHealth .v15648-health-row[data-platform="TikTok"] .brand-status-v15656 { color:#8ABEFF !important; }
+#page1ChannelHealth .health-row:nth-child(1) small { color:#73B4FF !important; }
+#page1ChannelHealth .health-row:nth-child(2) small { color:#F7C85E !important; }
+#page1ChannelHealth .health-row:nth-child(3) small { color:#FFE44D !important; }
+#page1ChannelHealth .health-row:nth-child(4) small { color:#8ABEFF !important; }
 
-#channelScoreGrid .mini-score[data-platform="Meta"] .bar span { background: linear-gradient(90deg,#3B82F6 0%,#60A5FA 100%) !important; }
-#channelScoreGrid .mini-score[data-platform="Google"] .bar span { background: linear-gradient(90deg,#4285F4 0%,#34A853 34%,#FBBC05 68%,#EA4335 100%) !important; }
-#channelScoreGrid .mini-score[data-platform="Snapchat"] .bar span { background: linear-gradient(90deg,#FFE600 0%,#FFFC00 100%) !important; }
-#channelScoreGrid .mini-score[data-platform="TikTok"] .bar span { background: linear-gradient(90deg,#25F4EE 0%,#60A5FA 45%,#FE2C55 100%) !important; }
+/* Page 2 — top score bars */
+#channelScoreGrid .mini-score:nth-child(1) .bar span {
+  background: linear-gradient(90deg,#3B82F6 0%,#60A5FA 100%) !important;
+}
+#channelScoreGrid .mini-score:nth-child(2) .bar span {
+  background: linear-gradient(90deg,#4285F4 0%,#34A853 34%,#FBBC05 68%,#EA4335 100%) !important;
+}
+#channelScoreGrid .mini-score:nth-child(3) .bar span {
+  background: linear-gradient(90deg,#FFE600 0%,#FFFC00 100%) !important;
+}
+#channelScoreGrid .mini-score:nth-child(4) .bar span {
+  background: linear-gradient(90deg,#25F4EE 0%,#60A5FA 45%,#FE2C55 100%) !important;
+}
 
-#channelCards .channel-card[data-platform] { position: relative !important; overflow: hidden !important; }
-
-#channelCards .channel-card[data-platform] .score-circle {
+/* Page 2 — channel score donuts */
+#channelCards .channel-card .score-circle {
   width: 78px !important;
   height: 78px !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 10px 28px rgba(0,0,0,.16) !important;
 }
 
-#channelCards .channel-card[data-platform] .score-circle::before {
+#channelCards .channel-card .score-circle::before {
   inset: 8px !important;
   background: linear-gradient(180deg, rgba(7,17,31,.98), rgba(13,27,46,.94)) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
 }
 
-#channelCards .channel-card[data-platform] .score-circle strong {
+#channelCards .channel-card .score-circle strong {
   font-size: 18px !important;
   font-weight: 900 !important;
   letter-spacing: -.02em !important;
 }
 
-#channelCards .channel-card[data-platform="Meta"] .score-circle {
+#channelCards .channel-card:nth-child(1) .score-circle {
   background: conic-gradient(#60A5FA calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0) !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 0 26px rgba(96,165,250,.16) !important;
 }
 
-#channelCards .channel-card[data-platform="Google"] .score-circle {
+#channelCards .channel-card:nth-child(2) .score-circle {
   background: conic-gradient(#FBBF24 calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 0 12px rgba(66,133,244,.10), 0 0 20px rgba(52,168,83,.10), 0 0 28px rgba(251,188,5,.12), 0 0 34px rgba(234,67,53,.10) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    0 0 12px rgba(66,133,244,.10),
+    0 0 20px rgba(52,168,83,.10),
+    0 0 28px rgba(251,188,5,.12),
+    0 0 34px rgba(234,67,53,.10) !important;
 }
 
-#channelCards .channel-card[data-platform="Snapchat"] .score-circle {
+#channelCards .channel-card:nth-child(3) .score-circle {
   background: conic-gradient(#FFFC00 calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0) !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 0 28px rgba(255,252,0,.18) !important;
 }
 
-#channelCards .channel-card[data-platform="TikTok"] .score-circle {
+#channelCards .channel-card:nth-child(4) .score-circle {
   background: conic-gradient(#60A5FA calc(var(--score,0) * 1%), rgba(255,255,255,.08) 0) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 0 18px rgba(37,244,238,.12), 0 0 30px rgba(254,44,85,.12) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    0 0 18px rgba(37,244,238,.12),
+    0 0 30px rgba(254,44,85,.12) !important;
 }
 
-#channelCards .channel-card[data-platform="Google"] .channel-name small {
-  line-height: 1.35 !important;
-  letter-spacing: .01em !important;
-}
-
-#visualPlatformStatusV15645 .vps49-card[data-platform="Google"] .vps49-detail,
-#visualPlatformStatusV15645 .vps47-card[data-platform="Google"] .vps47-detail,
-#visualPlatformStatusV15645 .vps46-card[data-platform="Google"] .vps46-detail {
-  letter-spacing: .01em !important;
-  word-spacing: .08em !important;
-}
-
-#visualPlatformStatusV15645 .vps49-card[data-platform] .platform-icon,
-#visualPlatformStatusV15645 .vps47-card[data-platform] .platform-icon,
-#visualPlatformStatusV15645 .vps46-card[data-platform] .platform-icon {
+/* Page 1 — Visual Platform Status logos */
+#visualPlatformStatusV15645 .vps49-card .platform-icon,
+#visualPlatformStatusV15645 .vps47-card .platform-icon,
+#visualPlatformStatusV15645 .vps46-card .platform-icon {
   width: 20px !important;
   height: 20px !important;
   flex: 0 0 20px !important;
 }
 
+/* Google subtext readability */
+#channelCards .channel-card:nth-child(2) .channel-name small {
+  line-height: 1.35 !important;
+  letter-spacing: .01em !important;
+}
+
 @media print {
-  #channelCards .channel-card[data-platform] .score-circle { width: 70px !important; height: 70px !important; }
-  #channelCards .channel-card[data-platform] .score-circle strong { font-size: 16px !important; }
-  #visualPlatformStatusV15645 .vps49-card[data-platform] .platform-icon,
-  #visualPlatformStatusV15645 .vps47-card[data-platform] .platform-icon,
-  #visualPlatformStatusV15645 .vps46-card[data-platform] .platform-icon {
+  #channelCards .channel-card .score-circle {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
+  #channelCards .channel-card .score-circle strong {
+    font-size: 16px !important;
+  }
+
+  #visualPlatformStatusV15645 .vps49-card .platform-icon,
+  #visualPlatformStatusV15645 .vps47-card .platform-icon,
+  #visualPlatformStatusV15645 .vps46-card .platform-icon {
     width: 16px !important;
     height: 16px !important;
     flex-basis: 16px !important;
