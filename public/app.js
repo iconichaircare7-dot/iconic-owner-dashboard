@@ -7701,3 +7701,189 @@ Scope:
     start();
   }
 })();
+
+/*
+Iconic Owner Dashboard — v15.6.54 Status Wording Consistency Lock
+Scope:
+- public/app.js only.
+- Owner-facing wording polish after 2026-06-28 MTD refresh.
+- Keeps all calculations, channel values, visual indicators, PDF layout, and 5-page structure unchanged.
+- Does not modify Apps Script, server.js, style.css, email, WhatsApp, triggers, Team Inbox, or APIs.
+
+Why:
+- Meta/Snapchat/TikTok may be stopped now but still have valid MTD activity.
+- Google may still be active but has 0 conversions.
+- Owner copy should not imply missing data when a channel is simply paused/stopped.
+- Billing actual value "0" can be a missing-data fallback; show it as "Not available" in the highlight row.
+*/
+(function iconicStatusWordingConsistencyLockV15654() {
+  const VERSION = 'v15.6.54-status-wording-consistency-lock';
+  let patching = false;
+  let observerStarted = false;
+
+  function normalizeText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function replaceTextNodes(root, replacements) {
+    if (!root) return 0;
+
+    let count = 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node => {
+      let value = String(node.nodeValue || '');
+      let changed = false;
+
+      replacements.forEach(([pattern, replacement]) => {
+        const next = value.replace(pattern, replacement);
+        if (next !== value) {
+          value = next;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        node.nodeValue = value;
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  function patchStatusBadges() {
+    let count = 0;
+
+    const badgeLike = Array.from(document.querySelectorAll('.status, .owner-tag, .tag, b, strong, span'));
+    badgeLike.forEach(el => {
+      const txt = normalizeText(el.textContent);
+      if (/^API ERROR(?:\s*\/\s*HAD.*)?$/i.test(txt)) {
+        el.textContent = 'VERIFY STATUS';
+        count += 1;
+      }
+      if (/^NO RECENT DATA$/i.test(txt)) {
+        el.textContent = 'PERIOD ACTIVITY';
+        count += 1;
+      }
+      if (/^PAUSED$/i.test(txt)) {
+        el.textContent = 'PAUSED / VERIFY';
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  function patchOwnerCopy() {
+    return replaceTextNodes(document.body, [
+      [
+        /Keep Dubai and Abu Dhabi Meta campaigns active\./gi,
+        'Keep Meta as the MTD lead engine; verify live/payment status.'
+      ],
+      [
+        /No budget increase until cost\/result stays stable after the next refresh\./gi,
+        'No budget increase until live/payment status and cost/result are stable.'
+      ],
+      [
+        /Do not scale traffic\/search channels yet\./gi,
+        'Do not scale Google while conversions are 0.'
+      ],
+      [
+        /Testing channels need conversion tracking and lead-quality confirmation first\./gi,
+        'Keep Snapchat/TikTok as completed traffic tests unless restarted.'
+      ],
+      [
+        /Do not scale Snapchat or inactive channels yet\./gi,
+        'Do not scale Google while conversions are 0.'
+      ],
+      [
+        /Testing channels need tracking and lead-quality confirmation first\./gi,
+        'Keep Snapchat/TikTok as completed traffic tests unless restarted.'
+      ],
+      [
+        /Keep Meta stable, fix Google tracking, and keep TikTok\/Snapchat as traffic tests\./gi,
+        'Keep Meta as the MTD engine, fix Google tracking, and keep stopped traffic tests paused unless restarted.'
+      ]
+    ]);
+  }
+
+  function patchBillingActualFallback() {
+    return replaceTextNodes(document.body, [
+      [
+        /Actual billing:\s*0\s*•\s*Campaign spend:/gi,
+        'Actual billing: Not available • Campaign spend:'
+      ],
+      [
+        /Actual billing:\s*0\s*·\s*Campaign spend:/gi,
+        'Actual billing: Not available • Campaign spend:'
+      ],
+      [
+        /Actual billing:\s*0\s*-\s*Campaign spend:/gi,
+        'Actual billing: Not available • Campaign spend:'
+      ]
+    ]);
+  }
+
+  function patchAll() {
+    if (patching || !document.body) return;
+    patching = true;
+
+    try {
+      const copyPatches = patchOwnerCopy();
+      const badgePatches = patchStatusBadges();
+      const billingPatches = patchBillingActualFallback();
+
+      document.documentElement.setAttribute('data-v15654-status-wording-lock', 'passed');
+      window.__ICONIC_V15654__ = {
+        ok: true,
+        version: VERSION,
+        copyPatches,
+        badgePatches,
+        billingPatches,
+        rule: 'Paused/stopped MTD channels are described as period activity, Google is the channel needing tracking review, and missing billing is not shown as factual zero.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-v15654-status-wording-lock', 'failed');
+      window.__ICONIC_V15654__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    } finally {
+      patching = false;
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15654_MUTATION_TIMER__);
+      window.__ICONIC_V15654_MUTATION_TIMER__ = setTimeout(patchAll, 80);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    window.__ICONIC_V15654_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+    [150, 450, 900, 1400, 2200, 3400, 5200, 7600, 10500].forEach(ms => setTimeout(patchAll, ms));
+    window.addEventListener('beforeprint', patchAll);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
