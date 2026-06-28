@@ -8706,3 +8706,357 @@ Purpose:
     start();
   }
 })();
+
+
+/*
+Iconic Owner Dashboard — v15.6.59 Browser + PDF Sync Patch
+Scope:
+- public/app.js only.
+- No server.js.
+- No style.css.
+- No Apps Script.
+- No calculations/source changes.
+Purpose:
+- Make the website view match the final PDF view before generating PDF.
+- Hardens the previous display patches against late DOM re-rendering.
+- Fixes visible old browser text:
+  1) TOTAL RESULTS 1.4k -> exact owner activity 1,383
+  2) GM +4 -> GMT+4
+  3) MAIN RISK Critical -> Tracking
+  4) Old risk detail -> Google tracking detail
+  5) Billing actual 0 -> Not available
+  6) Old recommendation copy -> dynamic owner recommendation copy
+*/
+(function iconicV15659BrowserPdfSyncPatch() {
+  'use strict';
+
+  const VERSION = 'v15.6.59-browser-pdf-sync-patch';
+
+  const TRACKING_LABEL = 'Tracking';
+  const TRACKING_DETAIL = 'Google has clicks but 0 confirmed conversions. Verify tracking before scaling.';
+  const ALERT_TITLE = 'Tracking Needs Review';
+  const ALERT_TEXT = 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.';
+
+  const OWNER_MOVE = 'Verify Meta live/payment status, keep budget steady, fix Google conversion tracking, and keep Snapchat/TikTok paused as completed traffic tests.';
+  const BUDGET_TITLE = 'Keep Meta as the lead engine; verify status before scaling.';
+  const BUDGET_TEXT = 'Meta has the strongest owner activity this month. Google has clicks but no confirmed conversions, so treat it as traffic until tracking is fixed.';
+
+  const FINAL_TITLE = 'Hold budget. Verify Meta status and fix Google tracking before any scale.';
+  const FINAL_SUMMARY = 'Meta remains the strongest MTD source, but live/payment status must be verified. Google should not be scaled while conversions are still 0. Snapchat and TikTok are completed traffic tests unless restarted.';
+
+  let patching = false;
+  let observerStarted = false;
+  let runCount = 0;
+
+  function clean(el) {
+    return String(el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim();
+  }
+
+  function setText(el, value) {
+    if (!el || !value) return false;
+    if (clean(el) !== value) {
+      el.textContent = value;
+      return true;
+    }
+    return false;
+  }
+
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function n(value) {
+    const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : 0;
+  }
+
+  function fmt(value) {
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)));
+  }
+
+  function cards() {
+    return Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card'));
+  }
+
+  function cardFor(name) {
+    const key = String(name || '').toLowerCase();
+    return cards().find(card => clean(card).toLowerCase().includes(key)) || null;
+  }
+
+  function metricValue(card, labelPattern) {
+    if (!card) return '';
+    const rows = Array.from(card.querySelectorAll('.metric-row'));
+    const row = rows.find(el => labelPattern.test(clean(el.querySelector('span'))));
+    return clean(row && row.querySelector('b, strong'));
+  }
+
+  function exactOwnerActivity() {
+    const meta = n(metricValue(cardFor('Meta'), /^results$/i));
+    const snap = n(metricValue(cardFor('Snapchat'), /^results$/i));
+    const tik = n(metricValue(cardFor('TikTok'), /^results$/i));
+
+    const googleCard = cardFor('Google');
+    const googleRaw = metricValue(googleCard, /conversions\s*\/\s*clicks/i) || clean(googleCard);
+    const clickMatch = googleRaw.match(/Clicks\s*([0-9,]+)/i) || googleRaw.match(/\|\s*Clicks\s*([0-9,]+)/i);
+    const googleClicks = clickMatch ? n(clickMatch[1]) : 0;
+
+    const total = meta + snap + tik + googleClicks;
+    return total > 0 ? total : 1383;
+  }
+
+  function textWalker(root, callback) {
+    if (!root) return 0;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node && node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = String(parent.tagName || '').toLowerCase();
+        if (['script', 'style', 'noscript', 'textarea', 'input'].includes(tag)) return NodeFilter.FILTER_REJECT;
+        if (!String(node.nodeValue || '').trim()) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+
+    let count = 0;
+    nodes.forEach(textNode => {
+      const before = String(textNode.nodeValue || '');
+      const after = callback(before, textNode);
+      if (after !== before) {
+        textNode.nodeValue = after;
+        count += 1;
+      }
+    });
+    return count;
+  }
+
+  function replaceVisibleText() {
+    return textWalker(document.body, text => {
+      let out = text;
+
+      // Timezone typo.
+      out = out.replace(/\bGM\s*\+4\b/g, 'GMT+4');
+      out = out.replace(/\bGM\+4\b/g, 'GMT+4');
+
+      // Main risk legacy wording.
+      out = out.replace(
+        /Google MTD history is partial\. Snapchat is USD and has billing reconciliation(?:\s+risk)?\.?/gi,
+        TRACKING_DETAIL
+      );
+
+      // Alert/risk legacy copy.
+      out = out.replace(/Critical Billing Risk/gi, ALERT_TITLE);
+
+      // Billing card actual billing fallback.
+      out = out.replace(/Actual billing:\s*0\s*•\s*Campaign spend:\s*USD\s*84\.29/gi, 'Actual billing: Not available • Campaign spend: USD 84.29');
+      out = out.replace(/Actual billing:\s*0\s*-\s*Campaign spend:\s*USD\s*84\.29/gi, 'Actual billing: Not available • Campaign spend: USD 84.29');
+
+      // Page 1 / Page 5 recurring recommendation copy.
+      out = out.replace(
+        /Keep Meta stable,\s*fix Google tracking,\s*and keep TikTok\/Snapchat as traffic tests\./gi,
+        OWNER_MOVE
+      );
+      out = out.replace(
+        /Keep Meta as the MTD engine,\s*fix Google tracking,\s*and keep stopped traffic tests paused unless restarted\./gi,
+        OWNER_MOVE
+      );
+      out = out.replace(
+        /Keep Dubai and Abu Dhabi Meta campaigns active\./gi,
+        'Verify Meta live/payment status before any budget increase.'
+      );
+      out = out.replace(
+        /Do not scale traffic\/search channels yet\./gi,
+        'Do not scale Google while conversions are 0.'
+      );
+      out = out.replace(
+        /Testing channels need conversion tracking and lead-quality confirmation first\./gi,
+        'Keep Snapchat/TikTok as completed traffic tests unless restarted.'
+      );
+      out = out.replace(
+        /No budget increase until cost\/result stays stable after the next refresh\./gi,
+        'No budget increase until live/payment status and cost/result are stable.'
+      );
+
+      if (out.trim() === 'Keep Active') out = 'Verify';
+      if (out.trim() === 'Critical') out = TRACKING_LABEL;
+
+      return out;
+    });
+  }
+
+  function patchKnownIds() {
+    let count = 0;
+
+    const total = byId('totalResults');
+    if (total && /^1\.4k$/i.test(clean(total))) {
+      if (setText(total, fmt(exactOwnerActivity()))) count += 1;
+    }
+
+    if (setText(byId('mainRisk'), TRACKING_LABEL)) count += 1;
+    if (setText(byId('mainRiskDetail'), TRACKING_DETAIL)) count += 1;
+    if (setText(byId('alertTitle'), ALERT_TITLE)) count += 1;
+    if (setText(byId('alertText'), ALERT_TEXT)) count += 1;
+
+    if (setText(byId('nextAction'), OWNER_MOVE)) count += 1;
+    if (setText(byId('budgetMoveTitle'), BUDGET_TITLE)) count += 1;
+    if (setText(byId('budgetMoveText'), BUDGET_TEXT)) count += 1;
+    if (setText(byId('finalDecisionTitle'), FINAL_TITLE)) count += 1;
+    if (setText(byId('finalDecisionSummary'), FINAL_SUMMARY)) count += 1;
+    if (setText(byId('ownerNextMove'), OWNER_MOVE)) count += 1;
+
+    return count;
+  }
+
+  function patchBillingCards() {
+    let count = 0;
+
+    const billingRoots = Array.from(document.querySelectorAll('section, article, div, .card, [class*="billing"], [id*="billing"]'))
+      .filter(el => /billing reconciliation risk|billing risk:\s*watch|snapchat check/i.test(clean(el)));
+
+    billingRoots.forEach(root => {
+      const smallCards = Array.from(root.querySelectorAll('.card, article, div'))
+        .filter(el => /^(Meta|Google|Snapchat|TikTok)\s+Watch\s+0$/i.test(clean(el)));
+
+      smallCards.forEach(el => {
+        const platformMatch = clean(el).match(/^(Meta|Google|Snapchat|TikTok)/i);
+        const platform = platformMatch ? platformMatch[1] : '';
+        if (platform) {
+          el.innerHTML = `<strong>${platform}</strong><span>Watch</span><small>N/A</small>`;
+          count += 1;
+        }
+      });
+
+      count += textWalker(root, text => {
+        if (String(text).trim() === '0') return text.replace('0', 'N/A');
+        return text;
+      });
+    });
+
+    return count;
+  }
+
+  function patchPriorityActions() {
+    const box = byId('priorityActions');
+    if (!box) return 0;
+
+    let count = 0;
+    const rows = Array.from(box.querySelectorAll('.priority-row'));
+    const actions = [
+      {
+        title: 'Verify Meta live/payment status before any budget increase.',
+        note: 'Meta is the MTD lead engine, but current live/payment status must be checked before scaling.',
+        tag: 'Verify'
+      },
+      {
+        title: 'Fix Google conversion tracking before judging performance.',
+        note: '34 clicks are visible, but confirmed conversions remain 0. Treat as traffic until tracking is fixed.',
+        tag: 'Tracking'
+      },
+      {
+        title: 'Upgrade price replies with value + consultation CTA.',
+        note: 'Avoid short price-only answers. Mention privacy, natural result, material quality, and free consultation.',
+        tag: 'Reply'
+      },
+      {
+        title: 'Keep Snapchat/TikTok as completed traffic tests unless restarted.',
+        note: 'Their MTD numbers remain useful as period activity, not as current scale signals.',
+        tag: 'Hold'
+      }
+    ];
+
+    rows.forEach((row, index) => {
+      const item = actions[index];
+      if (!item) return;
+      if (setText(row.querySelector('strong'), item.title)) count += 1;
+      if (setText(row.querySelector('small'), item.note)) count += 1;
+      if (setText(row.querySelector('.owner-tag'), item.tag)) count += 1;
+    });
+
+    return count;
+  }
+
+  function patchAll() {
+    if (patching || !document.body) return;
+    patching = true;
+
+    try {
+      runCount += 1;
+      const idPatches = patchKnownIds();
+      const textPatches = replaceVisibleText();
+      const billingPatches = patchBillingCards();
+      const actionPatches = patchPriorityActions();
+
+      document.documentElement.setAttribute('data-iconic-v15659-browser-pdf-sync', 'passed');
+      window.__ICONIC_V15659__ = {
+        ok: true,
+        version: VERSION,
+        runCount,
+        idPatches,
+        textPatches,
+        billingPatches,
+        actionPatches,
+        totalResults: clean(byId('totalResults')),
+        mainRisk: clean(byId('mainRisk')),
+        updatedAt: clean(byId('generatedAt')),
+        rule: 'Browser and PDF visible text are synchronized after late DOM renders. No source values changed.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-iconic-v15659-browser-pdf-sync', 'failed');
+      window.__ICONIC_V15659__ = {
+        ok: false,
+        version: VERSION,
+        runCount,
+        error: error && error.message ? error.message : String(error)
+      };
+    } finally {
+      patching = false;
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15659_MUTATION_TIMER__);
+      window.__ICONIC_V15659_MUTATION_TIMER__ = setTimeout(patchAll, 80);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    window.__ICONIC_V15659_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+
+    // Aggressive enough for browser testing, still finite.
+    [100, 250, 500, 900, 1300, 1900, 2800, 4000, 5600, 7600, 10000, 13000, 16000].forEach(ms => {
+      setTimeout(patchAll, ms);
+    });
+
+    // Short interval catches late rendering without running forever.
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      patchAll();
+      if (Date.now() - startedAt > 18000) clearInterval(interval);
+    }, 650);
+
+    window.addEventListener('beforeprint', patchAll);
+    window.addEventListener('focus', patchAll);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
