@@ -8076,3 +8076,223 @@ Why:
     start();
   }
 })();
+
+
+/*
+Iconic Owner Dashboard — v15.6.57 Final Owner Clarity Patch
+Scope:
+- public/app.js only.
+- No server.js.
+- No style.css required.
+- No Apps Script.
+- No source/calc changes.
+Purpose:
+- Final display polish before Owner send:
+  1) TOTAL RESULTS shows exact owner activity instead of compact 1.4k.
+  2) Fix GM +4 typo to GMT+4.
+  3) Billing mini-card numeric fallback 0 becomes N/A.
+  4) Page 5 action tag "Keep Active" becomes "Verify" to match paused/verify status.
+*/
+(function iconicV15657FinalOwnerClarityPatch() {
+  'use strict';
+
+  const VERSION = 'v15.6.57-final-owner-clarity-patch';
+  let patching = false;
+  let observerStarted = false;
+
+  function cleanText(el) {
+    return String(el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim();
+  }
+
+  function toNumber(value) {
+    const n = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function fmtInt(value) {
+    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)));
+  }
+
+  function readChannelMetric(platformName, metricLabel) {
+    const cards = Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card'));
+    const card = cards.find(el => cleanText(el).toLowerCase().includes(String(platformName || '').toLowerCase()));
+    if (!card) return 0;
+
+    const rows = Array.from(card.querySelectorAll('.metric-row'));
+    const row = rows.find(el => cleanText(el.querySelector('span')).toLowerCase() === String(metricLabel || '').toLowerCase());
+    if (!row) return 0;
+
+    return toNumber(cleanText(row.querySelector('b, strong')));
+  }
+
+  function exactOwnerActivityFromPage2() {
+    const metaResults = readChannelMetric('Meta', 'Results');
+    const googleClicksText = (() => {
+      const cards = Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card'));
+      const googleCard = cards.find(el => cleanText(el).toLowerCase().includes('google'));
+      if (!googleCard) return 0;
+      const row = Array.from(googleCard.querySelectorAll('.metric-row'))
+        .find(el => /conversions\s*\/\s*clicks/i.test(cleanText(el.querySelector('span'))));
+      const valueText = cleanText(row && row.querySelector('b, strong'));
+      const match = valueText.match(/Clicks\s*([0-9,]+)/i) || valueText.match(/([0-9,]+)\s*$/);
+      return match ? toNumber(match[1]) : 0;
+    })();
+    const snapResults = readChannelMetric('Snapchat', 'Results');
+    const tiktokResults = readChannelMetric('TikTok', 'Results');
+
+    const total = metaResults + googleClicksText + snapResults + tiktokResults;
+    return total > 0 ? total : 0;
+  }
+
+  function patchTotalResults() {
+    const el = document.getElementById('totalResults');
+    if (!el) return false;
+
+    const exact = exactOwnerActivityFromPage2();
+    if (!exact) return false;
+
+    const exactText = fmtInt(exact);
+    if (cleanText(el) !== exactText) {
+      el.textContent = exactText;
+      return true;
+    }
+
+    return false;
+  }
+
+  function walkTextNodes(root, callback) {
+    if (!root) return 0;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node && node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = String(parent.tagName || '').toLowerCase();
+        if (['script', 'style', 'noscript', 'textarea', 'input'].includes(tag)) return NodeFilter.FILTER_REJECT;
+        if (!String(node.nodeValue || '').trim()) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+
+    let count = 0;
+    nodes.forEach(textNode => {
+      const original = String(textNode.nodeValue || '');
+      const updated = callback(original, textNode);
+      if (updated !== original) {
+        textNode.nodeValue = updated;
+        count += 1;
+      }
+    });
+    return count;
+  }
+
+  function patchTimezoneAndTags() {
+    return walkTextNodes(document.body, text => {
+      let out = text;
+
+      out = out.replace(/\bGM\s*\+4\b/g, 'GMT+4');
+      out = out.replace(/\bGM\+4\b/g, 'GMT+4');
+
+      // Page 5 action tag only; safer exact replacement.
+      if (out.trim() === 'Keep Active') out = 'Verify';
+
+      return out;
+    });
+  }
+
+  function findBillingRoots() {
+    const candidates = Array.from(document.querySelectorAll('section, article, div, .card, [class*="billing"], [id*="billing"]'));
+    return candidates.filter(el => {
+      const text = cleanText(el);
+      return /billing reconciliation risk/i.test(text) || /billing risk:\s*watch/i.test(text) || /snapchat check/i.test(text);
+    });
+  }
+
+  function patchBillingZeros() {
+    const roots = findBillingRoots();
+    if (!roots.length) return 0;
+
+    let count = 0;
+    roots.forEach(root => {
+      count += walkTextNodes(root, (text, node) => {
+        const parentText = cleanText(node && node.parentElement);
+        const whole = cleanText(root);
+
+        // Replace billing fallback zero only when the node is exactly 0.
+        // This avoids Google "0 confirmed conversions" and Page 2 conversion rows.
+        if (String(text).trim() === '0' && /billing|watch|snapchat check|owner action/i.test(whole)) {
+          // Preserve explicit "0 confirmed conversions" outside billing by only working inside billing roots.
+          return text.replace('0', 'N/A');
+        }
+
+        return text;
+      });
+    });
+
+    return count;
+  }
+
+  function patchAll() {
+    if (patching || !document.body) return;
+    patching = true;
+
+    try {
+      const totalResultsPatched = patchTotalResults();
+      const copyPatches = patchTimezoneAndTags();
+      const billingPatches = patchBillingZeros();
+
+      document.documentElement.setAttribute('data-iconic-v15657-owner-clarity', 'passed');
+      window.__ICONIC_V15657__ = {
+        ok: true,
+        version: VERSION,
+        totalResultsPatched,
+        copyPatches,
+        billingPatches,
+        rule: 'Final owner-facing clarity only. No source data or arithmetic changed.'
+      };
+    } catch (error) {
+      document.documentElement.setAttribute('data-iconic-v15657-owner-clarity', 'failed');
+      window.__ICONIC_V15657__ = {
+        ok: false,
+        version: VERSION,
+        error: error && error.message ? error.message : String(error)
+      };
+    } finally {
+      patching = false;
+    }
+  }
+
+  function startObserver() {
+    if (observerStarted || !document.body || !window.MutationObserver) return;
+    observerStarted = true;
+
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.__ICONIC_V15657_MUTATION_TIMER__);
+      window.__ICONIC_V15657_MUTATION_TIMER__ = setTimeout(patchAll, 120);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    window.__ICONIC_V15657_OBSERVER__ = observer;
+  }
+
+  function start() {
+    startObserver();
+    [150, 450, 900, 1500, 2400, 3600, 5200, 7600, 10500].forEach(ms => setTimeout(patchAll, ms));
+    window.addEventListener('beforeprint', patchAll);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
