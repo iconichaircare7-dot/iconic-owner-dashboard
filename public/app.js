@@ -117,7 +117,8 @@ function normalizeGeneratedAt(value) {
     .replace('T', ' ')
     .replace(/\.\d+Z?$/, '')
     .replace(/Z$/, ' GMT+4')
-    .replace(/GMT\s*\+4/i, 'GMT+4');
+    .replace(/GMT\s*\+4/i, 'GMT+4')
+    .replace(/\bGM\s*\+4\b/i, 'GMT+4');
 }
 
 const PLATFORM_ICONS = {
@@ -4994,15 +4995,138 @@ function buildChannelsV15645(root) {
   ];
 }
 
+
+/*
+Iconic Owner Dashboard — v15.6.61 Render-Level Dynamic Recommendations Lock
+Scope:
+- Render-level recommendations only.
+- No MutationObserver / no interval loop.
+- No server.js / no style.css / no Apps Script.
+- No numeric/source calculation changes.
+Purpose:
+- Build smarter Page 1 / Page 2 / Page 5 recommendation text before render, so PDF and browser match.
+*/
+function channelByNameV15661_(channels, name) {
+  const key = String(name || '').toLowerCase();
+  return (Array.isArray(channels) ? channels : []).find(ch => String(ch && ch.name || '').toLowerCase() === key) || {};
+}
+
+function buildRenderLevelRecommendationsV15661_(context) {
+  const base = context && context.recommendations && typeof context.recommendations === 'object'
+    ? context.recommendations
+    : {};
+
+  const channels = Array.isArray(context && context.channels) ? context.channels : [];
+  const meta = channelByNameV15661_(channels, 'Meta');
+  const google = channelByNameV15661_(channels, 'Google');
+  const snapchat = channelByNameV15661_(channels, 'Snapchat');
+  const tiktok = channelByNameV15661_(channels, 'TikTok');
+
+  const metaResults = numV15645(meta.results || 0, 0);
+  const googleClicks = numV15645(google.clicks || 0, 0);
+  const googleConversions = numV15645(google.conversions || 0, 0);
+  const snapResults = numV15645(snapchat.results || snapchat.clicks || 0, 0);
+  const tikResults = numV15645(tiktok.results || tiktok.clicks || 0, 0);
+
+  const metaLead = metaResults > 0;
+  const googleTrackingBlocked = googleClicks > 0 && googleConversions === 0;
+  const trafficTestsCompleted = snapResults > 0 || tikResults > 0;
+
+  const dynamic = {
+    badge: base.badge || 'HOLD / IMPROVE',
+
+    finalDecisionTitle: googleTrackingBlocked
+      ? 'Hold budget. Verify Meta status and fix Google tracking before any scale.'
+      : (metaLead ? 'Keep Meta steady and improve conversion handling.' : 'Hold budget until channel quality is verified.'),
+
+    finalDecisionSummary: googleTrackingBlocked
+      ? 'Meta remains the strongest MTD source, but live/payment status must be verified. Google should not be scaled while conversions are still 0. Snapchat and TikTok are completed traffic tests unless restarted.'
+      : 'Keep budget controlled while improving reply quality, proof content, and lead-quality measurement.',
+
+    ownerNextMove: googleTrackingBlocked
+      ? 'Verify Meta live/payment status, keep budget steady, fix Google conversion tracking, and keep Snapchat/TikTok paused as completed traffic tests.'
+      : 'Keep Meta steady, improve customer replies, and review lead quality before increasing budget.',
+
+    nextAction: googleTrackingBlocked
+      ? 'Verify Meta live/payment status, keep budget steady, fix Google conversion tracking, and keep Snapchat/TikTok paused as completed traffic tests.'
+      : 'Keep budget controlled while improving reply quality and proof content.',
+
+    budgetMoveTitle: googleTrackingBlocked
+      ? 'Keep Meta as the lead engine; verify status before scaling.'
+      : 'Keep Meta stable. Improve lead handling before scaling.',
+
+    budgetMoveText: googleTrackingBlocked
+      ? 'Meta has the strongest owner activity this month. Google has clicks but no confirmed conversions, so treat it as traffic until tracking is fixed.'
+      : 'Meta is the lead engine, but scaling should wait until response quality and lead quality are verified.',
+
+    priorityActions: [
+      {
+        title: 'Verify Meta live/payment status before any budget increase.',
+        note: 'Meta is the MTD lead engine, but current live/payment status must be checked before scaling.',
+        tag: 'Verify',
+        tone: 'green'
+      },
+      {
+        title: googleTrackingBlocked
+          ? 'Fix Google conversion tracking before judging performance.'
+          : 'Review Google conversion quality before scaling.',
+        note: googleTrackingBlocked
+          ? `${fmtNumberV15645(googleClicks, 0)} clicks are visible, but confirmed conversions remain 0. Treat as traffic until tracking is fixed.`
+          : 'Use Google only when conversions can be measured cleanly.',
+        tag: 'Tracking',
+        tone: 'gold'
+      },
+      {
+        title: 'Upgrade price replies with value + consultation CTA.',
+        note: 'Avoid short price-only answers. Mention privacy, natural result, material quality, and free consultation.',
+        tag: 'Reply',
+        tone: 'gold'
+      },
+      {
+        title: trafficTestsCompleted
+          ? 'Keep Snapchat/TikTok as completed traffic tests unless restarted.'
+          : 'Keep testing channels controlled until lead quality is proven.',
+        note: trafficTestsCompleted
+          ? 'Their MTD numbers remain useful as period activity, not as current scale signals.'
+          : 'Do not scale traffic channels without proof of lead quality.',
+        tag: 'Hold',
+        tone: 'warn'
+      }
+    ],
+
+    doThis: [
+      'Verify Meta live/payment status before any scaling decision.',
+      googleTrackingBlocked
+        ? 'Fix Google conversion tracking before judging Google performance.'
+        : 'Review Google conversion quality before increasing spend.',
+      'Use privacy, natural result, and premium consultation as the core message.'
+    ],
+
+    doNotDo: [
+      'Do not increase budget just because MTD activity looks positive.',
+      'Do not compare WhatsApp conversations with traffic clicks directly.',
+      'Do not restart stopped traffic tests without a clear test objective.'
+    ]
+  };
+
+  return {
+    ...base,
+    ...dynamic,
+    version: 'v15.6.61-render-level-dynamic-recommendations'
+  };
+}
+
 function normalizeData(raw) {
   const root = rootFromRawV15645(raw);
   const report = root.report || root.reportContext || {};
   const executiveRaw = root.executive || root.executiveSnapshot || {};
-  const recommendations = root.recommendations || root.nextSteps || root.finalRecommendations || {};
+  const recommendationsRaw = root.recommendations || root.nextSteps || root.finalRecommendations || {};
   const competitorRaw = root.competitorIntelligence || {};
 
   const channels = buildChannelsV15645(root);
   const ownerActivity = numV15645(executiveRaw.totalOwnerActivity || executiveRaw.totalResults || executiveRaw.totalPrimaryResults, 0);
+  const googleChannelV15661 = channels.find(ch => String(ch && ch.name || '').toLowerCase() === 'google') || {};
+  const googleTrackingNeedsReviewV15661 = numV15645(googleChannelV15661.clicks || 0, 0) > 0 && numV15645(googleChannelV15661.conversions || 0, 0) === 0;
 
   const executive = {
     ...executiveRaw,
@@ -5011,8 +5135,14 @@ function normalizeData(raw) {
     totalOwnerActivity: ownerActivity,
     bestChannel: executiveRaw.bestChannel || 'Meta',
     bestChannelDetail: executiveRaw.bestChannelDetail || 'WhatsApp Conversations',
-    mainRisk: executiveRaw.mainRisk || executiveRaw.risk || 'Critical',
-    mainRiskDetail: executiveRaw.mainRiskDetail || executiveRaw.mainRiskDetail || executiveRaw.mainRisk || executiveRaw.mainRiskDetail || 'Billing and tracking need review.',
+    mainRisk: googleTrackingNeedsReviewV15661 ? 'Tracking' : (executiveRaw.mainRisk || executiveRaw.risk || 'Watch'),
+    mainRiskDetail: googleTrackingNeedsReviewV15661
+      ? 'Google has clicks but 0 confirmed conversions. Verify tracking before scaling.'
+      : (executiveRaw.mainRiskDetail || executiveRaw.mainRisk || 'Review tracking and billing before scaling.'),
+    alertTitle: googleTrackingNeedsReviewV15661 ? 'Tracking Needs Review' : (executiveRaw.alertTitle || 'Owner Review'),
+    alertText: googleTrackingNeedsReviewV15661
+      ? 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.'
+      : (executiveRaw.alertText || executiveRaw.mainRiskDetail || 'Review tracking and billing before scaling.'),
     totalSpendCurrency: executiveRaw.totalSpendCurrency || 'AED'
   };
 
@@ -5023,7 +5153,7 @@ function normalizeData(raw) {
 
   window.__ICONIC_DEBUG__ = {
     ...(window.__ICONIC_DEBUG__ || {}),
-    version: 'v15.6.45-permanent-visual-trend-lock',
+    version: 'v15.6.61-render-level-dynamic-recommendations-lock',
     rawChannels: root.channels || null,
     normalizedChannels: channels,
     executive,
@@ -5047,7 +5177,7 @@ function normalizeData(raw) {
         ? sanitizeCompetitors(competitorRaw.competitors || competitorRaw.trackedCompetitors || [])
         : []
     },
-    recommendations,
+    recommendations: buildRenderLevelRecommendationsV15661_({ report, executive, channels, recommendations: recommendationsRaw }),
     generatedAt: root.generatedAt || report.generatedAt || new Date().toISOString(),
     raw: root
   };
@@ -8298,300 +8428,11 @@ Purpose:
 })();
 
 
-/*
-Iconic Owner Dashboard — v15.6.60 PDF-Safe Dynamic Recommendations
-Scope:
-- public/app.js only.
-- Based on the last PDF-stable app.js line.
-- No server.js.
-- No style.css.
-- No Apps Script.
-- No calculation/source changes.
-Purpose:
-- Keep the smarter recommendation wording from v15.6.58/59.
-- Remove the aggressive MutationObserver/interval behavior that can disturb the headless PDF path.
-- Wait for `.report-page` to exist before patching anything.
-- Run a limited number of safe passes only.
-*/
-(function iconicV15660PdfSafeDynamicRecommendations() {
-  'use strict';
-
-  const VERSION = 'v15.6.60-pdf-safe-dynamic-recommendations';
-
-  const TEXT = {
-    mainRisk: 'Tracking',
-    mainRiskDetail: 'Google has clicks but 0 confirmed conversions. Verify tracking before scaling.',
-    alertTitle: 'Tracking Needs Review',
-    alertText: 'Google generated clicks, but no confirmed conversions yet. Treat it as traffic until tracking is fixed.',
-    ownerMove: 'Verify Meta live/payment status, keep budget steady, fix Google conversion tracking, and keep Snapchat/TikTok paused as completed traffic tests.',
-    budgetTitle: 'Keep Meta as the lead engine; verify status before scaling.',
-    budgetText: 'Meta has the strongest owner activity this month. Google has clicks but no confirmed conversions, so treat it as traffic until tracking is fixed.',
-    finalTitle: 'Hold budget. Verify Meta status and fix Google tracking before any scale.',
-    finalSummary: 'Meta remains the strongest MTD source, but live/payment status must be verified. Google should not be scaled while conversions are still 0. Snapchat and TikTok are completed traffic tests unless restarted.'
+(function iconicV15661MarkerOnly() {
+  window.__ICONIC_V15661__ = {
+    ok: true,
+    version: 'v15.6.61-render-level-dynamic-recommendations-lock',
+    rule: 'Recommendations are built inside normalizeData before render. No MutationObserver loop.'
   };
-
-  let runs = 0;
-  let done = false;
-
-  function clean(el) {
-    return String(el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim();
-  }
-
-  function byId(id) {
-    return document.getElementById(id);
-  }
-
-  function setText(el, value) {
-    if (!el || !value) return 0;
-    if (clean(el) !== value) {
-      el.textContent = value;
-      return 1;
-    }
-    return 0;
-  }
-
-  function num(value) {
-    const match = String(value ?? '').replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
-    return match ? Number(match[0]) : 0;
-  }
-
-  function fmtInt(value) {
-    return new Intl.NumberFormat('en-AE', { maximumFractionDigits: 0 }).format(Math.round(Number(value || 0)));
-  }
-
-  function cards() {
-    return Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card'));
-  }
-
-  function cardFor(name) {
-    const target = String(name || '').toLowerCase();
-    return cards().find(card => clean(card).toLowerCase().includes(target)) || null;
-  }
-
-  function metricValue(card, labelRegex) {
-    if (!card) return '';
-    const row = Array.from(card.querySelectorAll('.metric-row'))
-      .find(el => labelRegex.test(clean(el.querySelector('span'))));
-    return clean(row && row.querySelector('b, strong'));
-  }
-
-  function ownerActivityTotal() {
-    const meta = num(metricValue(cardFor('Meta'), /^results$/i));
-    const snap = num(metricValue(cardFor('Snapchat'), /^results$/i));
-    const tik = num(metricValue(cardFor('TikTok'), /^results$/i));
-
-    const googleCard = cardFor('Google');
-    const googleRaw = metricValue(googleCard, /conversions\s*\/\s*clicks/i) || clean(googleCard);
-    const match = googleRaw.match(/Clicks\s*([0-9,]+)/i);
-    const googleClicks = match ? num(match[1]) : 0;
-
-    const total = meta + snap + tik + googleClicks;
-    return total > 0 ? total : 1383;
-  }
-
-  function replaceTextNodePatterns(root) {
-    if (!root) return 0;
-
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        const parent = node && node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        const tag = String(parent.tagName || '').toLowerCase();
-        if (['script', 'style', 'noscript', 'textarea', 'input'].includes(tag)) return NodeFilter.FILTER_REJECT;
-        if (!String(node.nodeValue || '').trim()) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
-
-    const nodes = [];
-    let node;
-    while ((node = walker.nextNode())) nodes.push(node);
-
-    let count = 0;
-    nodes.forEach(textNode => {
-      let value = String(textNode.nodeValue || '');
-      const before = value;
-
-      value = value.replace(/\bGM\s*\+4\b/g, 'GMT+4');
-      value = value.replace(/\bGM\+4\b/g, 'GMT+4');
-
-      value = value.replace(
-        /Google MTD history is partial\. Snapchat is USD and has billing reconciliation(?:\s+risk)?\.?/gi,
-        TEXT.mainRiskDetail
-      );
-
-      value = value.replace(
-        /Actual billing:\s*0\s*•\s*Campaign spend:\s*USD\s*84\.29/gi,
-        'Actual billing: Not available • Campaign spend: USD 84.29'
-      );
-
-      value = value.replace(
-        /Keep Meta stable,\s*fix Google tracking,\s*and keep TikTok\/Snapchat as traffic tests\./gi,
-        TEXT.ownerMove
-      );
-
-      value = value.replace(
-        /Keep Meta as the MTD engine,\s*fix Google tracking,\s*and keep stopped traffic tests paused unless restarted\./gi,
-        TEXT.ownerMove
-      );
-
-      value = value.replace(
-        /Keep Dubai and Abu Dhabi Meta campaigns active\./gi,
-        'Verify Meta live/payment status before any budget increase.'
-      );
-
-      value = value.replace(
-        /No budget increase until cost\/result stays stable after the next refresh\./gi,
-        'No budget increase until live/payment status and cost/result are stable.'
-      );
-
-      value = value.replace(
-        /Do not scale traffic\/search channels yet\./gi,
-        'Do not scale Google while conversions are 0.'
-      );
-
-      value = value.replace(
-        /Testing channels need conversion tracking and lead-quality confirmation first\./gi,
-        'Keep Snapchat/TikTok as completed traffic tests unless restarted.'
-      );
-
-      if (value.trim() === 'Critical') value = TEXT.mainRisk;
-      if (value.trim() === 'Keep Active') value = 'Verify';
-
-      if (value !== before) {
-        textNode.nodeValue = value;
-        count += 1;
-      }
-    });
-
-    return count;
-  }
-
-  function patchBillingZerosLight() {
-    const roots = Array.from(document.querySelectorAll('section, article, div, .card, [class*="billing"], [id*="billing"]'))
-      .filter(el => /billing reconciliation risk|billing risk:\s*watch|snapchat check/i.test(clean(el)));
-
-    let count = 0;
-    roots.forEach(root => {
-      const children = Array.from(root.querySelectorAll('*')).filter(el => {
-        const t = clean(el);
-        return /^(Meta|Google|Snapchat|TikTok)\s+Watch\s+0$/i.test(t);
-      });
-
-      children.forEach(el => {
-        const match = clean(el).match(/^(Meta|Google|Snapchat|TikTok)/i);
-        if (!match) return;
-        el.textContent = `${match[1]} Watch N/A`;
-        count += 1;
-      });
-    });
-
-    return count;
-  }
-
-  function patchPriorityActions() {
-    const box = byId('priorityActions');
-    if (!box) return 0;
-
-    const actions = [
-      {
-        title: 'Verify Meta live/payment status before any budget increase.',
-        note: 'Meta is the MTD lead engine, but current live/payment status must be checked before scaling.',
-        tag: 'Verify'
-      },
-      {
-        title: 'Fix Google conversion tracking before judging performance.',
-        note: '34 clicks are visible, but confirmed conversions remain 0. Treat as traffic until tracking is fixed.',
-        tag: 'Tracking'
-      },
-      {
-        title: 'Upgrade price replies with value + consultation CTA.',
-        note: 'Avoid short price-only answers. Mention privacy, natural result, material quality, and free consultation.',
-        tag: 'Reply'
-      },
-      {
-        title: 'Keep Snapchat/TikTok as completed traffic tests unless restarted.',
-        note: 'Their MTD numbers remain useful as period activity, not as current scale signals.',
-        tag: 'Hold'
-      }
-    ];
-
-    let count = 0;
-    const rows = Array.from(box.querySelectorAll('.priority-row'));
-    rows.forEach((row, i) => {
-      const item = actions[i];
-      if (!item) return;
-      count += setText(row.querySelector('strong'), item.title);
-      count += setText(row.querySelector('small'), item.note);
-      count += setText(row.querySelector('.owner-tag'), item.tag);
-    });
-
-    return count;
-  }
-
-  function patchOnce() {
-    if (!document.querySelector('.report-page')) {
-      return false;
-    }
-
-    runs += 1;
-    let patches = 0;
-
-    const total = ownerActivityTotal();
-    patches += setText(byId('totalResults'), fmtInt(total));
-
-    patches += setText(byId('mainRisk'), TEXT.mainRisk);
-    patches += setText(byId('mainRiskDetail'), TEXT.mainRiskDetail);
-    patches += setText(byId('alertTitle'), TEXT.alertTitle);
-    patches += setText(byId('alertText'), TEXT.alertText);
-
-    patches += setText(byId('nextAction'), TEXT.ownerMove);
-    patches += setText(byId('budgetMoveTitle'), TEXT.budgetTitle);
-    patches += setText(byId('budgetMoveText'), TEXT.budgetText);
-
-    patches += setText(byId('finalDecisionTitle'), TEXT.finalTitle);
-    patches += setText(byId('finalDecisionSummary'), TEXT.finalSummary);
-    patches += setText(byId('ownerNextMove'), TEXT.ownerMove);
-
-    patches += patchPriorityActions();
-    patches += replaceTextNodePatterns(document.body);
-    patches += patchBillingZerosLight();
-
-    document.documentElement.setAttribute('data-iconic-v15660-pdf-safe-dynamic', 'passed');
-    window.__ICONIC_V15660__ = {
-      ok: true,
-      version: VERSION,
-      runs,
-      patches,
-      totalResults: clean(byId('totalResults')),
-      mainRisk: clean(byId('mainRisk')),
-      updatedAt: clean(byId('generatedAt')),
-      rule: 'Finite, PDF-safe dynamic display patch. No MutationObserver loop; no source data changes.'
-    };
-
-    return true;
-  }
-
-  function schedule() {
-    const delays = [120, 300, 600, 1000, 1500, 2200, 3200, 4500, 6200, 8200, 10500];
-    delays.forEach(ms => {
-      setTimeout(() => {
-        if (!done) {
-          const ok = patchOnce();
-          if (ok && runs >= 3) done = true;
-        }
-      }, ms);
-    });
-
-    window.addEventListener('beforeprint', () => {
-      patchOnce();
-      patchOnce();
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', schedule, { once: true });
-  } else {
-    schedule();
-  }
+  document.documentElement.setAttribute('data-iconic-v15661-render-level-recommendations', 'loaded');
 })();
