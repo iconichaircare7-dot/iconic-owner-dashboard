@@ -1321,9 +1321,12 @@ function applyMonthlyMTDRenderHardSyncV15632(payload) {
     totalSpendLabel: 'Total MTD Spend AED',
     totalSpendNote: 'Snapchat is originally USD and is converted to AED estimate for total only. Billing reconciliation remains required.',
 
-    totalResults: totalOwnerActivity,
-    totalResultsLabel: 'MTD Owner Activity',
-    totalResultsDetail: 'Meta WhatsApp conversations + Google/Snapchat/TikTok traffic clicks. Result types are not equal.',
+   totalResults: Number(meta.results || 0),
+totalResultsLabel: 'Meta WhatsApp Conversations',
+totalResultsDetail: 'Confirmed Meta WhatsApp conversations only.',
+
+googleClicks: Number(google.clicks || 0),
+googleConversions: Number(google.results || 0),
 
     totalPrimaryResults: totalPrimaryResults,
     totalTrafficClicks: totalTrafficClicks,
