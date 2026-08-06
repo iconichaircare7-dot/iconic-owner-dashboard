@@ -3690,7 +3690,14 @@ function normalizeData(raw) {
     totalResults: Math.round(apiTotalResults),
     totalSpendCurrency: executive.totalSpendCurrency || 'AED',
     totalSpendLabel: executive.totalSpendLabel || (isMTD ? 'Total MTD Spend AED' : 'Total Spend'),
-    totalResultsLabel: executive.totalResultsLabel || (isMTD ? 'MTD Owner Activity' : 'Total Results'),
+    totalResultsLabel: isMTD
+      ? 'Meta WhatsApp Conversations'
+      : (executive.totalResultsLabel || 'Total Results'),
+    totalResultsDetail: isMTD
+      ? 'Confirmed Meta WhatsApp conversations only.'
+      : (executive.totalResultsDetail || ''),
+    googleClicks: numberFromAny_V15633_(google && google.clicks, 0),
+    googleConversions: numberFromAny_V15633_(google && google.results, 0),
     mainRisk: executive.mainRisk || executive.risk || (googleHasClickNoConversion ? 'Medium' : 'Low'),
     risk: executive.risk || executive.mainRisk || (googleHasClickNoConversion ? 'Medium' : 'Low'),
     bestChannel: executive.bestChannel || 'Meta',
@@ -4996,17 +5003,29 @@ function normalizeData(raw) {
   const competitorRaw = root.competitorIntelligence || {};
 
   const channels = buildChannelsV15645(root);
-  const ownerActivity = numV15645(executiveRaw.totalOwnerActivity || executiveRaw.totalResults || executiveRaw.totalPrimaryResults, 0);
+  const metaChannel = channels.find(channel => channel && channel.name === 'Meta') || {};
+  const metaWhatsAppResults = numV15645(
+    metaChannel.results !== undefined && metaChannel.results !== null
+      ? metaChannel.results
+      : executiveRaw.totalResults,
+    0
+  );
+  const ownerActivity = numV15645(
+    executiveRaw.totalOwnerActivity || executiveRaw.totalPrimaryResults || metaWhatsAppResults,
+    metaWhatsAppResults
+  );
 
   const executive = {
     ...executiveRaw,
     totalSpend: numV15645(executiveRaw.totalSpend, 0),
-    totalResults: ownerActivity,
+    totalResults: metaWhatsAppResults,
+    totalResultsLabel: executiveRaw.totalResultsLabel || 'Meta WhatsApp Conversations',
+    totalResultsDetail: executiveRaw.totalResultsDetail || 'Confirmed Meta WhatsApp conversations only.',
     totalOwnerActivity: ownerActivity,
     bestChannel: executiveRaw.bestChannel || 'Meta',
     bestChannelDetail: executiveRaw.bestChannelDetail || 'WhatsApp Conversations',
     mainRisk: executiveRaw.mainRisk || executiveRaw.risk || 'Critical',
-    mainRiskDetail: executiveRaw.mainRiskDetail || executiveRaw.mainRiskDetail || executiveRaw.mainRisk || executiveRaw.mainRiskDetail || 'Billing and tracking need review.',
+    mainRiskDetail: executiveRaw.mainRiskDetail || executiveRaw.mainRisk || 'Billing and tracking need review.',
     totalSpendCurrency: executiveRaw.totalSpendCurrency || 'AED'
   };
 
@@ -5431,20 +5450,15 @@ function googleConversionsV15663_(data) {
 }
 
 function ownerActivityV15663_(data) {
+  // Page 1's primary result card must show Meta WhatsApp conversations only.
+  // Google clicks and other traffic metrics remain available separately on Page 2.
   const meta = channelV15663_(data, 'Meta');
-  const snap = channelV15663_(data, 'Snapchat');
-  const tik = channelV15663_(data, 'TikTok');
+  const metaResults = numV15663_(meta.results || 0);
 
-  const total =
-    numV15663_(meta.results || meta.clicks || 0) +
-    googleClicksV15663_(data) +
-    numV15663_(snap.results || snap.clicks || 0) +
-    numV15663_(tik.results || tik.clicks || 0);
-
-  if (total > 0) return total;
+  if (metaResults > 0) return metaResults;
 
   const executive = (data && data.executive) || {};
-  return numV15663_(executive.totalOwnerActivity || executive.totalResults || 0);
+  return numV15663_(executive.totalResults || 0);
 }
 
 function googleTrackingRiskV15663_(data) {
@@ -8238,7 +8252,7 @@ Why:
 
 
 /*
-Iconic Owner Dashboard — v15.6.57 Final Owner Clarity Patch
+Iconic Owner Dashboard — v15.6.64 Meta Results Card Fix
 Scope:
 - public/app.js only.
 - No server.js.
@@ -8247,7 +8261,7 @@ Scope:
 - No source/calc changes.
 Purpose:
 - Final display polish before Owner send:
-  1) TOTAL RESULTS shows exact owner activity instead of compact 1.4k.
+  1) Primary result card shows confirmed Meta WhatsApp conversations only.
   2) Fix GM +4 typo to GMT+4.
   3) Billing mini-card numeric fallback 0 becomes N/A.
   4) Page 5 action tag "Keep Active" becomes "Verify" to match paused/verify status.
@@ -8255,7 +8269,7 @@ Purpose:
 (function iconicV15657FinalOwnerClarityPatch() {
   'use strict';
 
-  const VERSION = 'v15.6.57-final-owner-clarity-patch';
+  const VERSION = 'v15.6.64-meta-results-card-fix';
   let patching = false;
   let observerStarted = false;
 
@@ -8285,22 +8299,10 @@ Purpose:
   }
 
   function exactOwnerActivityFromPage2() {
+    // Keep the Page 1 primary result card aligned with Meta's confirmed
+    // WhatsApp conversation result only. Do not mix clicks or traffic results.
     const metaResults = readChannelMetric('Meta', 'Results');
-    const googleClicksText = (() => {
-      const cards = Array.from(document.querySelectorAll('#channelCards .channel-card, .channel-card'));
-      const googleCard = cards.find(el => cleanText(el).toLowerCase().includes('google'));
-      if (!googleCard) return 0;
-      const row = Array.from(googleCard.querySelectorAll('.metric-row'))
-        .find(el => /conversions\s*\/\s*clicks/i.test(cleanText(el.querySelector('span'))));
-      const valueText = cleanText(row && row.querySelector('b, strong'));
-      const match = valueText.match(/Clicks\s*([0-9,]+)/i) || valueText.match(/([0-9,]+)\s*$/);
-      return match ? toNumber(match[1]) : 0;
-    })();
-    const snapResults = readChannelMetric('Snapchat', 'Results');
-    const tiktokResults = readChannelMetric('TikTok', 'Results');
-
-    const total = metaResults + googleClicksText + snapResults + tiktokResults;
-    return total > 0 ? total : 0;
+    return metaResults > 0 ? metaResults : 0;
   }
 
   function patchTotalResults() {
@@ -8317,6 +8319,41 @@ Purpose:
     }
 
     return false;
+  }
+
+  function patchMetaResultsCardLabels() {
+    const valueEl = document.getElementById('totalResults');
+    if (!valueEl) return 0;
+
+    const card = valueEl.closest('article, .kpi-card, .metric-card, .stat-card, .card') || valueEl.parentElement;
+    if (!card) return 0;
+
+    let count = 0;
+    const leaves = Array.from(card.querySelectorAll('*')).filter(el => el !== valueEl && el.children.length === 0);
+
+    leaves.forEach(el => {
+      const current = cleanText(el);
+      const normalized = current.toLowerCase();
+
+      if (normalized === 'total results') {
+        el.textContent = 'META WHATSAPP CONVERSATIONS';
+        count += 1;
+        return;
+      }
+
+      if (
+        normalized === 'mtd owner activity' ||
+        normalized === 'owner activity' ||
+        normalized === 'meta whatsapp conversations' ||
+        normalized === 'confirmed meta whatsapp conversations only.'
+      ) {
+        el.textContent = 'Confirmed Meta WhatsApp conversations only.';
+        count += 1;
+      }
+    });
+
+    card.setAttribute('data-meta-results-only', VERSION);
+    return count;
   }
 
   function walkTextNodes(root, callback) {
@@ -8401,21 +8438,23 @@ Purpose:
 
     try {
       const totalResultsPatched = patchTotalResults();
+      const metaResultsLabelPatches = patchMetaResultsCardLabels();
       const copyPatches = patchTimezoneAndTags();
       const billingPatches = patchBillingZeros();
 
-      document.documentElement.setAttribute('data-iconic-v15657-owner-clarity', 'passed');
-      window.__ICONIC_V15657__ = {
+      document.documentElement.setAttribute('data-iconic-v15664-meta-results', 'passed');
+      window.__ICONIC_V15664__ = {
         ok: true,
         version: VERSION,
         totalResultsPatched,
+        metaResultsLabelPatches,
         copyPatches,
         billingPatches,
-        rule: 'Final owner-facing clarity only. No source data or arithmetic changed.'
+        rule: 'Primary result card is Meta WhatsApp conversations only; other channel metrics remain separate.'
       };
     } catch (error) {
-      document.documentElement.setAttribute('data-iconic-v15657-owner-clarity', 'failed');
-      window.__ICONIC_V15657__ = {
+      document.documentElement.setAttribute('data-iconic-v15664-meta-results', 'failed');
+      window.__ICONIC_V15664__ = {
         ok: false,
         version: VERSION,
         error: error && error.message ? error.message : String(error)
@@ -8430,7 +8469,7 @@ Purpose:
     observerStarted = true;
 
     const observer = new MutationObserver(() => {
-      clearTimeout(window.__ICONIC_V15657_MUTATION_TIMER__);
+      clearTimeout(window.__ICONIC_V15664_MUTATION_TIMER__);
       window.__ICONIC_V15657_MUTATION_TIMER__ = setTimeout(patchAll, 120);
     });
 
@@ -8440,7 +8479,7 @@ Purpose:
       characterData: true
     });
 
-    window.__ICONIC_V15657_OBSERVER__ = observer;
+    window.__ICONIC_V15664_OBSERVER__ = observer;
   }
 
   function start() {
@@ -8464,4 +8503,14 @@ Purpose:
     rule: 'Page 1, Page 2, and Page 5 dynamic copy is rendered from source functions directly.'
   };
   document.documentElement.setAttribute('data-iconic-v15663-source-render-dynamic', 'loaded');
+})();
+
+
+(function iconicV15664MetaResultsMarker() {
+  window.__ICONIC_V15664_META_RESULTS__ = {
+    ok: true,
+    version: 'v15.6.64-meta-results-card-fix',
+    rule: 'Page 1 primary results = confirmed Meta WhatsApp conversations only.'
+  };
+  document.documentElement.setAttribute('data-iconic-v15664-meta-results-card', 'loaded');
 })();
